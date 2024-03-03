@@ -59,8 +59,8 @@ export const base = (
   * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
 
   body {
-    max-width: 80ch;
-    padding: 2ch;
+    max-width: 100ch;
+    padding: 4ch;
     margin-left: auto;
     margin-right: auto;
   }
