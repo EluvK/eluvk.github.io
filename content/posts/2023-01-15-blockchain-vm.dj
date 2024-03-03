@@ -12,19 +12,19 @@
 ### 虚拟机
 
 - 用来模拟计算机的程序
-- 虚拟的CPU、内存、存储
+- 虚拟的 CPU、内存、存储
 - 使用起来和物理机器没有区别
 
 ## 从比特币脚本到以太坊虚拟机
 
 ### 比特币脚本
 
-#### UTXO模型
+#### UTXO 模型
 
 UTXO (Unspent Transaction Output) ，简单来说就是：
 
-1. 一个UTXO包含一个面额和一个当前的拥有者。
-2. 某个一账户的余额 是由 当前区块链网络里，所有属于这个账户的UTXO组成的：
+1. 一个 UTXO 包含一个面额和一个当前的拥有者。
+2. 某个一账户的余额 是由 当前区块链网络里，所有属于这个账户的 UTXO 组成的：
 
 ![utxo_1](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/utxo_1.png)
 
@@ -34,17 +34,17 @@ UTXO (Unspent Transaction Output) ，简单来说就是：
 
 ##### 思考？
 
-账户模型和UTXO模型相比，有什么优势，有什么缺点？
+账户模型和 UTXO 模型相比，有什么优势，有什么缺点？
 
 - 账号模型特点：
-  - 余额状态简单，绝大多数情况下，并不会关心自己的资产由哪些面值组成，一般只关心总额多少。而UTXO模型需要统计当前状态下的所有UTXO。
+  - 余额状态简单，绝大多数情况下，并不会关心自己的资产由哪些面值组成，一般只关心总额多少。而 UTXO 模型需要统计当前状态下的所有 UTXO。
   - 状态数据和用户数量正相关，不会随着时间增大而无限增加
   - 轻量级客户端更容易编写
-- UTXO模型特点：
+- UTXO 模型特点：
   - 资产的可追溯性更强
-  - UTXO 模型理论上来说可以并行地利用不同的 UTXO 签发多笔交易。但是如果双花，同一个UTXO最终也只会在一个交易里被确认。
+  - UTXO 模型理论上来说可以并行地利用不同的 UTXO 签发多笔交易。但是如果双花，同一个 UTXO 最终也只会在一个交易里被确认。
 
-#### 使用output
+#### 使用 output
 
 ![utxo_2](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/utxo_2.png)
 
@@ -63,9 +63,9 @@ UTXO (Unspent Transaction Output) ，简单来说就是：
 解锁脚本里只能有数据不能出现逻辑操作，否则任何 UTXO 都可以用 `OP_RETURN` 解锁:
 `OP_TRUE OP_RETURN`
 
-#### 脚本Script
+#### 脚本 Script
 
-[bitcoin-core源码interpreter.cpp](https://github.com/bitcoin/bitcoin/blob/master/src/script/interpreter.cpp)里的注释：
+[bitcoin-core 源码 interpreter.cpp](https://github.com/bitcoin/bitcoin/blob/master/src/script/interpreter.cpp)里的注释：
 
 ```cpp
 /**
@@ -74,8 +74,8 @@ UTXO (Unspent Transaction Output) ，简单来说就是：
  */
 ```
 
-Script是一种类Forth、基于栈式模型、无状态的、非图灵完备的语言。
-opcodes分为常量、流程控制、栈操作、算术运算、位运算、密码学运算、保留字等若干类，还包括3个内部使用的伪指令。
+Script 是一种类 Forth、基于栈式模型、无状态的、非图灵完备的语言。
+opcodes 分为常量、流程控制、栈操作、算术运算、位运算、密码学运算、保留字等若干类，还包括3个内部使用的伪指令。
 
 ##### A simple example
 
@@ -87,13 +87,13 @@ opcodes分为常量、流程控制、栈操作、算术运算、位运算、密�
 | OP_ADD       | 147    | 0x93      | a b     | out        | a is added to b.                  |
 | OP_EQUAL     | 135    | 0x87      | x1 x2   | True/false | Return True if x1 == x2, or false |
 
-比如A需要转账给B一笔钱，那么B就需要提供一个收款方式（锁定脚本模板），A按照B提供的**锁定脚本**把钱锁定，就相当于完成了对B的转账。
+比如 A 需要转账给 B 一笔钱，那么 B 就需要提供一个收款方式（锁定脚本模板），A 按照 B 提供的**锁定脚本**把钱锁定，就相当于完成了对 B 的转账。
 
-假如B提供的收款方式是：因为只有我知道 `x + 2 = 3` 的解是 `x = 1` ，所以告诉A，你只需要把金额通过以下脚本锁定：
+假如 B 提供的收款方式是：因为只有我知道 `x + 2 = 3` 的解是 `x = 1` ，所以告诉 A，你只需要把金额通过以下脚本锁定：
 `OP_2 OP_ADD 3 OP_EQUAL`
 
-当B需要使用这笔钱的时候：B就可以使用**解锁脚本**：`OP_1` 来证明自己可以使用这笔钱了：
-因为：解锁脚本 + 锁定脚本: `OP_1 OP_2 OP_ADD 3 OP_EQUAL` 的执行结果是True
+当 B 需要使用这笔钱的时候：B 就可以使用**解锁脚本**：`OP_1` 来证明自己可以使用这笔钱了：
+因为：解锁脚本 + 锁定脚本: `OP_1 OP_2 OP_ADD 3 OP_EQUAL` 的执行结果是 True
 
 当然，这样提供锁定脚本的方法"只能用一次"，因为你的解锁方式使用过以后就相当于公开了。
 
@@ -110,7 +110,7 @@ opcodes分为常量、流程控制、栈操作、算术运算、位运算、密�
 | `OP_EQUALVERIFY` | 136    | 0x88 | x1 x2      | Nothing / fail | Same as OP_EQUAL, but runs OP_VERIFY afterward.                                                                                                                                                                                                                |
 | `OP_CHECKSIG`    | 172    | 0xac | sig pubkey | True / false   | The entire transaction's outputs, inputs, and script (from the most recently-executed OP_CODESEPARATOR to the end) are hashed. The signature used by OP_CHECKSIG must be a valid signature for this hash and public key. If it is, 1 is returned, 0 otherwise. |
 
-B给A提供了一个锁定脚本模板：`OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG`，告诉了A他的收款地址（等效于其中的公钥hash），当A需要使用这笔钱的时候，在本地计算出相应的签名再附上公钥即可：
+B 给 A 提供了一个锁定脚本模板：`OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG`，告诉了 A 他的收款地址（等效于其中的公钥 hash），当 A 需要使用这笔钱的时候，在本地计算出相应的签名再附上公钥即可：
 
 **解锁脚本**：`<sig> <pubKey>` +
 
@@ -120,7 +120,7 @@ B给A提供了一个锁定脚本模板：`OP_DUP OP_HASH160 <pubKeyHash> OP_EQUA
 
 ![bitcoin-sig-scrpit](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/bitcoin-sig-script.gif)
 
-注： 关于为什么使用公钥hash,可以参考下面第一篇拓展阅读，介绍了“付款到公钥” 和 “付款到公钥哈希”的问题
+注： 关于为什么使用公钥 hash,可以参考下面第一篇拓展阅读，介绍了“付款到公钥” 和 “付款到公钥哈希”的问题
 
 #### 比特币相关知识拓展阅读
 
@@ -132,7 +132,7 @@ B给A提供了一个锁定脚本模板：`OP_DUP OP_HASH160 <pubKeyHash> OP_EQUA
 
 #### 比特币的智能合约
 
-比特币也是支持有限的智能合约的，再[BIP-11](https://github.com/bitcoin/bips/blob/master/bip-0011.mediawiki)提出M-of-N多签交易后，也增加了`OP_CHECKMULTISIG`指令，也可以一定程度上实现多签功能，用在托管资产、多签钱包等场景。
+比特币也是支持有限的智能合约的，再[BIP-11](https://github.com/bitcoin/bips/blob/master/bip-0011.mediawiki)提出 M-of-N 多签交易后，也增加了 `OP_CHECKMULTISIG` 指令，也可以一定程度上实现多签功能，用在托管资产、多签钱包等场景。
 
 ### 以太坊虚拟机
 
@@ -154,17 +154,17 @@ B给A提供了一个锁定脚本模板：`OP_DUP OP_HASH160 <pubKeyHash> OP_EQUA
 
 #### 以太坊虚拟机 EVM
 
-EVM准确来说是一个准图灵机，文法上它能够执行任意操作，但为了防止网络滥用、以及避免由于图灵完整性带来的安全问题，以太坊中所有操作都进行了经济学上的限制，也就是 gas 机制
+EVM 准确来说是一个准图灵机，文法上它能够执行任意操作，但为了防止网络滥用、以及避免由于图灵完整性带来的安全问题，以太坊中所有操作都进行了经济学上的限制，也就是 gas 机制
 
-EVM执行的过程：
+EVM 执行的过程：
 
-- 从`EVM code` 中取指令，所有的操作在 `Stack` 上进行，
+- 从 `EVM code` 中取指令，所有的操作在 `Stack` 上进行，
 - `Memory` 作为临时的变量存储， `storage` 是账户状态。
 - 执行受到 `gas avail` 限制。
 
 ![evm](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/evm1.jfif)
 
-执行过程中的消息调用（CALL）：合约之间的调用，参数和返回值在memory中传递
+执行过程中的消息调用（CALL）：合约之间的调用，参数和返回值在 memory 中传递
 ![evm](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/evm2.jfif)
 
 ## 如何写一个简单堆栈虚拟机
