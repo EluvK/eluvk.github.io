@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - uses: denoland/setup-deno@v1
       with:
         deno-version: v1.x
@@ -17,7 +17,7 @@ jobs:
     - run: deno task build
 
     - name: Deploy
-      uses: peaceiris/actions-gh-pages@364c31d33bb99327c77b3a5438a83a357a6729ad # v3.4.0
+      uses: peaceiris/actions-gh-pages@de7ea6f8efb354206b205ef54722213d99067935 # v3.9.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_branch: gh-pages
