@@ -1,0 +1,172 @@
+# Blockchain VM
+
+这是22年5月份在我在公司内部分享的关于区块链虚拟机的基础介绍，整理资料的时候翻出来发到博客上。
+
+## 什么是区块链虚拟机
+
+### 区块链
+
+- 不可篡改的去中心化分布式账本
+- 运用密码学加密，把块（一些记录）连接起来形成链
+
+### 虚拟机
+
+- 用来模拟计算机的程序
+- 虚拟的CPU、内存、存储
+- 使用起来和物理机器没有区别
+
+## 从比特币脚本到以太坊虚拟机
+
+### 比特币脚本
+
+#### UTXO模型
+
+UTXO (Unspent Transaction Output) ，简单来说就是：
+
+1. 一个UTXO包含一个面额和一个当前的拥有者。
+2. 某个一账户的余额 是由 当前区块链网络里，所有属于这个账户的UTXO组成的：
+
+![utxo_1](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/utxo_1.png)
+
+一笔交易里可以包含多个 input \也可以有多个 output，只需要保证 `sum(inputs) > sum(outputs) + fee` 即可。
+
+如果一个用户想要发送一笔交易，发送 X 个币到一个特定的地址，有时候，他们拥有的 UTXO 的一些子集组合起来面值恰好是 X，在这种情况下，他们可以创造一个交易：花费他们的 UTXO 并创造出一笔新的、价值 X 的 UTXO ，由目标地址占有。当这种完美的配对不可能的时候，用户就必须打包其和值 大于 X 的 UTXO 输入集合，并添加一笔拥有第二个目标地址的 UTXO ，称为“变更输出”，分配剩下的币到一个由他们自己控制的地址。
+
+##### 思考？
+
+账户模型和UTXO模型相比，有什么优势，有什么缺点？
+
+- 账号模型特点：
+  - 余额状态简单，绝大多数情况下，并不会关心自己的资产由哪些面值组成，一般只关心总额多少。而UTXO模型需要统计当前状态下的所有UTXO。
+  - 状态数据和用户数量正相关，不会随着时间增大而无限增加
+  - 轻量级客户端更容易编写
+- UTXO模型特点：
+  - 资产的可追溯性更强
+  - UTXO 模型理论上来说可以并行地利用不同的 UTXO 签发多笔交易。但是如果双花，同一个UTXO最终也只会在一个交易里被确认。
+
+#### 使用output
+
+![utxo_2](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/utxo_2.png)
+
+这里涉及到的两个脚本：
+
+- 锁定脚本 `scriptPubKey`
+- 解锁脚本 `scriptSig`
+
+比特币虚拟机在执行交易时：需要验证解锁脚本能否解开锁定脚本，会把 **锁定脚本**( `scriptPubKey` )和对应索引的**解锁脚本**( `scriptSig` )拼接起来从左到右执行一遍。如果执行过程中**没有出现错误并且执行结果为真**，则验证通过，意味着钥匙打开了锁，这个 UTXO 可以被花费。
+
+![utxo_3](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/utxo_3.png)
+
+请注意，解锁脚本里不能出现 PUSHDATA 以外的任何操作码，否则会报错
+> 16: mandatory-script-verify-flag-failed (Only non-push operators allowed in signatures)
+
+解锁脚本里只能有数据不能出现逻辑操作，否则任何 UTXO 都可以用 `OP_RETURN` 解锁:
+`OP_TRUE OP_RETURN`
+
+#### 脚本Script
+
+[bitcoin-core源码interpreter.cpp](https://github.com/bitcoin/bitcoin/blob/master/src/script/interpreter.cpp)里的注释：
+
+```cpp
+/**
+ * Script is a stack machine (like Forth) that evaluates a predicate
+ * returning a bool indicating valid or not.  There are no loops.
+ */
+```
+
+Script是一种类Forth、基于栈式模型、无状态的、非图灵完备的语言。
+opcodes分为常量、流程控制、栈操作、算术运算、位运算、密码学运算、保留字等若干类，还包括3个内部使用的伪指令。
+
+##### A simple example
+
+先看一个简单的例子，只需要用到几个简单的操作符：
+
+| Word         | Opcode | Hex       | Input   | Output     | Description                       |
+|--------------|--------|-----------|---------|------------|-----------------------------------|
+| OP_1...OP_16 | 81-96  | 0x51-0x60 | Nothing | 1-16       | push the number into stack        |
+| OP_ADD       | 147    | 0x93      | a b     | out        | a is added to b.                  |
+| OP_EQUAL     | 135    | 0x87      | x1 x2   | True/false | Return True if x1 == x2, or false |
+
+比如A需要转账给B一笔钱，那么B就需要提供一个收款方式（锁定脚本模板），A按照B提供的**锁定脚本**把钱锁定，就相当于完成了对B的转账。
+
+假如B提供的收款方式是：因为只有我知道 `x + 2 = 3` 的解是 `x = 1` ，所以告诉A，你只需要把金额通过以下脚本锁定：
+`OP_2 OP_ADD 3 OP_EQUAL`
+
+当B需要使用这笔钱的时候：B就可以使用**解锁脚本**：`OP_1` 来证明自己可以使用这笔钱了：
+因为：解锁脚本 + 锁定脚本: `OP_1 OP_2 OP_ADD 3 OP_EQUAL` 的执行结果是True
+
+当然，这样提供锁定脚本的方法"只能用一次"，因为你的解锁方式使用过以后就相当于公开了。
+
+##### 实际点的例子
+
+下面举几个在后面的脚本中会出现的指令，全部的指令可参考[官方文档](https://en.bitcoin.it/wiki/Script#Opcodes)和源码。
+
+举例几个：
+
+| Word             | Opcode | Hex  | Input      | Output         | Description                                                                                                                                                                                                                                                    |
+|------------------|--------|------|------------|----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `OP_DUP`         | 118    | 0x76 | x          | x x            | Duplicates the top stack item.                                                                                                                                                                                                                                 |
+| `OP_HASH160`     | 169    | 0xa9 | in         | hash           | The input is hashed twice: first with SHA-256 and then with RIPEMD-160.                                                                                                                                                                                        |
+| `OP_EQUALVERIFY` | 136    | 0x88 | x1 x2      | Nothing / fail | Same as OP_EQUAL, but runs OP_VERIFY afterward.                                                                                                                                                                                                                |
+| `OP_CHECKSIG`    | 172    | 0xac | sig pubkey | True / false   | The entire transaction's outputs, inputs, and script (from the most recently-executed OP_CODESEPARATOR to the end) are hashed. The signature used by OP_CHECKSIG must be a valid signature for this hash and public key. If it is, 1 is returned, 0 otherwise. |
+
+B给A提供了一个锁定脚本模板：`OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG`，告诉了A他的收款地址（等效于其中的公钥hash），当A需要使用这笔钱的时候，在本地计算出相应的签名再附上公钥即可：
+
+**解锁脚本**：`<sig> <pubKey>` +
+
+**锁定脚本**：`OP_DUP OP_HASH160 <pubKeyHash> OP_EQUALVERIFY OP_CHECKSIG`
+
+看一下执行过程 PPT:
+
+![bitcoin-sig-scrpit](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/bitcoin-sig-script.gif)
+
+注： 关于为什么使用公钥hash,可以参考下面第一篇拓展阅读，介绍了“付款到公钥” 和 “付款到公钥哈希”的问题
+
+#### 比特币相关知识拓展阅读
+
+- [比特币公钥哈希](https://aaron67.cc/2018/12/28/bitcoin-transaction-p2pk-p2pkh/)
+- [比特币公钥私钥](https://aaron67.cc/2018/12/23/bitcoin-keys/)
+- [比特币的地址](https://aaron67.cc/2019/01/04/bitcoin-address/)
+- [比特币钱包](https://aaron67.cc/2019/01/22/bitcoin-wallet/)
+- [比特币2-of-3多签](https://gist.github.com/gavinandresen/3966071)
+
+#### 比特币的智能合约
+
+比特币也是支持有限的智能合约的，再[BIP-11](https://github.com/bitcoin/bips/blob/master/bip-0011.mediawiki)提出M-of-N多签交易后，也增加了`OP_CHECKMULTISIG`指令，也可以一定程度上实现多签功能，用在托管资产、多签钱包等场景。
+
+### 以太坊虚拟机
+
+#### 账户模型
+
+![eth-account-1](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/eth_account_1.png)
+
+整个以太坊会保存所有账户的状态：
+
+![eth-global-state](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/eth_global_state.jfif)
+
+#### 以太坊状态机
+
+`(nonce, from, to, value, input)` 是一个 `Transaction` 包含的最重要的几个字段，通过 `nonce` 防止重放攻击， `from` 和 `to` 分别表示了当前交易的发出者和接受者， `value` 是当前交易包含的 `Ether` ， `input` 中包含了合约调用相关的二进制信息。
+
+![eth-state-machine](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/eth_state_machine.png)
+
+每当一个 `Transaction` 被 `Ethereum` 主网挖到后， `from` 和 `to` 账户的 `Ether` 余额就会变动， `Ethereum` 就像一个状态机，它接受一个又一个的 `Transaction` 并不停改变自己的状态。
+
+#### 以太坊虚拟机 EVM
+
+EVM准确来说是一个准图灵机，文法上它能够执行任意操作，但为了防止网络滥用、以及避免由于图灵完整性带来的安全问题，以太坊中所有操作都进行了经济学上的限制，也就是 gas 机制
+
+EVM执行的过程：
+
+- 从`EVM code` 中取指令，所有的操作在 `Stack` 上进行，
+- `Memory` 作为临时的变量存储， `storage` 是账户状态。
+- 执行受到 `gas avail` 限制。
+
+![evm](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/evm1.jfif)
+
+执行过程中的消息调用（CALL）：合约之间的调用，参数和返回值在memory中传递
+![evm](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/evm2.jfif)
+
+## 如何写一个简单堆栈虚拟机
+
+[ssvm](https://github.com/CharlesLiu-TOPNetwork/ssvm/tree/demo/literal_instruction)
