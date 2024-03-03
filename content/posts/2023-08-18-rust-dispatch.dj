@@ -173,7 +173,11 @@ pub struct TraitObject {
 }
 ```
 
-虽然 Trait Object 大小是确定，但是并不能写出形如 `fn x() -> Trait Object` 的代码，你会得到编译器的警告：`return type cannot have an unboxed trait object, doesn't have a size known at compile-time` 嗯？这是因为 Trait Object 所表达的实现了该 Trait 的类型的集合，其中的元素的大小是不确定的。Trait Object 本身是无法实例化的，作为返回值自然是没有意义的，真正要作为返回值的是某个实现了该 Trait 的类型的实例。因此要明确并不是因为 Trait Object 本身大小不固定，大小就是宽指针是固定的。
+虽然 Trait Object 大小是确定，但是并不能写出形如 `fn x() -> Trait Object` 的代码，你会得到编译器的警告：
+
+> `return type cannot have an unboxed trait object, doesn't have a size known at compile-time`
+
+嗯？这是因为 Trait Object 所表达的实现了该 Trait 的类型的集合，其中的元素的大小是不确定的。Trait Object 本身是无法实例化的，作为返回值自然是没有意义的，真正要作为返回值的是某个实现了该 Trait 的类型的实例。因此要明确并不是因为 Trait Object 本身大小不固定，大小就是宽指针是固定的。
 
 ### dyn Trait
 
