@@ -1,0 +1,123 @@
+# Api Design Practices
+
+## 0x00
+
+工作内容里，签名验签模块在重构后出现了一个偶现 bug，个别账号签名的数据验签失败。
+
+重构的时候单元测试覆盖过功能测试（私钥-公钥-签名-验签）是可以的，修改测试循环大量次数跑后，发现生成1万次随机私钥，会有60-80次会出现验签失败的问题。
+
+打印出来后出错的 case 后，发现共有的特点是，32 bytes 的私钥里，出错的都是第一个 byte 为 0 (hex: 0x00) 的私钥。一个随机账号出错的概率大概就是 $`\frac{1}{256}` 。
+
+所以原因大概率就是前置0 在存储使用的过程中丢失了的原因。进一步定位代码找到了出错的地方。
+
+先描述一下相关接口方法的使用。
+
+## 0x01
+
+签名验签使用的是 `openssl` 的库来实现其数学计算过程，其中私钥 32 bytes = 256 bit 是通过 `BigNumber` (简写为 `BN` ) 来保存的。在 `BN` 对象和其可读形式（无论是 hex 编码还是 base64编码）的转换过程中，第一步都要把 `BN` 转换成对应的 bytes 数据。
+
+openssl 在 `BN` 相关的接口里也提供了对应的转换方式：
+
+``` CPP
+size_t BN_bn2bin(const BIGNUM * in, uint8_t * out);
+```
+
+方法传入两个参数，第一个是入参 `BN *`，第二个是出参 `u8 *`，返回值表示转换的长度。
+
+非常的 C 风格，经验丰富的 coder 也会马上注意到，出参 to 指针指向的结果对象，其内存是由调用者来管理的，也就是说在调用之前我就需要明确申请好足够的空间来存放结果。但是我怎么知道 `BN * in` 会转换出多少 bytes 呢？
+
+对此 openssl 还提供了另外一个方法：
+
+``` CPP
+size_t BN_num_bytes(const BIGNUM *bn)
+```
+
+传入 `BN *`, 返回其对应的 bytes 长度。
+
+## 0x02
+
+所以使用方法大致如下：
+
+``` CPP
+size_t len = BN_num_bytes(bn);
+
+uint8_t * binary_result = (uint8_t *)malloc(len * sizeof(uint8_t)) // C malloc
+// uint8_t * binary_result = new uint8_t[len] // or use C++ new
+memset(binary_result, 0, len * sizeof(uint8_t))
+
+if (BN_bn2bin(bn, binary_result) != len) {
+    // TODO what?
+}
+
+// ...
+
+free(binary_result);
+// delete[] binary_result // or use C++ delete
+```
+
+过程应该很简单清晰，获取长度 - 申请内存 - 调用转换方法。
+
+但是应该怎么处理 `BN_bn2bin` 方法的返回值呢？
+
+## 0x03
+
+这个返回的整数值，在某些类似场合下（比如读写文件）其含义或许是：实际写入的字节数。但是在这里，它一定是 `BN` 的实际 bytes 长度。其实现也就是如此：
+
+``` CPP
+size_t BN_bn2bin(const BIGNUM * in, uint8_t * out) {
+  size_t n = BN_num_bytes(in);
+  bn_words_to_big_endian(out, n, in->d, in->width);
+  return n;
+}
+```
+
+返回值 `n` 也和我们调用 `BN_num_bytes` 获取长度得到的结果必定是一样的。那我们判断返回值 `if (BN_bn2bin(bn, binary_result) != len)` 的意义是什么？
+
+想要调用 `BN_bn2bin`，必定要先调用 `BN_num_bytes`，那 `BN_bn2bin` 的返回值我在使用前已经知道了。
+
+所以实践上可能还仅剩的意义大概是：在 debug 里多判断一次断言，release 下可以直接放过这个返回值了：
+
+``` CPP
+size_t len = BN_num_bytes(bn);
+
+uint8_t * binary_result = new uint8_t[len]
+
+memset(binary_result, 0, len * sizeof(uint8_t))
+
+[[maybe_unused]] size_t ret = BN_bn2bin(bn, binary_result);
+
+assert(ret == len);
+
+// ... 
+```
+
+## 0x04
+
+上面解释后也可以看出 `BN_bn2bin` 设计初衷就是一个通用的转换方式，所以按照上述的封装方式一定会得到一个通用的序列化方法。
+
+而对于私钥这种定长(32 bytes)的大整数，不可避免地出现有前置0的情况，比如 值为 `0x00ff..ffff`，经过上面的操作后得到的 `binary_result` 的长度是 31，如果在存储的时候没有考虑到这种情况，复制的时候就可能整体左移了一 bytes，变成了 `0xffff..ff00` 私钥的数值放大了256倍，都不是同一把私钥，自然无法验签了。这也就是最初遇到的 bug 的原因了。
+
+所以最好是把通用序列化和定长序列化区分开来。额外封装出能够自动补齐0的接口来。这里就不再展开了。
+
+## 0x05
+
+允许对内存的精确掌控也必然要求使用者足够仔细和周全。对于开发一个提供给他人使用的库来说，或许可以做的更好。例如这个例子里，通用的序列化方法和定长的序列化方式都可以提供出来，意义很弱的长度返回值也可以用现代语言里的容器取代。
+
+接口层面可能如下（随手写的举个例子，返回值 `Vec<u8>` 仅做表示意义）：
+
+``` RUST
+pub enum PaddingScheme {
+    BigEndian,
+    LittleEndian,
+}
+
+impl BigNum {
+    pub fn bn_to_bin(&self) -> Result<Vec<u8>, BnError>;
+
+    pub fn bn_to_fixed_bin(&self, len: usize, padding: PaddingScheme) -> Result<Vec<u8>, BnError>;
+}
+```
+
+## 0x06
+
+原因相关但是跑题的感想：💩⛰ 代码重构起来，要么彻底了解前后背景设计原因，要么做好准备定位分析奇奇怪怪的问题。
