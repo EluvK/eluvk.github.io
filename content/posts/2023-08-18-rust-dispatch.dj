@@ -2,7 +2,6 @@
 
 > 学习的过程总是 无数个一知半解 + 一个恍然大悟的循环，两者的重要性难分伯仲。
 
-
 ## 分发（Dispatch）
 
 当代码涉及到多态(polymorphism)时，需要机制判断最终执行的代码到底是哪一个具体的实现版本。这个过程就叫分发。
@@ -79,8 +78,7 @@ fn main() {
 
 通过编译期间的单态化，编译器去除了泛型的概念，优点是在运行期间无性能损耗，缺点是滥用泛型会导致生成的单态化代码变多，编译时间增加，生成的二进制文件体积变大。这和 C++ 模板是一致的。
 
-
-### `impl Trait`
+### impl Trait
 
 除了泛型之外，`impl Trait` 也用作静态分发，`impl Trait` 可以用在参数类型和返回值类型里。比如上述的 `fn do_print<T: Show>(x: T);` 也可以用 `impl Trait` 的形式写成：
 
@@ -90,7 +88,7 @@ fn do_print(x: impl Show) {
 }
 ```
 
-当 `impl Trait` 作为返回值类型时，需要注意编译器需要推导出返回值的具体类型来实现单态化，因此无法写出 `if - else` 等不同分支下返回不同类型（虽然它们都实现了这个Trait）的代码。编译器无法推导出单态化的目标类型，一般会在后一种类型的返回处报错：expect A but get B...
+当 `impl Trait` 作为返回值类型时，需要注意编译器需要推导出返回值的具体类型来实现单态化，因此无法写出 `if - else` 等不同分支下返回不同类型（虽然它们都实现了这个 Trait ）的代码。编译器无法推导出单态化的目标类型，一般会在后一种类型的返回处报错：`expect A but get B...`
 
 实际编码中作为返回值写 `impl Trait` 的形式有两种用途：
 
@@ -160,7 +158,6 @@ fn main() {
 }
 ```
 
-
 ## 动态分发（Dynamic Dispatch）
 
 静态分发的缺点：无法返回多种类型 正是动态分发要解决的问题。使用 Trait Object 表达 **实现了某种 Trait 的类型(的集合)** 这种类型，这种类型有点像OOP语言里的基类/抽象类，本身无法实例化出对象。
@@ -178,12 +175,11 @@ pub struct TraitObject {
 
 虽然 Trait Object 大小是确定，但是并不能写出形如 `fn x() -> Trait Object` 的代码，你会得到编译器的警告：`return type cannot have an unboxed trait object, doesn't have a size known at compile-time` 嗯？这是因为 Trait Object 所表达的实现了该 Trait 的类型的集合，其中的元素的大小是不确定的。Trait Object 本身是无法实例化的，作为返回值自然是没有意义的，真正要作为返回值的是某个实现了该 Trait 的类型的实例。因此要明确并不是因为 Trait Object 本身大小不固定，大小就是宽指针是固定的。
 
-
 ### dyn Trait
 
 明白了 Trait Object 的概念，代码中要表示一个 Trait Object，需要使用 `dyn` 关键字：`dyn SomeTrait` 表示 `SomeTrait` 的 Trait Object
 
-这里有些历史，在 2016 年之前还没有 `dyn` 这个关键字，[RFC-2113](https://github.com/rust-lang/rfcs/blob/master/text/2113-dyn-trait-syntax.md) 中引入了这个关键字语法，并在 rust 1.26/2021 edition 后必须使用才能表示 Trait Object
+这里有些历史，在 2016 年之前还没有 `dyn` 这个关键字，[RFC-2113](https://github.com/rust-lang/rfcs/blob/master/text/2113-dyn-trait-syntax.md) 中引入了这个关键字语法，并在 rust 1.26/2021 edition 后必须使用 `dyn` 才能表示 Trait Object
 
 要求使用 `dyn` 就是为了清晰表达含义，区分 Trait 和 TraitObject。提案里给出了几个实例：比如下面代码：
 
@@ -194,7 +190,7 @@ impl SomeTrait {...}
 
 这在引入 dyn 关键字之前都是合法的代码（现在会提示了），能分清楚这里的几个 xxxTrait，哪个是 Trait ，哪个是 Trait Object 么 :）
 
-第一条按照 `impl trait for type ` 的语法，`SomeTrait` 是 Trait, `AnotherTrait` 应该是 Trait Object；
+第一条按照 `impl trait for type` 的语法，`SomeTrait` 是 Trait, `AnotherTrait` 应该是 Trait Object；
 
 第二条很容易理解为给 `SomeTrait` 实现一些默认方法，但是应该在定义处 `trait SomeTrait {...}` 里实现默认方法，这里其实是表达给 `SomeTrait` 的 Trait Object 实现方法。
 
@@ -205,22 +201,21 @@ impl SomeTrait for dyn AnotherTrait {...}
 impl dyn SomeTrait {...}
 ```
 
-
-拓展知识: Trait Object 都是 unsized ，所以 Trait 在设计的时候都是默认 `?Sized` 来支持 Trait Object：[Trait Object Sizeness](https://blog.eluvk.cn/?p=836#toc-head-16)
-
-因此如果定义 `trait SomeTrait : Sized` ，那么这个Trait就不能使用 Trait Object 了。换句话说，Trait Object 要求不能包含 `Sized` Bounds。
-
-[traits#object-safety](https://doc.rust-lang.org/reference/items/traits.html#object-safety)
-
-> * All supertraits must also be object safe.
-> * `Sized` must not be a supertrait. In other words, it must not require `Self: Sized`.
+> 拓展知识: Trait Object 都是 unsized ，所以 Trait 在设计的时候都是默认 `?Sized` 来支持 Trait Object：[Trait Object Sizeness](https://blog.eluvk.cn/?p=836#toc-head-16)
+>
+> 因此如果定义 `trait SomeTrait : Sized` ，那么这个 Trait 就不能使用 Trait Object 了。换句话说，Trait Object 要求不能包含 `Sized` Bounds。
+>
+> [traits#object-safety](https://doc.rust-lang.org/reference/items/traits.html#object-safety)
+>
+> - All supertraits must also be object safe.
+> - `Sized` must not be a supertrait. In other words, it must not require `Self: Sized`.
 
 ### vtable in Rust
 
 首先先看一下 C++ 里的虚表实现，对于一个子类对象，其内存布局包括：(注：这里只考虑继承包含虚函数父类的子类的情况，仅为和 Rust 虚表对比，不能完全代表真实内存布局实现)
 
 | 子类内存布局  |      | vtable       |
-| ------------- | ---- | ------------ |
+|---------------|------|--------------|
 | 虚表指针      | ---> | 析构方法指针 |
 | 子类成员/数据 |      | 成员方法指针 |
 
@@ -229,7 +224,7 @@ impl dyn SomeTrait {...}
 对于多继承的情况，会有多个虚表指针：
 
 | vtable       |      | 子类内存布局  |      | vtable       |
-| ------------ | ---- | ------------- | ---- | ------------ |
+|--------------|------|---------------|------|--------------|
 |              |      | 虚表指针      | ---> | 析构方法指针 |
 | 析构方法指针 | <--- | 虚表指针      |      | 成员方法指针 |
 | 成员方法指针 |      | 子类成员/数据 |      |              |
@@ -237,7 +232,7 @@ impl dyn SomeTrait {...}
 而 Rust 里，如上 TraitObject 的 raw code：很容易得出单 Trait 下的 TraitObject 布局：
 
 | 子类布局 |      | Trait Object |      | vtable       |
-| -------- | ---- | ------------ | ---- | ------------ |
+|----------|------|--------------|------|--------------|
 | 成员数据 | <--- | 数据指针     |      |              |
 |          |      | 虚表指针     | ---> | 析构方法指针 |
 |          |      |              |      | 成员方法指针 |
@@ -312,7 +307,7 @@ impl Subject {
 
 [rust example - impl Trait](https://doc.rust-lang.org/rust-by-example/trait/impl_trait.html)
 
-## 拓展阅读：
+## 拓展阅读
 
-[Trait Object Safety](https://doc.rust-lang.org/reference/items/traits.html#object-safety)
-[dyn * can we make dyn sized?](https://smallcultfollowing.com/babysteps/blog/2022/03/29/dyn-can-we-make-dyn-sized/)
+- [Trait Object Safety](https://doc.rust-lang.org/reference/items/traits.html#object-safety)
+- [dyn * can we make dyn sized?](https://smallcultfollowing.com/babysteps/blog/2022/03/29/dyn-can-we-make-dyn-sized/)
