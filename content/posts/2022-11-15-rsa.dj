@@ -1,0 +1,254 @@
+# RSA 加密算法原理
+
+## 前置知识
+
+### 互质
+
+两个正整数，除了1之外没有公共因子，那么就称这两个数互为质数。[互质关系](https://en.wikipedia.org/wiki/Coprime_integers)
+
+### 欧拉函数
+
+对于正整数 $`n`, $`n` 的欧拉函数表示小于等于 $`n` 的正整数里，和 $`n` 互质的数的个数，用 $`\phi(n)` 表示。[欧拉函数](https://en.wikipedia.org/wiki/Euler%27s_totient_function)
+
+比如 $`\phi(8) = 4`，因为符合条件的有 $`1,3,5,7`
+
+欧拉函数的一些特性：
+
+1. $`n = 1` 时，$`\phi(1) = 1`
+2. $`n` 为质数时，$`\phi(n) = n-1`
+3. $`n` 为质数的幂时，比如 $`n = p^k (p 为质数)` 时有 $`\phi(p^k) = p^k - p^{k-1} = p^k(1 - \frac{1}{p})` 这是因为当前仅当此数不包含质数 $`p` 时，才互质，总数 $`p^k` 减包含质数的个数 $`p^{k-1}`
+4. 如果 $`n` 可以被分解为两个**互质**数 $`p_1,p_2` 的积，那么 $`\phi(n) = \phi(p_1) \cdot \phi(p_2)`，证明见 [中国剩余定理](https://en.wikipedia.org/wiki/Chinese_remainder_theorem)
+
+### 欧拉定理
+
+#### 欧拉函数计算通式
+
+因为任意一个正整数都可以写成一系列质数的积，所以对于
+
+$$`n = p_1^{k1}  p_2^{k2}  p_3^{k3} ... p_r^{kr}`
+
+根据特性4有
+
+$$`\phi(n) = \phi(p_1^{k1})  \phi(p_2^{k2})  ...  \phi(p_r^{kr})`
+
+使用上面的特性3，进一步等于
+
+$$`\phi(n) = p_1^{k1}p_2^{k2}...p_r^{kr}(1 - \frac{1}{p_1})(1 - \frac{1}{p_2})...(1 - \frac{1}{p_r})`
+
+也就是
+
+$$`\phi(n) =  n \cdot (1 - \frac{1}{p_1})(1 - \frac{1}{p_2})...(1 - \frac{1}{p_r})`
+
+这个就是计算欧拉函数的通用公式。比如
+
+$$`\phi(200) = \phi(2^3 \cdot 5^2) = 200 \cdot (1 - \frac{1}{2})(1 - \frac{1}{5}) = 80`
+
+### 欧拉定理和应用
+
+[欧拉定理](https://en.wikipedia.org/wiki/Euler%27s_theorem)
+
+如果两个正整数 $`a` 和 $`n` 互质，那么有等式成立：
+
+$$`a^{\phi(n)} \equiv 1 \pmod{n}`
+
+即 $`a^{\phi(n)}` 被 $`n` 除的余数为 1， 或者 $`a^{\phi(n)} = 1+ kn`
+
+证明比较复杂略过，应用上，欧拉定理可以简化一些特定的运算，比如求解 $`7^{222}` 的末位数：
+
+> 因为 $`7` 和 $`10` 互质，所以有 $`7^\phi(10) \equiv 1 \pmod{10}`，
+> 而 $`\phi(10) = 4`
+> 所以 $`7^{4k} \equiv 1 \pmod{10}`，
+
+特殊的，当欧拉定理里的 $`n` 是质数 $`p` 时，因为 $`\phi(p) = p-1`，所以有 $`a^{p-1} \equiv 1 \pmod{n}` , 这也是著名的 [费马小定理](https://en.wikipedia.org/wiki/Fermat%27s_little_theorem)
+
+### 模反元素(模逆元)
+
+如果两个正整数 $`a` 和 $`n` 互质，那么一定可以找到整数 $`b`，使得 $`ab - 1` 被 $`n` 整除，即：
+
+$$`ab \equiv 1 \pmod{n}`
+
+or：
+
+$$`ab \bmod{n} = 1`
+
+此时就称 $`b` 为 $`a` 的[模反元素](https://en.wikipedia.org/wiki/Modular_multiplicative_inverse)
+
+---
+
+至此，所有需要了解的数学知识都在上面了，后面正式进入 RSA 算法的原理
+
+## 公私钥生成过程
+
+### 1. 随机生成两个质数 $`p` 和 $`q`
+
+实际应用中，这两个质数是写成十进制都有几十位的非常大的质数，这里为了简单说明算法，我们挑选质数
+
+$$`p = 37, q = 41`
+
+### 2. 计算 $`p` 和 $`q` 的乘积 $`n`
+
+$$`n = pq = 1517`
+
+### 3. 满足一定条件挑选一个随机整数 $`e`
+
+需要有 $`1 < e < \phi(n)` 且 e 与 $`\phi(n)` 互质
+
+首先计算一下
+
+$$`\phi(n) = \phi(1517) = \phi(37)\phi(41) = 36 \cdot 40 = 1440`
+
+挑选了 $`e = 13 ` （ $`13` 和 $`1440` 互质没问题）
+
+### 4. 计算 $`e` 对 $`\phi(n)` 的模反元素 $`d`
+
+即满足
+
+$$`ed \equiv 1 \pmod{\phi(n)}`
+
+等价于 $`ed + k\phi(n) = 1` 的整数解，其中已知 $`e = 13，\phi(n) = 1440`
+
+也就是二元一次方程 $`13d + 1440k = 1` 的整数解，这里[扩展欧几里得算法](https://de.wikipedia.org/wiki/Erweiterter_euklidischer_Algorithmus)可以证明一定存在整数解，省略过程我们算出了一组解 $`d = 997, k = -9` ，也就得到了模反元素 $`d = 997`
+
+### 5. 封装公私钥
+
+$`n = 1517, e = 13` 封装成公钥
+
+$`n = 1517, d = 997` 封装成私钥
+
+实际情况中，公私钥的内容会按照 [ASN.1](https://en.wikipedia.org/wiki/ASN.1) 规范来编码。
+
+## 公私钥安全证明
+
+上面的例子里一共出现了6个数字：
+
+* $` p = 37, q = 41 `
+* $` n = 1517 `
+* $` \phi(n) = 1440 `
+* $` e = 13, d = 997 `
+
+有无可能在知道公钥 $`n, e` 的情况下，推导出 $`d` ?
+
+因为 $`ed \equiv 1 \pmod{\phi(n)}` , 所以要知道 $`d` 需要先知道 $`\phi(n)`
+
+而 想要算出欧拉函数 $`\phi(n)` 需要分解质因数 $`n = pq` 才能用 $`\phi(n) = (p-1)(q-1)` 计算出来。
+
+也就是说，能分解因数 $`n`，就可以破解私钥。
+
+这里举的简单例子里，$`n = 1517`，写成二进制是 10111101101 ，也就是11位的私钥，实际应用中，RSA密钥一般是1024位，甚至2048位以上，这时候想要分解质因数，目前可以认为是不可能的。
+
+## 加密解密举例
+
+### 公钥加密
+
+假设有信息$`m`，需要用上面的公钥 $`n,e` 进行加密，这里对信息$`m`有两点限制：
+
+1. 必须是整数，字符串可以取 ascii 值等方法转换出数字表达
+2. 值必须小于$`n`，虽然正式场合下的$`n`确实很大，但还是限制了加密的内容长度不能太长。
+
+加密，实际上就是计算出满足下面式子的 $`c`
+
+> $`m^e \equiv c \pmod{n}`
+
+带入我们上面的例子：公钥$`n = 1517, e = 13`，假设我们要加密 $`m = 12`:
+
+也就是 $`12^{13} \equiv c \pmod{1517}`
+
+``` PYTHON
+>>> 12**13 % 1517
+423
+```
+
+这里直接用 python 算出来 $`c = 423`
+
+### 私钥解密
+
+加密使用私钥 $`n,d` 加上需要解密的密文 $`c`， 计算满足下式的 $`m` 就是原文
+
+> $`c^d \equiv m \pmod{n}`
+
+带入上面例子里的：私钥 $`n = 1517, d = 997`，密文 $`c = 423`:
+
+也就是 $`423^{997} \equiv m \pmod{1517}`
+
+``` PYTHON
+>>> 423**997%1517
+12L
+```
+
+解除原文 $`m = 12`
+
+可以看出想要解密就需要知道 $`d` ，也就是上面说的大质数分解保护的安全性。
+
+### 实际应用：
+
+实际情况中因为只能加密小于 $`n` 的整数 $`m`，对加密数据的长度提出了限制。所以可以
+
+1. 把待加密消息分成若干段分别加密发送。
+2. 或者使用对称加密（比如[AES](https://en.wikipedia.org/wiki/Advanced_Encryption_Standard)）来加密原消息，使用 RSA 来加密 对称加密 的密钥
+
+## 解密证明
+
+上面的信息汇总：
+
+* 公钥: $`n, e`
+* 私钥: $`n, d`
+* 加密 $`m` 得到 $`c` ：$`m^e \equiv c \pmod{n}`
+* 解密 $`c` 得到 $`m` ：$`c^d \equiv m \pmod{n}`
+
+来证明一下为什么解密公式 $`c^d \equiv m \pmod{n}` 可以得到正确的 $`m`
+
+### 证明过程
+
+证明：
+
+$$`c^d \equiv m \pmod{n}`
+
+---
+
+$$`\because m^e \equiv c \pmod{n}`
+
+$$`\Rightarrow c = m^e - kn`
+
+带入证明式子
+
+$$`\Leftarrow ((m^e - kn)^d \equiv m \pmod{n})`
+$$`\Leftarrow m^{ed} \equiv m \pmod{n}`
+
+分类讨论:
+
+① 当 $`m` 和 $`n` 互质时，
+$$`\because ed \equiv 1 \pmod{\phi(n)}`
+$$`\therefore ed = h\phi(n) + 1 `
+
+带入上述待证明式：
+$$`\Leftarrow m^{ed} \equiv m \pmod{n}`
+$$`\Leftarrow m^{h\phi(n) + 1} \equiv m \pmod{n}`
+
+$`\because m,n` 互质，根据欧拉定理有：
+$$`\Rightarrow m^{\phi(n)} \equiv 1 \pmod{n} `
+$$`\Rightarrow (m^{\phi(n)})^h \cdot m \equiv m \pmod{n}`
+$$`\Rightarrow m^{h\phi(n)+1} \equiv m \pmod{n}`
+原式得证。
+
+② 当 $`m` 和 $`n` 不互质时，
+$$`\because n = pq , m < n `
+$$`\therefore m = kp ` 或者 $`m = kq`
+
+以 $`m = kp` 为例，此时 $`kp,q` 必互质
+
+根据欧拉定理有 $`(kp)^{\phi(q)} \equiv 1 \pmod{q}`
+$$`\Rightarrow (kp)^{q-1} \equiv 1 \pmod{q}`
+$$`\Rightarrow [(kp)^{q-1}]^{h(p-1)} \cdot kp \equiv kp \pmod{q}`
+$$`\Rightarrow (kp)^{h(p-1)(q-1)+1} \equiv kp \pmod{q}`
+$$`\Rightarrow (kp)^{ed} \equiv kp \pmod{q}`
+$$`\Rightarrow (kp)^{ed} = tq + kp `
+
+$`\because p,q 、 k,q` 互质，
+$`\therefore` $`t` 必能被 $`p` 整除，
+$$`\Rightarrow (kp)^{ed} = t'pq + kq`
+
+带入 $`m = kp, n = pq`
+$$`\Rightarrow m^{ed} = t'n + m`
+$$`\Rightarrow m^{ed} \equiv m \pmod{n}`
+
+原式得证。
