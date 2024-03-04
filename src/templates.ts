@@ -21,7 +21,6 @@ export const base = (
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${title}</title>
   <meta name="description" content="${description}">
-  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
   <link rel="icon" href="/favicon.png" type="image/png">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="canonical" href="${site_url}${path}">
@@ -80,6 +79,7 @@ export const base = (
 
   <link rel="stylesheet" href="/css/main.css">
   ${extra_css ? html`<link rel="stylesheet" href="/css/${extra_css}">` : ""}
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 </head>
 
 <body>
