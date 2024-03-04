@@ -119,7 +119,7 @@ async function build(params: {
     );
   }
 
-  const pages = ["about"];
+  const pages = ["about", "shortcuts"];
   // const pages = ["about", "resume", "links", "style"];
   for (const page of pages) {
     const text = await Deno.readTextFile(`content/${page}.dj`);

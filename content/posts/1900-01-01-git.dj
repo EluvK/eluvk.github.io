@@ -1,0 +1,126 @@
+# Git
+
+book: [git-scm](https://git-scm.com/)
+
+## config
+
+- `git config --global gc.auto 0` # turn off automatica garbage collection
+
+## log
+
+- `git log -n`
+- `git log --pretty=oneline`
+- `git log --graph --abbrev-commit --decorate --all --oneline`
+
+## branch
+
+- `git branch -d(D) [branch name]`
+- `git branch -vv`
+
+## rename
+
+### rename local
+
+- rename current branch: `git branch -m new_branch_name`
+- rename some other branch: `git branch -m old_branch_name new_branch_name`
+
+### rename remote
+
+- rename local: `git branch -m new_branch_name`
+- delete remote: `git push --delete origin old_branch_name`
+- push upstream `git push origin --set-upstream new_branch_name`
+
+### checkout
+
+- `git checkout [branch name]`
+- `git checkout -b [branch name]`
+
+### rebase
+
+- `git rebase [branch name]`
+- `git rebase -i [commit hash]`
+
+> vim 超能力:
+>
+> 在 vim 里 Normal 模式依次按下 `qsdwis{Blank Space}{Esc}{Home}{Arrow Down}q`
+>
+> qs{...}q 记录{...}操作到寄存器 s / dw: delete word / insert `s` / next line
+>
+> 后续只需要移动到第二个 `pick` 按下`3@s` 即可修改下面3个 `pick` 为 `s`
+>
+> update: `cw` ( `= dwi`) 删除当前单词后进入插入模式
+>
+> can be easier: `qscws{Esc}{Arrow Down}q`
+
+- `git rebase <remote> <local>`
+- eg: git rebase origin/master dev
+- 会切换到 dev，但是如果没问题已经 rebase 好了，如果分两步做，先切到 dev 的时候变更的文件会触发需要重新编译。
+
+## reset
+
+- `git reset --hard [commit hash]`
+- `git reset --soft [commit hash]`
+
+## commit
+
+- `git commit -m "commit info"`
+- `git commit --amend --date="$(date -R)"` 更新 commit 时间
+
+## tag
+
+- `git tag -a v0.1.0-alpha -m "release v0.1.0-alpha"`
+- `git push origin master --tags`
+
+## fetch
+
+- `git fetch -p` 更新分支信息 || `git remote prune origin`
+
+## re-create the very first commit
+
+- `git update-ref -d HEAD`
+
+## vscode 记住账户密码
+
+- `git config --global credential.helper store`
+
+## gc
+
+- `git gc --prune=now`
+
+### git 代码统计
+
+- `git log --format='%aN' | sort -u | while read name; do echo -en "$name\t"; git log --author="$name" --pretty=tformat: --numstat | grep "\(.cpp\|.h\|.txt\)$" | awk '{ add += $1; subs += $2; loc += $1 - $2 } END { printf "added lines: %s, removed lines: %s, total lines: %s\n", add, subs, loc }' -; done`
+
+### 单机多账户
+
+单机两个账户，比如工作账户作为主账户，私人账户偶尔使用：
+
+```bash
+$ cat ~/.ssh/config 
+# github for main
+        Host github.com
+        HostName github.com
+        IdentityFile ~/.ssh/id_rsa
+
+# github for private
+        Host github-self.com
+        HostName github.com
+        IdentityFile ~/.ssh/self_key/id_rsa
+```
+
+```bash
+$ ssh -T git@github.com
+Hi account_main! You have successfully authenticated, but GitHub does not provide shell access.
+
+$ ssh -T git@github-self.com
+Hi account_self! You have successfully authenticated, but GitHub does not provide shell access.
+```
+
+用私人账户的仓库时，add remote 记得也要写清楚：`git@github-xxx`
+
+```bash
+$ git config --local -l
+...
+remote.origin.url=git@github-self.com:EluvK/REPONAME.git
+...
+```
