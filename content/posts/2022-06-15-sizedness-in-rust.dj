@@ -1,0 +1,927 @@
+# Sizedness In Rust
+
+[原blog](https://github.com/pretzelhammer/rust-blog/blob/master/posts/sizedness-in-rust.md)
+
+译注：文章很长，我也是分了多次在学习&&翻译。不求一口气全部看完理解，但也需要静下心来慢慢看。示例代码部分最好自己敲一遍看看运行报错。可以理解的更好~
+
+## 1. Intro
+
+`Sizedness` 的概念可能是 `Rust` 里最重要也最不起眼的一个，实际编程中冷不防就会碰到类似于 `x doesn't have size known at compile time` (编译期无法确定x的大小)的错误。
+
+全文涉及术语解释：
+
+| phrase                                | shorthand for                                                      | 翻译                                             |
+|---------------------------------------|--------------------------------------------------------------------|--------------------------------------------------|
+| sizedness                             | property of being `sized` or `unsized`                             | 确定大小或不确定大小的这种特性                   |
+| `sized` type                          | type with a known size at compile time                             | 编译期可确定大小的类型                           |
+| `unsized` type / `DST`                | dynamically-sized type, i.e. size not known at compile time        | 编译器无法确定大小的类型，或者称之为动态大小类型 |
+| `?sized` type                         | type that **may or may not be sized**                              | 可能是确定大小，也可能是不确定大小的类型         |
+| unsized coercion                      | coercing a `sized` type into an `unsized` type                     | 强制把确定大小类型转为不确定大小类型             |
+| `ZST`                                 | zero-sized type, i.e. instances of the type are 0 bytes in size    | 零大小类型                                       |
+| `width`                               | single unit of measurement of pointer `width`                      | 指针宽度的测量单位                               |
+| thin pointer / `single-width` pointer | pointer that is _1 width_                                          | 窄指针，1个宽度的指针                            |
+| fat pointer / `double-width` pointer  | pointer that is _2 widths_                                         | 宽指针，2个宽度的指针                            |
+| pointer / reference                   | some pointer of some `width`, `width` will be clarified by context | 宽度由上下文确定的指针                           |
+| slice                                 | `double-width` pointer to a dynamically sized view into some array | 切片，用一个宽指针指向一个动态大小类型的视图     |
+
+## 2. Sizedness
+
+- 在 `Rust` 中，如果一个类型的大小可以在编译期间确定，那么就说这个类型是 `sized` ，能够确定大小才能在栈( `stack` )上分配内存。确定大小的类型可以通过值传递、通过引用传递
+- 如果一个类型的大小，在编译期间无法确定，那就是 `unsized` ，或者 `DST`。 `unsized` 类型只能通过引用传递。
+
+### 2.1. Sized example
+
+#### 2.1.1. 基础类型
+
+基本类型、以及由基本类型通过 结构体(`struct`)、元组(`tuple`)、枚举(`enum`)、定长数组(`arrays`)等方式(递归得)组成的类型，在考虑了填充、对齐(padding and alignment)后，可以比较直观的把字节数加起来得到确定的结果。
+
+```rust
+use std::mem::size_of;
+
+fn main() {
+    // primitives
+    assert_eq!(4, size_of::<f32>());
+    assert_eq!(8, size_of::<i64>());
+
+    // tuple
+    assert_eq!(16, size_of::<(i32, f32, i64)>());
+    // tuple with padding
+    assert_eq!(16, size_of::<(i32, i64)>());
+
+    // fixed-size arrays
+    assert_eq!(0, size_of::<[i32; 0]>());
+    assert_eq!(16, size_of::<[i32; 4]>());
+
+    #[allow(dead_code)]
+    struct Point {
+        x: i32,
+        y: i32,
+    }
+    // struct
+    assert_eq!(8, size_of::<Point>());
+
+    // emums
+    assert_eq!(8, size_of::<Option<i32>>());
+}
+
+```
+
+#### 2.1.2. 枚举
+
+以下为尝试后能够成功编译运行的代码：
+
+```rust
+#![allow(dead_code)]
+use std::mem::size_of;
+
+fn main() {
+    //enums of options
+    assert_eq!(8, size_of::<Option<i32>>());
+    assert_eq!(16, size_of::<Option<i64>>());
+
+    //enums of result
+    assert_eq!(8, size_of::<Result<i32, i32>>());
+    assert_eq!(16, size_of::<Result<i32, i64>>());
+
+    enum Color {
+        Blue(i32),
+        Red(i32),
+        Green(i32),
+    }
+    assert_eq!(8, size_of::<Color>());
+
+    enum Color2 {
+        Blue(i32),
+        Red(i32),
+        Green(i64),
+    }
+    assert_eq!(16, size_of::<Color2>());
+}
+
+```
+
+`Rust` 的枚举的size大小就有点复杂了，是一个[tagged union](https://en.wikipedia.org/wiki/Tagged_union)，详细的可以看看[Rustonomicon: Data Layout](https://doc.rust-lang.org/nomicon/repr-rust.html)。
+
+简单来说就是除了用来保存枚举数据的空间，额外还需要一个表示是哪个枚举的 `tag` 的空间。
+但是当枚举里是一个 `None` 和一个 `&T` 引用时，这个枚举的空间就显得没必要了。可以看以下这个例子：
+
+```rust
+#![allow(dead_code)]
+use std::mem::size_of;
+
+fn main() {
+    enum MustOption<T> {
+        Value(T),
+    }
+
+    enum MyOption<T> {
+        Value(T),
+        None,
+    }
+
+    #[repr(C)]
+    enum MyOptionInC<T> {
+        Value(T),
+        None,
+    }
+
+    assert_eq!(4, size_of::<i32>());
+    assert_eq!(8, size_of::<&i32>());
+    assert_eq!(8, size_of::<MustOption<&i32>>());
+    assert_eq!(8, size_of::<MyOption<&i32>>());
+    assert_eq!(16, size_of::<MyOptionInC<&i32>>());
+}
+
+```
+
+其中`#[repc(C)]`表示按照C的内存布局来操作，也就没有了 `Rust` 优化这种case下不必要的 `tag` （为了表示 `None` ）而节省的空间。这种标志在 `FFI` 场景下是很关键的的细节。其它表示方法参考[Rustonomicon: Data Layout - others reprs](https://doc.rust-lang.org/nomicon/other-reprs.html)
+
+#### 2.1.3. 指针大小
+
+有点远了收回来，看一下指针的size。指针有窄指针和宽指针，分别用1个和2个 `width` 表示，一个 `width` 是8个字节，
+
+- 对于**固定大小的对象**的指针，都是窄指针，一个 `width` 大小，只需要存储地址
+
+```rust
+use std::mem::size_of;
+
+const WIDTH: usize = size_of::<&()>();
+
+fn main() {
+    assert_eq!(WIDTH, size_of::<&i32>());
+    assert_eq!(WIDTH, size_of::<&&i32>());
+    assert_eq!(WIDTH, size_of::<&mut i32>());
+    assert_eq!(WIDTH, size_of::<Box<i32>>());
+    assert_eq!(WIDTH, size_of::<&[i64; 10]>());
+    assert_eq!(WIDTH, size_of::<fn(i32) -> i32>());
+}
+
+```
+
+- 对于**不固定大小的对象**的指针，都是宽指针，两个 `width` 大小，因为需要存储地址+大小
+
+```rust
+use std::mem::size_of;
+
+const WIDTH: usize = size_of::<&()>();
+const DOUBLE_WIDTH: usize = 2 * WIDTH;
+
+fn main() {
+    struct UnsizedStruct {
+        _unsized_slice: [i32],
+    }
+
+    assert_eq!(DOUBLE_WIDTH, size_of::<&str>()); // string slice
+    assert_eq!(DOUBLE_WIDTH, size_of::<&[i32]>()); // i32 slice
+    assert_eq!(DOUBLE_WIDTH, size_of::<&dyn ToString>()); // trait object
+    assert_eq!(DOUBLE_WIDTH, size_of::<Box<dyn ToString>>()); // trait object
+    assert_eq!(DOUBLE_WIDTH, size_of::<&UnsizedStruct>()) // unsized-type-ptr
+}
+
+```
+
+### 2.2. 总结
+
+Rust智能操作能够确定大小的对象，也就是 `Sized` 的对象，对于动态大小的对象，只能通过引用来操作，指针类型指向的对象可以是动态大小的，但是指针对象本身肯定也是 `Sized` 的。
+
+## 3. Sized Trait
+
+`Sized` 这个Trait是自动实现的标记Trait (both `auto trait` && `marked trait`)，`auto trait` 也一定是 `marked trait` 但是反之不成立（比如之前的 `Eq` Trait就是一个 `marked trait`，需要程序员手动注明，告知编译器该类型具有自反性。
+也就是说类型是否有 `Sized` 的Trait完全由编译器(根据其成员类型)判断并添加上默认空实现，而且也无法手动去掉这个Trait:
+
+```rust
+#![feature(negative_impls)]
+
+// this type is Sized, Send, and Sync
+// auto marked trait
+struct Struct;
+
+// opt-out of Send trait
+impl !Send for Struct {} // ✅
+
+// opt-out of Sync trait
+impl !Sync for Struct {} // ✅
+
+// can't opt-out of Sized
+impl !Sized for Struct {} // ❌
+```
+
+### 3.1. 总结
+
+`Sized` 是无法手动消除的`auto marked trait`。语言特性下的规则。
+
+## 4. 在泛型里的 `Sized`
+
+### 4.1. 泛型语法糖
+
+1. 实际上使用泛型时，编译器会默认加上 `Sized` 的泛型限制：
+2. 当然我们也可以手动限制成 `?Sized` 的泛型类型
+
+```rust
+// normally we do:
+fn func<T>(t: T) {}  // ✅
+
+// de-sugar version:
+fn func<T: Sized>(t: T) {} // ✅
+
+// try mark `?Sized` ?
+fn func<T: ?Sized>(t: T) {} // ❌ the size for values of type `T` 
+                            // cannot be known at compilation time
+
+// we can use ?Sized to mark a ref params:
+fn func<T: ?Sized>(t: &T) {} // ✅
+fn func<T: ?Sized>(t: Box<T>) {} // ✅
+```
+
+### 4.2. Example
+
+刚开始接触泛型时很可能会出现的问题：
+
+```rust
+use std::fmt::Debug;
+
+fn debug<T: Debug>(t: T) { // T: Debug + Sized
+    println!("{:?}", t);
+}
+
+fn main() {
+    debug("my str"); // T = &str, &str: Debug + Sized ✅
+}
+
+```
+
+一切正常，但是发现 `debug` 函数拿走了 `t` 的所有权，自然想到改成 `&T`：
+
+```rust
+use std::fmt::Debug;
+
+fn debug<T: Debug>(t: &T) {
+    // T: Debug + Sized
+    println!("{:?}", t);
+}
+
+fn main() {
+    debug("my str"); // now &T = &str,
+                     // so   T =  str,
+                     // str: Debug + ?Sized ❌
+}
+
+```
+
+Boom! 编译器告诉你：**the trait `Sized` is not implemented for `str`**
+
+因为此时传入debug的类型 `&T` 对应的是 `&str` ，而 `str` 本身是 `Unsized` 的，就不符合泛型里默认对 `T` 的限制了。
+
+强大的rustc甚至直接提示：考虑加上`?Sized`
+
+``` TEXT
+ --> src/main.rs:3:10
+  |
+3 | fn debug<T: Debug>(t: &T) {
+  |          ^ required by this bound in `debug`
+help: consider relaxing the implicit `Sized` restriction
+  |
+3 | fn debug<T: Debug + ?Sized>(t: &T) {
+  |                   ++++++++
+
+```
+
+把 `debug` 函数的泛型限制加上 `?Sized` 后，此时传入的参数虽然是 `Unsized` 的，但是也在编译器的预期( `?Sized` )内，是引用就ok，执行成功。
+
+```rust
+use std::fmt::Debug;
+
+fn debug<T: Debug + ?Sized>(t: &T) {
+    // T: Debug + ?Sized
+    println!("{:?}", t);
+}
+
+fn main() {
+    debug("my str"); // &T = &str, T = str, str: Debug + !Sized ✅
+}
+
+```
+
+### 4.3. 总结
+
+1. 泛型类型会自动加上 `T: Sized` 的类型限制
+2. 如果我们传入的是泛型 `T` 的引用类型，大多是时候不妨想清楚并写明此时 `T` 本身是否可以是动态大小类型，如果可以，加上 `T: ?Sized`
+
+## 5. Unsized Type
+
+### 5.1. 切片 `Slices`
+
+`&str` 和 `&[T]` 是最常见的切片类型。切片在Rust里被大量使用，特别是涉及到类型之间的转换时，经常使用切片类型做过度。
+
+在函数/方法参数中经常会出现的强制类型转换：`deref coercion` && `unsized coercion`
+
+- 去引用(`deref coercion`)，类型 `T` 通过解引用操作 `T: Deref<Target = U>` 强制转换为类型 `U`，比如 `String.deref() -> str`
+- 去确定大小(`unsized coercion`)，确定大小类型 `T` 通过 `T: Unsize<U>` 强制转换为 不确定大小类型 `U`，比如 `[i32;3] -> [i32]`
+
+```rust
+trait Trait {
+    fn method(&self) {}
+}
+
+impl Trait for str {
+    // we can call method on
+    // 1. str
+    // 2. String (due to String: Deref<Target = str>)
+}
+
+impl<T> Trait for [T] {
+    // we can call method on
+    // 1. any &[T]
+    // 2. any U where U: Deref<Target = [T]>,  e.g. Vec<T>
+    // 3. [T; N], since [T; N]: Unsize<[T]>
+}
+
+fn str_func(_s: &str) {}
+
+fn slice_func<T>(_s: &[T]) {}
+
+fn main() {
+    // 1. str slice
+    let str_slice: &str = "str_slice";
+    let string: String = "string".to_owned();
+
+    // function calls:
+    str_func(str_slice);
+    str_func(&string); // deref coercion
+
+    // method calls:
+    str_slice.method();
+    string.method();
+
+    // 2. array slice
+
+    let slice: &[i32] = &[1];
+    let three_arr: [i32; 3] = [1, 2, 3];
+    let vec: Vec<i32> = vec![1];
+
+    // function calls:
+    slice_func(slice);
+    slice_func(&three_arr); // unsized coercion
+    slice_func(&vec); // deref coercion
+
+    // method calls
+    slice.method();
+    three_arr.method(); // unsized coercion
+    vec.method(); // deref coercion
+}
+
+```
+
+这两种强制转换经常发生，但不常被注意到。
+
+### 5.2. Trait Objects
+
+`Rust` 的 `Traits` 都会自动加上 `?Sized`，也没有办法手动再加上：
+
+```rust
+trait Trait: ?Sized {} // compile error ❌
+// `?Trait` is not premitted in supertraits. traits are `?Sized` by default
+```
+
+Traits 都是 `?Sized` 的，去语法糖后是：
+
+```rust
+trait Trait where Self: ?Sized {} 
+```
+
+表示Traits是允许`self`对象是不定长的类型，但是如果把 `self` (注意不是`&self`) 对象作为参数传入，编译还是会报错，因为大小可能不确定：
+
+```rust
+trait Trait {
+    fn method(self) {} // compile error ❌
+    // the size for values of type `Self` cannot be known at compilation time
+    // help: consider further restricting `Self`
+    //   |
+    // 2 |     fn method(self) where Self: Sized {}
+    //   |                     +++++++++++++++++
+}
+```
+
+我们可以选择把Trait标记为 `:Sized`，不过这样的话会出现以下问题：
+
+```rust
+trait Trait: Sized { 
+    fn method(self) {} // ✅
+}
+
+impl Trait for str { // compile error ❌
+    // we don't knonw size of `str` 
+}
+```
+
+也可以选择把method标记为`:Sized`类型限定使用：
+
+```rust
+trait Trait {
+    fn method(self) where Self: Sized, {
+    } 
+}
+
+impl Trait for str { // ✅
+    
+}
+```
+
+然是这个 `method` 方法无法给`str`实现了：
+
+```rust
+impl Trait for str { // ✅
+    fn method(self) {} // compile error ❌
+}
+```
+
+如果不实现 `method` ，即上面的代码，是可以编译通过允许的，当然也不能使用 `method` 方法，否则还会报错。Rust给这种情况提供了一定的灵活性：Trait 在包含一些 `Sized` 限定的方法时，也可以给不定长的类型实现，只要我们不去使用这些限定方法。
+
+```rust
+trait Trait {
+    fn method(self) where Self: Sized {}
+    fn method2(&self) {}
+}
+
+impl Trait for str {} // ✅
+
+fn main() {
+    // we never call "method" so no errors
+    "str".method2(); // ✅
+}
+```
+
+绕回来，Rust之所以把Trait设计为默认 `?Sized` ，都是为了Trait对象 (`Trait Object`)，Trait对象都是unsized的，因为给对象实现一个Trait并不要求这个对象的大小是确定的。
+
+实际上，当我们写了一个Trait时：
+
+```rust
+trait Trait {}
+```
+
+可以认为编译器自动的加上了：
+
+```rust
+trait Trait: ?Sized {}
+
+impl Trait for dyn Trait {
+    // compiler magic here
+}
+```
+
+这样我们才能使用`&dyn Trait`作为参数，不过和之前一样的，我们不能使用 `Sized` 限定方法（如果有的话）
+
+```rust
+trait Trait {
+    fn method(self) where Self:Sized {}
+    fn method2(&self) {}
+}
+
+fn function(arg: &dyn Trait) {
+  arg.method();  // compile error ❌
+  arg.method2(); // ✅
+} 
+```
+
+而如果我们限制了Trait为 `:Sized`，那也没法为 `dyn Trait` 实现Trait了
+
+```rust
+trait Trait: Sized {}
+
+impl Trait for dyn Trait {} // compile error ❌
+
+```
+
+#### 5.2.1. 总结
+
+1. 所有 Traits 默认都是`?Sized`
+2. 想实现 `Trait Object`，也就是`impl Trait for dyn Trait`，要求`Trait: ?Sized`，编译器也会自动实现。反之，如果被 `Sized` 约束的Trait，就无法使用 `Trait Object` 了
+3. 我们可以保留Traits的默认 `?Sized`，但是在方法上限制 `Self: Sized`
+
+### 5.3. Trait Objects Limitations
+
+即使一个trait是对象安全的，仍然存在 `sizedness` 相关的边界情况。
+
+介绍两种限制情况，包括转换成 `Trait Object` 的限制，和 `Trait Object` 对 Trait 个数的限制。其本质原因都是由于 `sizedness`。
+
+#### 5.3.1. Cannot Cast Unsized Types to Trait Objects
+
+不能把不确定大小类型转换为 `Trait Object`
+
+比如这个例子：
+
+```rust
+fn generic<T: ToString>(t: T) {}
+fn trait_object(t: &dyn ToString) {}
+
+fn main() {
+    generic(String::from("String")); // ✅
+    generic("str"); // ✅
+    trait_object(&String::from("String")); // ✅ - unsized coercion
+    trait_object("str"); // ❌ - unsized coercion impossible
+}
+```
+
+`String` 是 `sized type` ，所以可以通过 `unsized coercion` 转换为 `unsized type`，比如 `&dyn ToString`。但是 `str` 已经是一个 `unsized type` 了，所以会报错： `"str" doesn't have a size known at compile-time`。因为无法通过 `unsized coercion` 把一个本就是 `unsized type` 转换为新的 `unsized type`。
+
+更详细的说明：
+
+- `String` 是确定大小类型，所以 `&String` 指针是一个宽度（WIDTH）的指针，指向数据
+- `str` 是不确定大小类型， 所以 `&str` 指针是2个宽度的（DOUBLE_WIDTH），包括一个执行数据地址的指针和数据的长度。
+- `&dyn ToString` 也是两个宽度的指针，包含指向的数据(另一个指针)的指针和一个指向虚函数表(`vtable`)的指针
+
+因此可得 =>
+
+- 从 `&String` 转换到 `&dyn ToString` 是可行的，
+- 从 `&str` 转换到 `&dyn ToString` 是不可行的。 因为你需要用三个宽度来表示你需要的内容，而Rust不支持。但是从 `&&str` 转换到 `&dyn ToString` 是可行的(doge)
+
+总结表格：
+
+|            Type            | Pointer to Data | Data Length | Pointer to Vtable | Total |
+|:--------------------------:|:---------------:|:-----------:|:-----------------:|:-----:|
+|         `&String`          |        ✅        |      ❌      |         ❌         |  1 ✅  |
+|           `&str`           |        ✅        |      ✅      |         ❌         |  2 ✅  |
+| `&String as &dyn ToString` |        ✅        |      ❌      |         ✅         |  2 ✅  |
+|  `&str as &dyn ToString`   |        ✅        |      ✅      |         ✅         |  3 ❌  |
+
+#### 5.3.2. Cannot create Multi-Trait Objects
+
+不能使用多个Trait的 Trait对象：
+
+```rust
+trait Trait {}
+trait Trait2 {}
+
+fn func(t: &(dyn Trait + Trait2)) {}
+//                       ^^^^^^
+// ❌ only auto traits can be used as additional traits in a trait object
+
+```
+
+和上面的原因类似， `Trait Object` 的指针是2个宽度（DOUBLE_WIDTH）,一个指向数据一个指向虚函数表`vtable`，如果有两个就需要指向两个虚函数表，指针需要3个宽度了。
+
+可以通过使用 `supertraits` 的方式来满足一部分的需求：
+
+```rust
+trait Trait {
+    fn method1(&self) {}
+}
+trait Trait2 {
+    fn method2(&self) {}
+}
+
+trait Trait3: Trait + Trait2 {}
+
+impl<T: Trait + Trait2> Trait3 for T {} 
+// auto blanket impl Trait3 for any type that also impls Trait & Trait2
+
+fn func(t: &dyn Trait3) {
+    t.method1(); // ✅
+    t.method2(); // ✅
+}
+```
+
+但是！Rust 的 `supertraits` 不支持 `upcasting` ，也就是在其它OO语言里子类对象转换为父类对象的特性，上面的 `&dyn Trait3` 无法被用在需要一个 `&dyn Trait2` 或 `&dyn Trait` 的地方。比如上面的例子修改一下：
+
+```rust
+trait Trait {
+    fn method1(&self) {}
+}
+trait Trait2 {
+    fn method2(&self) {}
+}
+
+trait Trait3: Trait + Trait2 {}
+
+impl<T: Trait + Trait2> Trait3 for T {} 
+// auto blanket impl Trait3 for any type that also impls Trait & Trait2
+
+fn take_trait(t: &dyn Trait) {}
+fn take_trait2(t: &dyn Trait2) {}
+
+fn func(t: &dyn Trait3) {
+    t.method1(); // ✅
+    t.method2(); // ✅
+    take_trait(t); // ❌
+    take_trait2(t); // ❌
+}
+
+fn main() {}
+
+```
+
+报错：
+
+``` TEXT
+cannot cast `dyn Trait3` to `dyn Trait`, trait upcasting coercion is experimental
+see issue #65991 <https://github.com/rust-lang/rust/issues/65991> for more information
+add `#![feature(trait_upcasting)]` to the crate attributes to enable
+required when coercing `&dyn Trait3` into `&dyn Trait` rustc[E0658]
+```
+
+目前还是实验性的特性，规避的方式是手动加上转换：
+
+```rust
+
+trait Trait3: Trait + Trait2 {
+    fn as_trait(&self) -> &dyn Trait;
+    fn as_trait2(&self) -> &dyn Trait2;
+}
+
+impl<T: Trait + Trait2> Trait3 for T {
+    fn as_trait(&self) -> &dyn Trait {
+        self
+    }
+    fn as_trait2(&self) -> &dyn Trait2 {
+        self
+    }
+}
+
+// take_trait(t.as_trait()); // ✅
+```
+
+期待在未来Rust core team会把这个特性完善好。
+
+#### 5.3.3. 总结
+
+Rust 指针不支持超过两个宽度的大小。这意味着
+
+- 无法把 `unsized types` 转换为 `Trait Object`
+- 无法创建多 Trait 的 `Trait Object` ，可以通过 `supertraits` 的方式解决特定需求
+
+### 5.4. User-Defined Unsized Types
+
+用户自定义的类型可以是不确定大小的类型，我们可以在 `struct` 的最后一个字段写一个不确定大小的类型。结构里仅能有一个不确定大小的类型，且必须写在最后。
+
+比如我们可以定义一个 `struct Unsized`:
+
+```rust
+struct Unsized {
+    unsized_field: [i32],
+}
+```
+
+但是却发现好像写不出来初始化一个 `Unsized` 对象的代码？因为作为Rust的参数对象必须是 `Sized` 。一个妥协方式是使用前面提过的 `unsized coercion` ，把确定大小的 `[i32;3]` 通过去确定大小强制转换转换为 `[i32]`：
+
+```rust
+struct MaybeUnSized<T: ?Sized> {
+    field: T,
+}
+
+fn main() {
+    let s: &MaybeUnSized<[i32]> = &MaybeUnSized { field: [1, 2, 3] };
+}
+```
+
+标准库里的 `std::ffi::OsStr` 和 `std::path::Path` 就是 `Unsized Type`：
+
+```rust
+pub struct OsStr {
+    inner: Slice,
+}
+
+pub struct Path {
+    inner: OsStr,
+}
+
+impl Path {
+    pub fn new<S: AsRef<OsStr> + ?Sized>(s: &S) -> &Path {
+        unsafe { &*(s.as_ref() as *const OsStr as *const Path) }
+    }
+}
+```
+
+不确定大小类型确实目前还是不成熟的特性。使用起来的限制比带来的好处要多。
+
+## 6. Zero-Sized Types
+
+零大小类型( `ZST` for short)，或许听起来奇怪，但是却被到处使用。
+
+### 6.1. Unit Type
+
+最常见的 `ZST` 应该就是单元类型（ `Unit Type` ）: `()` 。
+
+所有的空代码块都等于 `()`
+非空代码块如果最后的表达式有 `;` 分号丢弃结果 ，最终也等于 `()`
+
+```rust
+fn main() {
+    let a: () = {};
+    let b: () = {
+        5; // here 5 means nothing. b == ()
+    };
+}
+```
+
+所有无返回值的函数，实际上也是返回 `()`
+
+```rust
+// with sugar
+fn function() {}
+
+// desugared
+fn function() -> () {}
+```
+
+既然 `()` 是类型大小为0， 一些简单的Trait也已经实现了
+
+```rust
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
+impl const Default for () {
+    #[inline]
+    #[doc = "Returns the default value of `()`"]
+    fn default() -> () {
+        ()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl PartialEq for () {
+    #[inline]
+    fn eq(&self, _other: &()) -> bool {
+        true
+    }
+    #[inline]
+    fn ne(&self, _other: &()) -> bool {
+        false
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Ord for () {
+    #[inline]
+    fn cmp(&self, _other: &()) -> Ordering {
+        Ordering::Equal
+    }
+}
+```
+
+因为编译器知道 `()` 是 `ZST` ，所以可以针对此做不少优化：比如 `Vec<()>` 并不会去分配堆内存、`push` 和 `pop` 一个 `()` 到 `Vec` 只修改它的 `len` 字段，不会触发容量变化：
+
+```rust
+fn main() {
+    // zero capacity is all the capacity we need to "store" infinitely many ()
+    let mut vec: Vec<()> = Vec::with_capacity(0);
+
+    // causes no heap allocations or vec capacity changes
+    vec.push(()); // len++
+    vec.push(()); // len++
+    vec.push(()); // len++
+    vec.pop(); // len--
+
+    assert_eq!(2, vec.len());
+
+    assert_eq!(usize::MAX, vec.capacity());
+    // pub fn capacity(&self) -> usize {
+    //     if mem::size_of::<T>() == 0 { usize::MAX } else { self.cap }
+    // }
+}
+```
+
+实际的应用场景：标准库里的容器，`HashSet` 是通过 `HashMap` 实现的： [hashbrown/set.rs](https://github.com/rust-lang/hashbrown/blob/v0.12.0/src/set.rs#L115)
+
+```rust
+pub struct HashSet<T> {
+    map: HashMap<T, ()>,
+}
+```
+
+### 6.2. User-Defined Unit Structs
+
+用户定义的单元结构体：即不包含任何成员的结构体：
+
+```rust
+struct Struct;
+```
+
+使用单元结构体的优点：
+
+- 可以给自定义的单元结构体实现任意Trait，因为Rust trait的 `orphan rules`，我们没法给 `()` 实现任何Trait。
+- 可以给自定义的单元结构体取一个有意义的名字，增强代码可读性。
+- 和其它结构体一样，默认是非拷贝的(non-Copy)，在程序中或许有用。
+
+### 6.3. Never Type
+
+另一个重要的 `ZST` 就是 `Never Type`： `!`，它的重要特性：
+
+- 它可以被强制转换到任意其它类型。
+- 无法实例化一个 `!`
+
+这也是和 `()` 最大的区别：
+
+> `!` basically means "this can never happen" while `()` means "there is no value here".
+
+`unimplemented!()` `todo!()` `panic!()` `unreachable!()` 等宏都有这个特点，在快速构建原型、标记问题上很有用。
+
+另外 `break` `continue` `return` 等关键字也是 `!` 类型。
+
+工程上，可以用 `!` 类型系统来标记一些不可能的情况，比如如下的函数签名分别表示：这个函数只要返回就一定是返回成功，和这个函数只要返回就一定是返回失败。
+
+```rust
+fn function() -> Result<Success, !>;
+fn function() -> Result<!, Error>;
+```
+
+标准库在实践中也用到：把 `&str` 转换为 `String` 一定会成功：
+
+```rust
+#![feature(never_type)]
+use std::str::FromStr;
+
+impl FromStr for String {
+    type Err = !; // actually here uses `Infallible` , will be illustrated later.
+    fn from_str(s: &str) -> Result<String, Self::Err> {
+        Ok(String::from(s))
+    }
+}
+```
+
+对于如果返回一定是返回失败的场景：考虑服务器端 `loop{}` 等待，仅在出错时返回：
+
+```rust
+#![feature(never_type)]
+fn run_server() -> Result<!, ConnectionError> {
+    loop {
+        let (request, response) = get_request()?;
+        let result = request.process();
+        response.send(result);
+    }
+}
+```
+
+注意需要写上 `#![feature(never_type)]` + 使用 `nightly` rust ，因为目前还是实验性标准。
+
+### 6.4. User-Defined Pseudo Never Types
+
+写上 `feature` 标签就需要 `nightly` 的 Rust，如果一定想在 `stable` 下实现类似的效果也不是没有办法。
+虽然我们没法定义一个类型，使其可以强制转换到任何其它类型。
+但是我们确实可以定义一个类型，让它没法实例化出对象。
+
+比如没有任何选择的枚举：
+
+```rust
+enum Void {}
+```
+
+使用这个 `Void` 代替 `!`，就可以在 `stable` Rust 下，实现上面和 `!` 类似的效果：
+
+```rust
+enum Void {}
+
+// example 1
+impl FromStr for String {
+    type Err = Void;
+    fn from_str(s: &str) -> Result<String, Self::Err> {
+        Ok(String::from(s))
+    }
+}
+
+// example 2
+fn run_server() -> Result<Void, ConnectionError> {
+    loop {
+        let (request, response) = get_request()?;
+        let result = request.process();
+        response.send(result);
+    }
+}
+```
+
+rust标准库就是这么做的：
+
+```rust
+pub enum Infallible {}
+```
+
+上面 `FromStr` 的例子里，实际标准库的代码是 `type Err = Infallible;`
+
+### 6.5. PhantomData
+
+第三个重要的 `ZST` 就是 `PhantomData` 幽灵数据 ，0大小标记结构体。用来标记一个结构体拥有一些特定的属性。基本上是为了给编译器看的。
+
+译注：原文在这里用一个去除结构体 `Send` 和 `Sync` 的Trait的例子来说明其作用。以后再单独总结下幽灵数据 `PhantomData` 的用法。
+
+更多的内容可以参考 [nomicon/PhantomData](https://doc.rust-lang.org/nightly/nomicon/phantom-data.html)
+
+## 7. Conclusion
+
+啊懒得翻译了贴原文，以上所有内容的总结的总结：
+
+- only instances of sized types can be placed on the stack, i.e. can be passed around by value
+- instances of unsized types can't be placed on the stack and must be passed around by reference
+- pointers to unsized types are double-width because aside from pointing to data they need to do an extra bit of bookkeeping to also keep track of the data's length _or_ point to a vtable
+- `Sized` is an "auto" marker trait
+- all generic type parameters are auto-bound with `Sized` by default
+- if we have a generic function which takes an argument of some `T` behind a pointer, e.g. `&T`, `Box<T>`, `Rc<T>`, et cetera, then we almost always want to opt-out of the default `Sized` bound with `T: ?Sized`
+- leveraging slices and Rust's auto type coercions allows us to write flexible APIs
+- all traits are `?Sized` by default
+- `Trait: ?Sized` is required for `impl Trait for dyn Trait`
+- we can require `Self: Sized` on a per-method basis
+- traits bound by `Sized` can't be made into trait objects
+- Rust doesn't support pointers wider than 2 widths so: #1. we can't cast unsized types to trait objects #2. we can't have multi-trait objects, but we can work around this by coalescing multiple traits into a single trait
+- user-defined unsized types are a half-baked feature right now and their limitations outweigh any benefits
+- all instances of a ZST are equal to each other
+- Rust compiler knows to optimize away interactions with ZSTs
+- `!` can be coerced into any other type
+- it's not possible to create instances of `!` which we can use to mark certain states as impossible at a type level
+- `PhantomData` is a zero-sized marker struct which can be used to "mark" a containing struct as having certain properties
