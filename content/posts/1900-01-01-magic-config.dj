@@ -1,0 +1,60 @@
+# Magic Config
+
+hate to use this wubalubadubdub things.
+
+## cargo && rustup
+
+### 官方源如果不行国内推荐使用字节源
+
+[rsproxy.cn](https://rsproxy.cn/) 字节源支持了 sparse-index.
+
+file `~/.zshrc`
+
+```bash
+export RUSTUP_DIST_SERVER="https://rsproxy.cn"
+export RUSTUP_UPDATE_ROOT="https://rsproxy.cn/rustup"
+```
+
+`RUSTUP_DIST_SERVER="https://rsproxy.cn RUSTUP_UPDATE_ROOT="https://rsproxy.cn/rustup rustup update`
+
+file `~/.cargo/config`
+
+```text
+[source.crates-io]
+replace-with = 'rsproxy-sparse'
+[source.rsproxy]
+registry = "https://rsproxy.cn/crates.io-index"
+[source.rsproxy-sparse]
+registry = "sparse+https://rsproxy.cn/index/"
+[registries.rsproxy]
+index = "https://rsproxy.cn/crates.io-index"
+[net]
+git-fetch-with-cli = true
+```
+
+## git
+
+### default replace https to ssh
+
+file `~/.gitconfig`
+
+```text
+[url "git@github.com:"]
+    insteadOf = https://github.com/
+```
+
+## ssh
+
+### ssh use proxy
+
+file `~/.ssh/config`
+
+```text
+# github
+    Host github.com
+    HostName github.com
+    IdentityFile ~/.ssh/id_ed25519
+    ProxyCommand nc -X5 -x 127.0.0.1:1080 %h %p
+```
+
+for windows user: `ProxyCommand connect -S 127.0.0.1:1080 %h %p`
