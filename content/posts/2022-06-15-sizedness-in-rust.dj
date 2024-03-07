@@ -274,7 +274,7 @@ Boom! 编译器告诉你：**the trait `Sized` is not implemented for `str`**
 
 强大的rustc甚至直接提示：考虑加上`?Sized`
 
-``` TEXT
+```text
  --> src/main.rs:3:10
   |
 3 | fn debug<T: Debug>(t: &T) {
@@ -612,7 +612,7 @@ fn main() {}
 
 报错：
 
-``` TEXT
+```text
 cannot cast `dyn Trait3` to `dyn Trait`, trait upcasting coercion is experimental
 see issue #65991 <https://github.com/rust-lang/rust/issues/65991> for more information
 add `#![feature(trait_upcasting)]` to the crate attributes to enable

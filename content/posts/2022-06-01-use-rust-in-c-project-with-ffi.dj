@@ -26,7 +26,7 @@
 
 每个模块下都有各自的 `CMakeLists.txt`，包括 rustlib 模块：此时的目录结构大致是这样的：
 
-``` BASH
+```bash
 $ tree .
 .
 ├── capi
@@ -120,7 +120,7 @@ fn main() {}
 
 放一下参考配置： `rust_evm/CMakeLists.txt`
 
-```cmake
+```bash
 # find cargo
 execute_process (
     COMMAND bash -c "which cargo | grep 'cargo' | tr -d '\n'"
@@ -180,7 +180,7 @@ add_dependencies(rust_evm capi)
 
 在 `xxx/CMakeLists.txt` 下加上依赖关系：
 
-```cmake
+```bash
 add_dependencies(xxx rust_evm)
 get_target_property(RUST_EVM_DIR rust_evm LOCATION)
 target_link_libraries(xxx PRIVATE ${RUST_EVM_DIR}/librust_evm.a)
