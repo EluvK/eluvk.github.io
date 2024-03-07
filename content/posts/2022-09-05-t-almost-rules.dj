@@ -1,0 +1,155 @@
+# [Translation] Almost Rules
+
+## 零
+
+看到的一篇博客，翻译学习记录一下。
+
+原文地址 : [Almost Rules](https://matklad.github.io/2022/07/10/almost-rules.html) by matklad
+
+## 序
+
+对软件来说最重要的边界就是对外接口。对外接口是用户直接交互的部分，因此你必须保证其向后兼容。
+
+对于 web 服务，这个边界是 URL 的格式(scheme)和 JSON 请求和返回的字段格式；对于命令行应用，这个边界是所有命令行参数的集合和含义；对于系统内核，这个边界是系统调用的集合(Linux)或者 用户库 `user-space libraries` (Mac)。而对于一个编程语言，这个边界是其语言本身的定义：语法和语义。
+
+有时候，作为宏观层面上的模式，人工的安插一些内部的边界是有好处的。边界会有很高的成本，但是它可以预防变化。巧妙地设置内部边界，甚至使边界变成外部接口是有用的。
+
+边界把系统一分为二，并且如果边界本身的大小和整个系统的大小相比很小的话（类似于沙漏形状），那么就很容易通过边界来理解整个系统。
+
+*仅仅*理解边界就可以让你想象出在其下的子系统应该是怎么实现的。大多数适合，你想象的版本和实际情况会很接近，而且这张虚拟的思维导图会帮助你剥离胶水代码层，理解其中真正的核心逻辑。
+
+不同于外部边界，一个内部的边界，即使一开始被设置在很好的地方，也有很高的风险被破坏。因为内部边界本质上不那么实体。大多数情况下可能就是一条不正式的规则，“比如模块 A 不应该包含模块 B” 。而有时候就很难注意到这些边界被破坏。这也是我为什么认为大公司能够从微服务架构中获益，虽然理论上如果我们协调好人员协助的问题，一个单体架构也能非常清晰甚至提供更好的性能。但是实践中，跨团队维护一个好的架构是很困难的，而如果把这些内部边界具化(reified)为流程，事情就变得简单些。
+
+不仅很难去保证一个内部边界不被破坏，更大的问题是内部边界的存在本身，阻止了用户可见的系统特性。而为了保护内部边界的不被破坏，需要花费大量的权限保护，还导致了不能交付一些功能。
+
+下面是我在 Rust 语言的发展过程中见到的，关于内部边界随着时间逐渐被侵蚀的案例。
+
+## Namespaces
+
+这可能是 Rust 命名解析里一个晦涩的特性：Rust 里各种类、模块、Trait、变量，都会被纳入三种命名空间里：类型(type)、值(value)和宏(macro)。这允许了同时存在同名的事物而不冲突：
+
+```rust
+struct x {}
+fn x() {}
+```
+
+这个是合法的 Rust 代码，因为 `struct x` 是在类型命名空间里，而 `function x` 在值命名空间里。从语法上也能区分出来： `.` 用来遍历值命名空间， `::` 用来遍历类型命名空间。
+
+虽然这几乎是一个规则了，但是还是出现了编译器放弃了这种清晰的语法下的命名空间规则、临时消除歧义(ah-hoc disambiguation)的例子。
+
+比如这段代码：
+
+```rust
+use std::str; // module `str`
+
+fn main() {
+    let s: &str = str::from_utf8(b"hello").unwrap(); // s is type `str`
+    str::len(s);
+}
+```
+
+一共出现了4个 `str`, 前两个如同注释，理解起来很容易。后面两个：`str::from_utf8` 里，`str` 表示的是 module `str`，但是 `str::len(s)` 里 `str` 是 **type** `str`。
+
+只要看一眼标准库的实现就会发现，大致结构如下：
+
+```rust
+/// ....core/src/str/mod.rs
+
+pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
+    // implement!()
+}
+
+impl str {
+    pub const fn len(&self) -> usize {
+        self.as_bytes().len()
+    }
+}
+
+```
+
+`str::from_utf8` 是个独立的函数，所以使用 module `str`，而 module 继承自 类型命名空间，所以使用 `::` 十分合理。
+而 `str::len` 是类型 `str` 的一个方法。而这里并没有显示的声明使用类型 `str`，所以正常来说，上面的 `str::len(s)` 的代码应该编译报错。但是编译器，还有 RA 都把这些基本类型的场景 hack 了。
+
+自己写了一个同样的例子：非常正常的就报错了：
+
+```rust
+mod mystr{
+    pub struct mystr;
+    pub fn from_utf8() -> mystr{
+        mystr{}
+    }
+
+    impl mystr {
+        pub fn len(&self){}
+    }
+}
+
+fn test() {
+    let s = mystr::from_utf8();
+    let _ = s.len(); // ok
+    let _ = mystr::mystr::len(&s); // ok
+    let _ = mystr::len(s); // *compile error: cannot find function `len` in module `mystr`.*
+}
+```
+
+## Patterns And Expressions
+
+Rust 过去对模式(patterns)和表达式(expressions)用不同的语法类别作区分，任何语句，根据其上下文语义，都可以被准确的定义为是表达式或者模式。但是出现了一个小例外：
+
+```rust
+fn f(value: Option<i32>) {
+  match value {
+    None => (),
+    none => (),
+  }
+}
+```
+
+语法上， `None` 和 `none` 是无法区分的。实际扮演着不同的角色： `None` 指代 `Option::None` 这个常量，而 `none` 是引入的新的绑定。 Swift 通过强制要求对枚举的变量前加上一个 `.` ，优雅的消除了这种歧义。而 Rust 是直接在命名解析层面 hack 了这种情况：除非匹配到了范围内的常量，否则默认引入新绑定。
+
+最近被 hack 的情况进一步放大：随着[析构赋值](https://rust-lang.github.io/rfcs/2909-destructuring-assignment.html)的实现，一个表达式可以直接被重定义为一个模式：
+
+```rust
+let (mut a, mut b) = (0, 1)
+(a, b) = (b, a)
+```
+
+语法上， `=` 是二元表达式，所以其左端和右端应该都是表达式。但是现在左端 `(a, b)` 被重新定义为了模式。
+
+也许，模式和表达式之间所谓的语法边界本身就是假的。应该从始至终就使用统一的表达式语法。
+
+### `::<>`
+
+语法分类是仍然完好的边界，Rust 仍然是 `LL(k)` 语言: 可以通过一个单遍([single-pass](https://en.wikipedia.org/wiki/One-pass_algorithm))无须回溯的算法进行处理。代价就是我们不得不敲 `.collect::<Vec<_>>()` 而不是 `.collect<Vec<_>>()` （至今我也是仅仅敲 `.collect()` 然后通过自动补全来完成这个 `turbofish` 的语法。
+
+### `().0.0`
+
+另外一个近期的变化是在此法分析器和解析器之间的边界的被破坏。
+
+Rust 有元组类型 `tuple` ，并且使用 `.0` 这种可爱的语法来访问其有序的值域。这对于多层次的元组类型就是个问题。它们会出现类似于 `foo.1.2` 这样的语法。对于词法分析器来说，这个语法看起来就是 `foo` , `.` , `1.2` ，没错，`1.2` 是浮点数字。所以之前不得不把用一个额外的空格把表达式写成 `foo.1 .2`
+
+如今，这个特点被解析器 hack 住，从词法分析器里获取 `1.2` 这么个 `token`，分析其文本然后拆成 `1` 和 `.2` 两个 `token`
+
+### macros
+
+Rust 不同于许多编程语言，其词法分析器和解析器并不是模糊的内部边界，而是外部有服务保护的 API 的一部分。`tokens` 被塞进宏语句里，所以宏语句的效果取决于传入的 `tokens` 到底是如何拆分的。
+
+虽然理论上，`tokens` 被宏获取的仅仅是其文字信息，但是在工程上，为了实现宏捕获字段（比如 `$x:expr`），一个 token 也可以是在编译器 AST 数据结构中的一个有完善结构的数据片段。
+
+译注：这一段涉及编译原理，并没有看太懂..原文如下：
+
+> The last example is quite interesting: in Rust, unlike many programming languages, the separation between the lexer and the parser is not an arbitrary internal boundary, but is actually a part of an external, semver protected API. Tokens are the input to macros, so macro behavior depends on how exactly the input text is split into tokens.
+>
+> And there’s a second boundary violation here: in theory, “token” as seen by a macro is just its text plus hygiene info. In practice though, to implement captures in macro by example ($x:expr things), a token could also be a fully-formed fragment of internal compiler’s AST data structure.
+>
+> The API is carefully future proofed such that, as soon as the macro looks at such a magic token, it gets decomposed into underlying true tokens, but there are some examples where the internal details leak via changes in observable behavior.
+
+## Lifetime Parametricity
+
+生命周期的参数化。
+
+用一个正向一点的例子来结束这篇，在 Rust 里生命周期标注不会影响代码生成。实际上生命周期完全被从传递给 `codegen` 的数据里清理掉了。 尽管推断生命周期是不透明切难以弄清原因的，但是你可以确定值被 `dropped` 的确切位置和借用检查器的奇思妙想无关。
+
+## Conclusion
+
+看起来我们通常都会对内部边界过于乐观，它们会在功能需求的压力下崩溃，除非有问题的边界被物理实体化。
