@@ -1,0 +1,256 @@
+# use rust in c project with ffi
+
+## 背景
+
+最近把 EVM 虚拟机引入到公司项目里，EVM 虚拟机本身的实现依赖的是第三方 Rust 写的[rust-blockchain/evm](https://github.com/rust-blockchain/evm)，公司的项目是 C++开发的，所以需要把整个 EVM 作为静态库引入进来，之间的 FFI 交互本身需要（只能）按照 C 的格式传递，两端再封装一下，让使用起来舒适一些。
+
+这个过程中搜到的资料都非常零散，在不断试错、优化的过程中也积累一些经验，如果读者也有需求要把第三方的**rust 库引入到 C/C++项目**里，可以参考一下。
+
+不过注意该教程的时效性，这绝不是 FFI 的最佳实践。
+
+如果你也是接触 rust 的跨语言 FFI 不久，可以先阅读[官方 book 的 FFI 介绍](https://doc.rust-lang.org/nomicon/ffi.html)
+
+## 解决跨语言的调用和编译依赖问题
+
+这一节举例说明解决跨语言的编译问题，用统一的 CMake 工具来管理编译跨语言的不同模块
+
+### `C call Rust` && `Rust call C` 说明
+
+如果第三方的 lib 功能比较简单纯粹，一般只需要单向的使用。然而我实际上需要先提供给 EVM 一些 C 这边的功能，再把 EVM 封装起来提供给 C，所以两种都涉及到了。
+
+这里需要先提一下工具链，主项目是通过 `CMake` 来管理模块关系的，我需要把一个 capi 的模块提供给 rustlib 使用，再把 rustlib 作为一个模块提供给其它模块使用：
+
+**依赖关系**：capi.a(C/C++) -> rust_evm.a(Rust) -> xxx.a(C/C++)
+
+后面的以这三个模块名举例说明
+
+每个模块下都有各自的 `CMakeLists.txt`，包括 rustlib 模块：此时的目录结构大致是这样的：
+
+``` BASH
+$ tree .
+.
+├── capi
+│   ├── capi.cpp
+│   └── CMakeLists.txt
+├── rust_evm
+│   ├── Cargo.toml
+│   ├── CMakeLists.txt
+│   └── src
+│       └── main.rs
+└── xxx
+    ├── CMakeLists.txt
+    └── xxx.cpp
+
+```
+
+### `rust_evm` 依赖 `capi` : `Rust call C`
+
+#### `Rust Call C`
+
+使用 `extern "C" {}` 来把需要 c 提供的接口包起来，另外还可以用 `mod` 来增强代码可读性，比如：
+
+```rust
+pub(crate) mod exports {
+    #[link(name = "capi")]
+    extern "C" {
+        pub(crate) fn evm_read_register(register_id: u64, ptr: u64);
+        pub(crate) fn evm_register_len(register_id: u64) -> u64;
+    }
+}
+```
+
+在其他地方就可以通过：
+
+```rust
+unsafe {
+    //...
+    exports::evm_read_register(...);
+    //...
+}
+```
+
+的方式来使用 `capi.a` 里提供的方法了。
+
+上面第二行的 `#[link(name = "capi")]` 用于告诉链接器链接指定的库，但是我在实操的时候发现，在后面 `build.rs` 里写上链接 lib 后，不写这个 link 宏其实也没问题(写于2022-05，rust 1.60版本)，读者可以自行尝试。
+
+#### 让 `CMake` 来管理编译 `rust_evm`
+
+上面的方式，手动编译出 `capi.a` 后执行 `cargo build` 可以使用，通过 `CMake` 来管理的话，需要完成：
+
+1. 在 `build.rs` 里完成复制 `capi.a` 的操作，不然后面编译 `rust_evm` 时找不到链接的依赖。
+2. 让 `CMake` 执行 `cargo build` 的编译命令
+
+##### 写一下 `build.rs`
+
+```rust
+#![allow(unused)]
+use std::env;
+
+use std::process::Command;
+
+#[cfg(feature = "build_with_cmake")]
+fn main() {
+    let out_dir = env::var("OUT_DIR").unwrap();
+
+    Command::new("cp")
+        .arg("-f")
+        .arg(&format!(
+            "{}/../../../../../../../lib/Linux/libcapi.a",
+            out_dir
+        ))
+        .arg(&format!("{}", out_dir))
+        .status()
+        .unwrap();
+
+    println!("cargo:rustc-link-search=native={}", out_dir);
+    println!("cargo:rustc-link-lib=static=capi");
+}
+
+#[cfg(not(feature = "build_with_cmake"))]
+fn main() {}
+
+```
+
+注意几点：
+
+1. 使用 `cp` 命令复制 `libcapi.a`，需要找到当前 CMake 项目，保管目标 lib 的目录，一般会通过根 CMake 文件设置到 `LIBRARY_OUTPUT_PATH`（高版本的 `cmake` 版本里也可能用 `LIBRARY_OUTPUT_DIRECTORY` ?）。需要从当前的目录相对路径到此处复制（到 `cargo` 的 `out_dir` ）。
+2. 可以使用 `feature` 来控制不同场景的编译，后面会提到，用 `cmake` 编译的时候可以附带 `feature` 参数，所以可以默认情况下没有编译前参数，用于单独更新这个 rust 子项目的情况；在 `cmake` 编译时自动带上 `feature` 参数，启用这个复制命令。
+
+##### `rust_evm` 的 `CMakeLists.txt`
+
+放一下参考配置： `rust_evm/CMakeLists.txt`
+
+```cmake
+# find cargo
+execute_process (
+    COMMAND bash -c "which cargo | grep 'cargo' | tr -d '\n'"
+    OUTPUT_VARIABLE CARGO_DIR
+)
+
+execute_process (
+    COMMAND ${CARGO_DIR} --version
+)
+
+# set build command:
+message(STATUS "Cargo dir: " ${CARGO_DIR})
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+set(CARGO_CMD ${CARGO_DIR} build --features=build_with_cmake)
+set(TARGET_DIR "debug")
+else ()
+set(CARGO_CMD ${CARGO_DIR} build --features=build_with_cmake --release)
+set(TARGET_DIR "release")
+endif ()
+
+message(STATUS "Cargo cmd: " ${CARGO_CMD})
+set(EVM_A "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_DIR}/librust_evm.a")
+message(STATUS "EVM_A: " ${EVM_A} )
+message(STATUS "CMAKE_CURRENT_BINARY_DIR: " ${CMAKE_CURRENT_BINARY_DIR})
+message(STATUS "CMAKE_CURRENT_SOURCE_DIR: " ${CMAKE_CURRENT_SOURCE_DIR})
+message(STATUS "LIBRARY_OUTPUT_PATH: " ${LIBRARY_OUTPUT_PATH})
+
+# custom_compile && cp
+add_custom_target(rust_evm ALL
+    COMMAND CARGO_TARGET_DIR=${CMAKE_CURRENT_BINARY_DIR} ${CARGO_CMD} 
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMAND cp -f ${EVM_A} ${LIBRARY_OUTPUT_PATH})
+
+set_target_properties(rust_evm PROPERTIES LOCATION ${LIBRARY_OUTPUT_PATH})
+
+add_dependencies(rust_evm capi)
+```
+
+这个配置需要根据项目实际情况做调整，需要理解其含义。忽略中间的编译调试信息，核心步骤就是三步：
+
+1. find cargo:
+2. set build command:
+3. custom_compile && cp to library output path:
+
+补充说明：
+
+- `EVM_A` 表示使用 `cargo` 工具链编译出来的 `rust_evm` 静态库的位置
+- `LIBRARY_OUTPUT_PATH` 就是整个项目的位置，需要复制过去供后面其他模块链接使用。
+- `add_custom_target` 来调用 `cargo` 编译这个模块
+- 最后的 `add_dependencies` 来确定编译的拓扑关系，确保编译到这一步时，前面的 `build.rs` 一定能找到编译好的 `libcapi.a`
+
+至此我们已经完成了 `Rust call C` 的依赖关系，并且把 `rust_evm` 也编译成了 `librust_evm.a` 放到了目标 lib 目录下。
+
+### `xxx` 依赖 `rust_evm` : `C call Rust`
+
+#### `xxx` 模块的 cmake
+
+在 `xxx/CMakeLists.txt` 下加上依赖关系：
+
+```cmake
+add_dependencies(xxx rust_evm)
+get_target_property(RUST_EVM_DIR rust_evm LOCATION)
+target_link_libraries(xxx PRIVATE ${RUST_EVM_DIR}/librust_evm.a)
+```
+
+其中第二行： `get_target_property` 获取的就是 `librust_evm.a` ，是在编译 `rust_evm` 时通过 `set_target_properties` 设置进去的。
+
+#### `C call Rust`
+
+模块 `xxx` 这边找个地方声明一下外部实现：就可以直接调用了。
+
+```cpp
+extern "C" bool call_contract();
+```
+
+噢，在 `rust_evm` 提供的接口这样写：
+
+```rust
+mod interface{
+    #[no_mangle]
+    pub extern "C" fn call_contract() -> bool {
+        todo!()
+    }
+}
+```
+
+## FFI with params
+
+调通了依赖关系后，开始增加实现细节，第一个会面临的问题就是，怎么传参？
+
+`extern "C"` 的方式，可以直接传递基础数据类型：小于等于64位宽的整型(包括 bool\char)、指针地址(本质上也是个 u64)。但是其它类型就会复杂得多，即使 FFI 两边的语言都有同样作用的容器，也不能直接传递过去，本质上实现可能不一样、内存分布可能不一样。自定义的数据结果，如果都控制到内存布局完全一致，传递指针的方式可以实现，但是对编码的要求和难度增加，可读性不强，维护性更是差。
+
+解决方案是：使用一套两边语言都有的序列化方案，对于同一个数据结构对象，在两头分别定义好，在传递的时候、序列化成 bytes、传递过去后再反序列化出来，封装得当可以简化编码难度、大大提高可读性。
+
+两种语言都有的序列化方案可能有很多，但是还要确认它在不同语言里支持的类型问题是否都能 cover 你需要使用的。
+
+我这里使用了 protobuffer 作为序列化传递参数的方案，因为除了符合上面的要求外，还有一个额外优点：两边的数据结构可以统一由一个`.proto` 文件定义后生成，不会存在两边定义不对齐的情况。
+
+protobuffer 具体如何使用，官网文档学习，这里简单提一些注意点：
+
+- `.proto` 里的 package 名字按 `C/C++` 这边的命名空间定位来，`Rust` 这边比较好说
+- 反正 `.proto` 可以 `import` 其它 `.proto` 文件，所以可以照顾 Rust 文件所属模块位置拆分掉，不要写成一个巨大的 `.proto`
+- `Rust` 这边，最好实现一个本地 struct，只在 `Rust` 这端的代码里引用，再和对应的 proto 版对象相互实现 `Into/From/NewFrom` 等 `trait` ，这样在模块内部可以实现其它需要的功能，仅在传递前后转换成 proto 的对象。
+- `C/C++` 这边也是一样，视使用情况决定要不要抽象，一般 `C call Rust` 为目的，调用端转换一次，结果回来再转换一次，也没有抽象出单独方法的必要。
+
+相互转换这一点在后来调研 [`tendermint-rs` 项目](https://github.com/informalsystems/tendermint-rs)时，发现他们做的更好，他们 `tendermint/src` 目录下的所有数据结构，在 `proto` 目录下都有对应的转换，推荐去学习他们的代码结构（如下面示例）。
+
+```rust
+// tendermint/src/block.rs
+use tendermint_proto::{types::Block as RawBlock};
+
+struct Block {
+    // ...
+}
+impl TryFrom<RawBlock> for Block {...}
+impl From<Block> for RawBlock {...}
+```
+
+## Lifecircle
+
+一句话：多注意变量的生命周期，特别是跨语言交互的地方，由谁创建、管理、释放每个对象。
+
+## Exception handle
+
+跨语言不支持调用栈 unwind [官方讨论](https://internals.rust-lang.org/t/unwinding-through-ffi-after-rust-1-33/9521)
+
+即使 `C->Rust->C` 这种情况，在后面的 C 里 `throw_exception` ，虽然现状是经过的 `rust` 能 `unwind` 调用栈，最后被前面的 C 捕获注异常，但是这还是 `UB`，不推荐使用。
+
+所以这种现状下，只能各扫门前雪，跨语言接口只能用返回值来表示成功与否，可以通过在接口的最后用形如 `unwrap_or_return_false` 的方式来保证一定要返回。
+
+### TODO
+
+- [ ] 统一 channel/register 管理传参
