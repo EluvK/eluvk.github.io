@@ -32,14 +32,14 @@ Boost 库中包含了完整的实现，支持 C++03，在目前（原文撰写�
 
 以下是`<system_error>`定义的类型
 
-- `class error_category` 作为基类，区分错误码(error_code)或错误情况(error_condition)的来源或者类别
+- `class error_category` 作为基类，区分错误码(`error_code`)或错误情况(`error_condition`)的来源或者类别
 - `class error_code` 代表了一种特定的操作返回的错误值
 - `class error_condition` 你希望在代码中进行测试的一种情况
-- `class system_error` 当异常情况通过 throw/catch 抛出的时候，用来包装 error_codes 的异常
+- `class system_error` 当异常情况通过 throw / catch 抛出的时候，用来包装 `error_codes` 的异常
 - `enum class errc` 一系列一般情形下的错误情况值，继承自 POSIX
-- `is_error_code_enum<>`, `is_error_condition_enum<>`, `make_error_code`, `make_error_condition` 把枚举类转换为 error_code/error_condition 的方法
+- `is_error_code_enum<>`, `is_error_condition_enum<>`, `make_error_code`, `make_error_condition` 把枚举类转换为 `error_code` / `error_condition` 的方法
 - `generic_category()` 返回一个类对象用来区分 `errc`
-- `errc` 基本错误码(error codes)和错误情况(error conditions)
+- `errc` 基本错误码(`error codes`)和错误情况(`error conditions`)
 - `system_category()` 返回一个操作系统错误码的类对象
 
 ### 1.3. 原则
@@ -91,7 +91,7 @@ C++03标准里把 errno 作为错误码的来源，也被用到了 stdio 函数�
 
 幸运的是有人指出了我的错误，转换也给错误码会丢失信息：是底层的系统调用的错误（而不是你写的代码出的错）。这可能在程序控制里不是什么大问题，但是却对程序可支持性影响挺大。毫无疑问程序员会使用标准错误码来记录跟踪问题，而丢失的原始错误信息可能在是诊断问题是至关重要的。
 
-这个最后一个原则也很好地融入了第二部分的主题：error_code && error_condition.请继续关注。
+这个最后一个原则也很好地融入了第二部分的主题：`error_code` 和 `error_condition`
 
 ## 2. part2
 
