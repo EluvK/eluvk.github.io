@@ -1,0 +1,1062 @@
+# Rust Standard library trait
+
+[原 blog](https://github.com/pretzelhammer/rust-blog/blob/master/posts/tour-of-rusts-standard-library-traits.md)
+
+## 1. Generic Type vs Associated Type
+
+### 1.1. Knowledge
+
+Both generic types and associated types defer the decision to the implementer on which concrete types should be used in the trait's functions and methods, so this section seeks to explain when to use one over the other.
+
+The general rule-of-thumb is:
+
+- Use associated types when there should only be a single impl of the trait per type.
+- Use generic types when there can be many possible impls of the trait per type.
+
+Let's say we want to define a trait called `Add` which allows us to add values together. Here's an initial design and impl that only uses associated types:
+
+### 1.2. Playground Code
+
+```rust
+trait Add<Rhs> {
+    // Rhs is generic type, which can define multi type with multi implement
+    type Output; // Output is associated type, which can define only one type with multi implement
+    fn add(self, rhs: Rhs) -> Self::Output;
+}
+
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+impl Add<Point> for Point {
+    type Output = Point;
+    fn add(self, rhs: Point) -> Point {
+        Point {
+            x: self.x + rhs.x,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl Add<i32> for Point {
+    type Output = Point;
+    fn add(self, rhs: i32) -> Point {
+        Point {
+            x: self.x + rhs,
+            y: self.y + rhs,
+        }
+    }
+}
+
+impl Add<u32> for Point {
+    type Output = u32; // it's ok because above `Add<u32>` is different with any other implement.
+    fn add(self, rhs: u32) -> u32 {
+        rhs
+    }
+}
+
+// impl Add<u32> for Point{ // conflicting implementations of trait `Add<u32>` for type `Point`
+//     type Output = i32; // not allowed!
+//     fn add(self, rhs:u32) -> i32 {
+//         rhs as i32
+//     }
+// }
+
+fn main() {
+    let xx: Point = Point { x: 3, y: 4 };
+    let yy: Point = Point { x: 5, y: 6 };
+
+    let xx = xx.add(yy);
+    println!("{}:{}", xx.x, xx.y); // 8:10
+
+    let xx = xx.add(3 as i32);
+    println!("{}:{}", xx.x, xx.y); // 11:13
+
+    let xx = xx.add(3 as u32);
+    println!("{}", xx); // 3
+}
+```
+
+## 2. SubTrait && SuperTrait
+
+### 2.1. Knowledge
+
+The "sub" in "subtrait" refers to subset and the "super" in "supertrait" refers to superset. If we have this trait declaration:
+
+```rust
+trait Subtrait: Supertrait {}
+```
+
+All of the types which impl Subtrait are a subset of all the types which impl Supertrait, or to put it in opposite but equivalent terms: all the types which impl Supertrait are a superset of all the types which impl Subtrait.
+
+Also, the above is just syntax sugar for:
+
+```rust
+`trait Subtrait where Self: Supertrait {}`
+```
+
+### 2.2. Comprehensive Infos
+
+The relationship between subtraits and supertraits is: subtraits **refine** their supertraits.
+**"Refinement"** can mean different things in different contexts:
+
+- a subtrait might make its supertrait's methods' impls more specialized, faster, use less memory, e.g. Copy: Clone
+- a subtrait might make additional guarantees about the supertrait's methods' impls, e.g. Eq: PartialEq, Ord: PartialOrd, ExactSizeIterator: Iterator
+- a subtrait might make the supertrait's methods more flexible or easier to call, e.g. FnMut: FnOnce, Fn: FnMut
+- a subtrait might extend a supertrait and add new methods, e.g. DoubleEndedIterator: Iterator, ExactSizeIterator: Iterator
+
+### 2.3. Playground Code
+
+```rust
+trait Supertrait {
+    // fn method(&self);
+    fn method(&self) {
+        // trait with default method implement
+        println!("default Supertrait method")
+    }
+}
+
+trait Subtrait: Supertrait {
+    fn method(&self);
+}
+
+struct Test;
+
+impl Supertrait for Test {
+    fn method(&self) {
+        println!("in Supertrait");
+    }
+}
+
+// empty
+// impl Supertrait for Test {}
+
+impl Subtrait for Test {
+    fn method(&self) {
+        println!("in Subtrait");
+        Supertrait::method(self);
+    }
+}
+
+fn main() {
+    let st = Test {};
+    // st.method();
+    <Test as Supertrait>::method(&st);
+}
+```
+
+## 3. PartialEq && Eq trait
+
+### 3.1. Knowledge
+
+这两个 traits 的名称实际上来自于抽象代数中的等价关系和局部等价关系。
+
+### 3.2. **等价关系**（equivalence relation）
+
+设 R 是非空集合 A 上的二元关系，若 R 是自反的、对称的、传递的，则称 R 是 A 上的等价关系。
+
+- 自反性(reflexivity)：`∀ a ∈A, => (a, a) ∈ R`
+- 对称性(symmetry)：`(a, b) ∈R∧ a ≠ b => (b, a)∈R`
+- 传递性(transitivity)：`(a, b)∈R,(b, c)∈R =>(a, c)∈R`
+
+说人话版本：
+
+- 自反性：满足 `a==a`
+- 对称性：`if a==b than b==a`
+- 传递性：`if a==b && b==c than a==c`
+
+### 3.3. PartialEq
+
+对应局部等价关系，只满足对称性和传递性，不满足自反性。
+比如浮点数，`NaN!=NaN`
+
+### 3.4. Eq
+
+对应等价关系，满足 `PartialEq` 的同时满足 `Eq`
+在 Rust 中，`Eq` 的实现实际上是空的（也叫 `Marker Traits`），`Trait Eq` 是 `Trait PartialEq` 的 `Subtrait`，`Trait Eq` 需要的 `method`:`fn eq(&self, other: &Self) -> bool`，已经在 `Trait Partial` 里实现了，声明 `Eq` 额外告诉编译器**这个类型满足自反性**这么个信息。
+
+### 3.5. Marker Traits
+
+> Marker traits are traits that have no trait items. Their job is to "mark" the implementing type as having some property which is otherwise not possible to represent using the type system.
+
+```rust
+// Impling PartialEq for a type promises
+// that equality for the type has these properties:
+// - symmetry: a == b implies b == a, and
+// - transitivity: a == b && b == c implies a == c
+// But DOES NOT promise this property:
+// - reflexivity: a == a
+trait PartialEq {
+    fn eq(&self, other: &Self) -> bool;
+}
+
+// Eq has no trait items! The eq method is already
+// declared by PartialEq, but "impling" Eq
+// for a type promises this additional equality property:
+// - reflexivity: a == a
+trait Eq: PartialEq {}
+
+// f64 impls PartialEq but not Eq because NaN != NaN
+// i32 impls PartialEq & Eq because there's no NaNs :)
+```
+
+### 3.6. Implement
+
+```rust
+trait PartialEq<Rhs = Self> 
+where
+    Rhs: ?Sized, 
+{
+    fn eq(&self, other: &Rhs) -> bool;
+
+    // provided default impls
+    fn ne(&self, other: &Rhs) -> bool;
+}
+```
+
+### 3.7. Productive
+
+手动实现 `PartialEq`
+
+```rust
+struct Point{
+    x: i32,
+    y: i32
+}
+
+// Rhs == Self == Point
+impl PartialEq for Point {
+    // impl automatically symmetric & transitive
+    fn eq(&self, other: &Point) -> bool {
+        self.x == other.x && self.y == other.y
+    }
+}
+```
+
+自动实现:`PartialEq`
+
+If all the members of a type impl `PartialEq` then it can be derived:
+
+```rust
+#[derive(PartialEq)]
+struct Point {
+    x: i32,
+    y: i32
+}
+```
+
+引用类型的比较也会被自动实现
+
+> Once we impl `PartialEq` for our type we also get equality comparisons between references of our type for free thanks to these generic blanket impls:
+
+```rust
+// this impl only gives us: Point == Point
+#[derive(PartialEq)]
+struct Point {
+    x: i32,
+    y: i32
+}
+
+// all of the generic blanket impls below
+// are provided by the standard library
+
+// this impl gives us: &Point == &Point
+impl<A, B> PartialEq<&'_ B> for &'_ A
+where A: PartialEq<B> + ?Sized, B: ?Sized;
+
+// this impl gives us: &mut Point == &Point
+impl<A, B> PartialEq<&'_ B> for &'_ mut A
+where A: PartialEq<B> + ?Sized, B: ?Sized;
+
+// this impl gives us: &Point == &mut Point
+impl<A, B> PartialEq<&'_ mut B> for &'_ A
+where A: PartialEq<B> + ?Sized, B: ?Sized;
+
+// this impl gives us: &mut Point == &mut Point
+impl<A, B> PartialEq<&'_ mut B> for &'_ mut A
+where A: PartialEq<B> + ?Sized, B: ?Sized;
+```
+
+### 3.8. Noted
+
+> Generally, we should only impl equality between different types if they contain the same kind of data and the only difference between the types is how they represent the data or how they allow interacting with the data.
+> 通常来说我们仅会实现相同类型之间的可相等性，除非两种类型虽然包含同一类数据，但又有表达形式或交互形式的差异，这时我们才会考虑实现不同类型之间的可相等性。
+
+原 Blog 里举得糟糕的扑克牌花色和大小的问题，也说明了 `PartialEq` 并不能理解为其内容里有一部分相等。本质上它应该是就是 `Eq`，只是不满足自反性的 Eq。
+胡乱的实现两个不同 type 的 `PartialEq` 最终会自相矛盾，扑克牌的例子用类似于 `fn Card.is_suit(shade: Shade) -> bool` 的 `methods`，会合理的多。
+
+## 4. PartialOrd && Ord trait
+
+### 4.1. PartialOrd
+
+```rust
+enum Ordering {
+    Less,
+    Equal,
+    Greater,
+}
+
+trait PartialOrd<Rhs = Self>: PartialEq<Rhs> 
+where
+    Rhs: ?Sized, 
+{
+    fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
+
+    // provided default impls
+    fn lt(&self, other: &Rhs) -> bool;
+    fn le(&self, other: &Rhs) -> bool;
+    fn gt(&self, other: &Rhs) -> bool;
+    fn ge(&self, other: &Rhs) -> bool;
+}
+```
+
+`PartialOrd` is a subtrait of `PartialEq` and their impls **must always agree with each other**.
+
+The `lt`, `le`, `gt`, and `ge` methods of this trait can be called using the `<`, `<=`, `>`, and `>=` operators, respectively.
+
+All `PartialOrd` impls must ensure that comparisons are **transitive** and **duality**. That means for all a, b, and c:
+
+- **transitive**: `a < b` and `b < c` implies `a < c`. The same must hold for both `==` and `>`.
+- **duality**: `a < b` if and only if `b > a`.
+
+> noted that the original blog use older version `asymmetry`, which was delete in rust-lang this [PR: pull/85637](https://github.com/rust-lang/rust/pull/85637)
+> and here quote the [reason](https://github.com/rust-lang/rust/pull/85637/files/1cfc1874b526fd8a681ebfaf64c554077586c8b1) :
+>> /// - asymmetry: if `a < b` then `!(a > b)`, as well as `a > b` implying `!(a < b)`;
+>> It is redundant: it already follows from a < b being defined as `partial_cmp(a, b) == Some(Less)`, which implies `!(a > b)` (defined as `partial_cmp(a, b) != Some(Greater)`).
+>> "asymmetry" is the wrong term, an "asymmetric" relation is a relation that satisfies "if `a < b` then `!(b < a)`".
+> asymmtery (in the correct sense of the word) is a consequence of duality, so we could state it in the corollary section if you wish. antisymmetry is more closely related to what the docs are currently stating, but it is defined for `<=`-style relations: `R` is antisymmetric if `R(a, b) && R(b, a)` implies `a == b`.
+
+impl a `PartialOrd` manually
+
+```rust
+use std::cmp::{self, Ordering};
+
+#[derive(PartialEq)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+impl PartialOrd for Point {
+    fn partial_cmp(&self, other: &Point) -> Option<cmp::Ordering> {
+        if self.x > other.x {
+            Some(Ordering::Less)
+        } else {
+            Some(Ordering::Greater)
+        }
+    }
+}
+
+fn main() {
+    let t1: Point = Point { x: 1, y: 2 };
+
+    let t2: Point = Point { x: 2, y: 1 };
+
+    assert!(!t1.lt(&t2));
+    assert!(!t1.le(&t2));
+    assert!(t1.ge(&t2));
+    assert!(t1.gt(&t2));
+}
+```
+
+If all the members of a type impl `PartialOrd` then it can be derived:
+
+```rust
+// generates PartialOrd impl which orders
+// Points based on x member first and
+// y member second because that's the order
+// they appear in the source code
+#[derive(PartialEq, PartialOrd)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+```
+
+### 4.2. Ord
+
+`Ord` is a subtrait of `Eq` and `PartialOrd<Self>`:
+
+```rust
+trait Ord: Eq + PartialOrd<Self> {
+    fn cmp(&self, other: &Self) -> Ordering;
+
+    // provided default impls
+    fn max(self, other: Self) -> Self;
+    fn min(self, other: Self) -> Self;
+    fn clamp(self, min: Self, max: Self) -> Self;
+}
+```
+
+use `#[derive(...)]` if members of a type impl that trait.
+
+```rust
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+```
+
+impl a `Ord` manually:
+
+```rust
+use std::cmp::Ordering;
+
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+impl Ord for Point {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.x.cmp(&other.x) {
+            Ordering::Equal => self.y.cmp(&other.y),
+            ordering => ordering,
+        }
+    }
+}
+
+impl PartialOrd for Point {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Point {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+impl Eq for Point {}
+
+fn main() {
+    let t1: Point = Point { x: 1, y: 2 };
+
+    let t2: Point = Point { x: 2, y: 1 };
+
+    assert!(t1.lt(&t2));
+    assert!(t1.max(t2) == Point { x: 2, y: 1 });
+}
+```
+
+需要注意的就是，要么都用 derive 宏的写法，要么都手动实现
+
+> Implementations of [`PartialEq`], `PartialOrd`, and [`Ord`] **must** agree with each other. It's easy to accidentally make them disagree by deriving some of the traits and manually implementing others.
+
+### 4.3. Noted
+
+`subtrait` 和 面向对象语言里的继承，思维方式是不一致的。上面这个手动实现 `Ord trait` 的代码，就没法用继承的逻辑来看。
+
+- `Ord : Eq + PartialOrd<Self>` : 理解为 `Ord` **refine**(完善了) `Eq` + `PartialOrd`
+- 但是一旦写完了 `imp Ord for Point`，虽然还没有 `PartialOrd/Eq/PartialEq`，但是剩下的 trait 可以用 `Ord` 的 methods 来判断了...
+- 强行用继承的思维去理解就是~~父类方法的实现调用了子类方法~~？？？ 所以不能这么想...
+
+## 5. Index && IndexMut
+
+### 5.1. Index && IndexMut trait
+
+```rust
+trait Index<Idx: ?Sized> {
+    type Output: ?Sized;
+    fn index(&self, index: Idx) -> &Self::Output;
+}
+
+trait IndexMut<Idx>: Index<Idx> where Idx: ?Sized {
+    fn index_mut(&mut self, index: Idx) -> &mut Self::Output;
+}
+```
+
+可以用`[]`来对实现了 `Index<T, Output = U>`的类型进行取值为 `T` 的运算，返回`&U` 类型，编译器会自动加上解引用运算符`*`，需要注意的语法糖
+
+```rust
+fn main() {
+    // Vec<i32> impls Index<usize, Output = i32> so
+    // indexing Vec<i32> should produce &i32s and yet...
+    let vec = vec![1, 2, 3, 4, 5];
+    let num_ref: &i32 = vec[0]; // ❌ expected &i32 found i32
+    
+    // above line actually desugars to
+    let num_ref: &i32 = *vec[0]; // ❌ expected &i32 found i32
+
+    // both of these alternatives work
+    let num: i32 = vec[0]; // ✅
+    let num_ref: &i32 = &vec[0]; // ✅
+}
+```
+
+More: `[]`里可以用 `Range<uszie>`索引来得到切片。
+
+```rust
+fn main() {
+    let vec = vec![1, 2, 3, 4, 5];
+    assert_eq!(&vec[..], &[1, 2, 3, 4, 5]); // ✅
+    assert_eq!(&vec[1..], &[2, 3, 4, 5]); // ✅
+    assert_eq!(&vec[..4], &[1, 2, 3, 4]); // ✅
+    assert_eq!(&vec[1..4], &[2, 3, 4]); // ✅
+}
+```
+
+MORE: 通过手动实现 `Index trait`，可以把 `Index<T, Output = U>`里的 `T` 改成我们想用的任意类型，这样就可以使用`[]`运算符来取值。
+
+```rust
+use std::ops::Index;
+
+#[derive(PartialEq, Eq, Debug)]
+enum BasketballPosition {
+    PointGuard,
+    ShootingGuard,
+    Center,
+    PowerForward,
+    SmallForward,
+}
+
+struct BasketballPlayer {
+    name: &'static str,
+    position: BasketballPosition,
+}
+
+struct BasketballTeam {
+    point_guard: BasketballPlayer,
+    shooting_guard: BasketballPlayer,
+    center: BasketballPlayer,
+    power_forward: BasketballPlayer,
+    small_forward: BasketballPlayer,
+}
+
+impl Index<BasketballPosition> for BasketballTeam {
+    type Output = BasketballPlayer;
+    fn index(&self, position: BasketballPosition) -> &BasketballPlayer {
+        match position {
+            BasketballPosition::PointGuard => &self.point_guard,
+            BasketballPosition::ShootingGuard => &self.shooting_guard,
+            BasketballPosition::Center => &self.center,
+            BasketballPosition::PowerForward => &self.power_forward,
+            BasketballPosition::SmallForward => &self.small_forward,
+        }
+    }
+}
+
+fn main() {
+    let team = BasketballTeam {
+        point_guard: BasketballPlayer {
+            name: ("PointGuard"),
+            position: (BasketballPosition::PointGuard),
+        },
+        shooting_guard: BasketballPlayer {
+            name: ("ShootingGuard"),
+            position: (BasketballPosition::ShootingGuard),
+        },
+        center: BasketballPlayer {
+            name: ("Center"),
+            position: (BasketballPosition::Center),
+        },
+        power_forward: BasketballPlayer {
+            name: ("PowerForward"),
+            position: (BasketballPosition::PowerForward),
+        },
+        small_forward: BasketballPlayer {
+            name: ("SmallForward"),
+            position: (BasketballPosition::SmallForward),
+        },
+    };
+
+    assert_eq!(
+        &team[BasketballPosition::PowerForward].name,
+        &"PowerForward"
+    );
+    assert_eq!(
+        &team[BasketballPosition::PowerForward].position,
+        &BasketballPosition::PowerForward
+    );
+}
+```
+
+## 6. From && Into
+
+### 6.1. From trait
+
+```rust
+trait From<T> {
+    fn from(T) -> Self;
+}
+trait Into<T> { 
+    fn into(self) -> T;
+}
+
+// impl From<T> and Into<T> impl is automatically provided by generic blanket impl below.
+impl<T, U> Into<U> for T
+where
+    U : from<T>,
+{
+    fn into(self) -> U {
+        U::from(self)
+    }
+}
+```
+
+### 6.2. 使用 From trait 简化构造
+
+```rust
+// ...
+struct BasketballPlayer {
+    name: &'static str,
+    position: BasketballPosition,
+}
+
+impl From<(&'static str, BasketballPosition)> for BasketballPlayer {
+    fn from((s, p): (&'static str, BasketballPosition)) -> BasketballPlayer {
+        BasketballPlayer {
+            name: s,
+            position: p,
+        }
+    }
+}
+struct BasketballTeam {
+    point_guard: BasketballPlayer,
+    shooting_guard: BasketballPlayer,
+    center: BasketballPlayer,
+    power_forward: BasketballPlayer,
+    small_forward: BasketballPlayer,
+}
+// ..
+impl<Pos> From<[Pos; 5]> for BasketballTeam
+where
+    Pos: Into<BasketballPlayer>,
+{
+    fn from([p1, p2, p3, p4, p5]: [Pos; 5]) -> BasketballTeam {
+        BasketballTeam {
+            point_guard: p1.into(),
+            shooting_guard: p2.into(),
+            center: p3.into(),
+            power_forward: p4.into(),
+            small_forward: p5.into(),
+        }
+    }
+}
+
+// ...
+let team = BasketballTeam::from([
+    ("PointGuard", BasketballPosition::PointGuard),
+    ("ShootingGuard", BasketballPosition::ShootingGuard),
+    ("Center", BasketballPosition::Center),
+    ("PowerForward", BasketballPosition::PowerForward),
+    ("SmallForward", BasketballPosition::SmallForward),
+]);
+```
+
+- More
+
+```rust
+struct Person {
+    name: String,
+}
+
+impl Person {
+    // accepts:
+    // - String
+    fn new1(name: String) -> Person {
+        Person { name }
+    }
+
+    // accepts:
+    // - String
+    // - &String
+    // - &str
+    // - Box<str>
+    // - Cow<'_, str>
+    // - char
+    // since all of the above types can be converted into String
+    fn new2<N: Into<String>>(name: N) -> Person {
+        Person { name: name.into() }
+    }
+}
+```
+
+## 7. Error
+
+### 7.1. Error trait
+
+```rust
+trait Error: Debug + Display {
+    // provided default impls
+    fn source(&self) -> Option<&(dyn Error + 'static)>;
+    fn backtrace(&self) -> Option<&Backtrace>; // unstable
+    fn description(&self) -> &str; // rustc_deprecated since = "1.42.0"
+    fn cause(&self) -> Option<&dyn Error>; // rustc_deprecated since = "1.33.0"
+}
+```
+
+`fn source(&self) -> Option<&(dyn Error + 'static)>;`
+
+- 默认实现是空的 `None`，有需要的话可以覆写加上自己的实现
+- `source` 的意思是 `The lower-level source of this error, if any.`
+
+`fn backtrace(&self) -> Option<&Backtrace>;`
+
+```rust
+/// Returns a stack backtrace, if available, of where this error occurred.
+///
+/// This function allows inspecting the location, in code, of where an error
+/// happened. The returned `Backtrace` contains information about the stack
+/// trace of the OS thread of execution of where the error originated from.
+///
+/// Note that not all errors contain a `Backtrace`. Also note that a
+/// `Backtrace` may actually be empty. For more information consult the
+/// `Backtrace` type itself.
+#[unstable(feature = "backtrace", issue = "53487")]
+fn backtrace(&self) -> Option<&Backtrace> {
+    None
+}
+```
+
+`fn description(&self) -> &str;`、`fn cause(&self) -> Option<&dyn Error>;`两个废弃接口，分别被 `Display trait` 和 `fn source` 取代了
+
+## 8. TryFrom
+
+### 8.1. TryFrom trait
+
+```rust
+trait TryFrom<T> {
+    type Error;
+    fn try_from(value: T) -> Result<Self, Self::Error>;
+}
+
+trait TryInto<T> {
+    type Error;
+    fn try_into(self) -> Result<T, Self::Error>;
+}
+
+// same as `From` and `Into`
+// impl TryFrom<T> and TryInto<T> impl is automatically provided by generic blanket impl below.
+impl<T, U> TryInto<U> for T
+where
+    U: TryFrom<T>,
+{
+    type Error = U::Error;
+
+    fn try_into(self) -> Result<U, U::Error> {
+        U::try_from(self)
+    }
+}
+```
+
+### 8.2. Playground Code
+
+```rust
+use std::convert::TryFrom;
+use std::fmt;
+
+#[derive(Debug)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+#[derive(Debug)]
+struct OutOfBounds;
+
+impl fmt::Display for OutOfBounds {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "out of bounds")
+    }
+}
+
+impl TryFrom<(i32, i32)> for Point {
+    type Error = OutOfBounds;
+    fn try_from((x, y): (i32, i32)) -> Result<Self, Self::Error> {
+        if x.abs() > 1000 || y.abs() > 1000 {
+            return Err(OutOfBounds);
+        }
+        Ok(Point { x, y })
+    }
+}
+
+#[test]
+#[should_panic]
+fn will_panic() {
+    let _ = Point::try_from((11111, 11111)).expect("");
+}
+
+fn main() {
+    let pp = Point::try_from((100, 100)).unwrap();
+    println!("{:?} : {},{}", pp, pp.x, pp.y);
+}
+```
+
+## 9. FromStr
+
+### 9.1. FromStr trait
+
+```rust
+trait FromStr {
+    type Err;
+    fn from_str(s: &str) -> Result<Self, Self::Err>;
+}
+```
+
+- `trait From` 的限定加强版，可能失败的转换
+- `trait TryFrom` 的 str 限定版本，等同于 `TryFrom<&str>`
+
+```rust
+// suppose we have impl FromStr for TypeA here.
+impl FromStr for TypeA {
+    type Err = SomeError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        //... with very complex code.
+    }
+}
+
+// easy impl and we got `try_from() && try_into()` with &str for TypeA
+impl TryFrom<&str> for TypeA {
+    type Error = SomeError;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        <TypeA as FromStr>::from_str(s)
+    }
+}
+```
+
+### 9.2. Playground Code
+
+```rust
+use std::iter::Enumerate;
+use std::num::ParseIntError;
+use std::str::{Chars, FromStr};
+
+#[derive(Debug)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+#[derive(Debug)]
+struct ParsePointError;
+
+impl From<ParseIntError> for ParsePointError {
+    fn from(_: ParseIntError) -> Self {
+        ParsePointError
+    }
+}
+
+impl FromStr for Point {
+    type Err = ParsePointError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let get_num =
+            |char_indexs: &mut Enumerate<Chars<'_>>| -> Result<(usize, usize), ParsePointError> {
+                let is_num = |(_, c): &(usize, char)| matches!(c, '0'..='9' | '-');
+                let isnt_num = |t: &(usize, char)| !is_num(t);
+
+                let (start, _) = char_indexs
+                    .skip_while(isnt_num)
+                    .next()
+                    .ok_or(ParsePointError)?;
+                let (end, _) = char_indexs
+                    .skip_while(is_num)
+                    .next()
+                    .ok_or(ParsePointError)?;
+
+                Ok((start, end))
+            };
+
+        let mut char_indexs = s.chars().enumerate();
+
+        let (x_begin, x_end) = get_num(&mut char_indexs)?;
+        let (y_begin, y_end) = get_num(&mut char_indexs)?;
+
+        let x = s[x_begin..x_end].parse::<i32>()?; // need impl From<ParseIntError> for ParsePointError {}
+        let y = s[y_begin..y_end].parse::<i32>()?;
+
+        Ok(Point { x, y })
+    }
+}
+
+fn main() {
+    let p = "(1,2)".parse::<Point>();
+    println!("{:?}", p);
+}
+
+```
+
+## 10. Iterator
+
+### 10.1. Iterator trait
+
+```rust
+trait Iterator {
+    type Item;
+    fn next(&mut self) -> Option<Self::Item>;
+
+    // provided default impls
+    fn size_hint(&self) -> (usize, Option<usize>);
+    fn count(self) -> usize;
+    fn last(self) -> Option<Self::Item>;
+    // over 70 methods......
+    // https://doc.rust-lang.org/std/iter/trait.Iterator.html
+}
+```
+
+即使是对同一个类型实现迭代器，可以通过给返回的对象 `Item` 加上不同的限定符来实现返回**不可变引用**、**可变引用**、**值**，for example： `Vec`:
+
+|`Vec<T>`方法|返回类型|
+|-|-|
+|`.iter()`|`Iterator<Item = &T>`|
+|`.iter_mut()`|`Iterator<Item = &mut T>`|
+|`.into_iter()`|`Iterator<Item = T>`|
+
+### 10.2. 任意迭代器的可变引用也是迭代器
+
+有点绕口...，标准库里有这么个泛型实现：
+
+```rust
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I: Iterator + ?Sized> Iterator for &mut I {
+    type Item = I::Item;
+    fn next(&mut self) -> Option<I::Item> {
+        (**self).next()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (**self).size_hint()
+    }
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        (**self).advance_by(n)
+    }
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        (**self).nth(n)
+    }
+}
+```
+
+就是说，一个迭代器的可变引用，可以被当作迭代器使用。比如 `Iterator::take()`
+
+```rust
+// take use self as input.
+fn take(self, n: usize) -> Take<Self>;
+
+// ...
+let mut v = vec![1, 2, 3, 4, 5];
+let iter = v.iter();
+let _ = iter.take(3); // ✅
+// let _ = iter.take(3);// ❌ iter was used.
+
+let mut_iter = v.iter_mut();
+let _ = mut_iter.take(3);// ✅
+// let _ = mut_iter.take(3);// ❌ mut_iter was used.
+```
+
+### 10.3. 什么都可以是迭代器
+
+`Iterator` 是一个 trait
+
+> there are no rules or conventions on what can or cannot be an iterator. If the type impls Iterator then it's an iterator.
+
+标准库：
+
+```rust
+use std::sync::mpsc::channel;
+use std::thread;
+
+fn paths_can_be_iterated(path: &Path) {
+    for part in path {
+        // iterate over parts of a path
+    }
+}
+
+fn receivers_can_be_iterated() {
+    let (send, recv) = channel();
+
+    thread::spawn(move || {
+        send.send(1).unwrap();
+        send.send(2).unwrap();
+        send.send(3).unwrap();
+    });
+
+    for received in recv {
+        // iterate over received values
+    }
+}
+```
+
+## 11. IntoIterator
+
+### 11.1. IntoIterator trait
+
+```rust
+trait IntoIterator 
+where
+    <Self::IntoIter as Iterator>::Item == Self::Item, 
+{
+    type Item;
+    type IntoIter: Iterator;
+    fn into_iter(self) -> Self::IntoIter;
+}
+```
+
+- `IntoIterator` types can be converted into iterators
+- `for-in` loop will call `into_iter` method:
+
+```rust
+// vec = Vec<T>
+for v in vec {} // v = T
+
+// same as :
+for v in vec.into_iter() {}
+```
+
+## 12. FromIterator
+
+### 12.1. FromIterator trait
+
+```rust
+trait FromIterator<A> {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = A>;
+}
+```
+
+### 12.2. `Iterator trait` 里的 `fn collect()`方法需要实现了 `FromIterator trait`
+
+```rust
+fn collect<B>(self) -> B
+where
+    B: FromIterator<Self::Item>;
+```
+
+### 12.3. 标准库的集合都实现了 `IntoIterator trait` 和 `FromIterator trait`
+
+```rust
+use std::collections::{BTreeSet, HashMap, HashSet, LinkedList};
+
+// String -> HashSet<char>
+fn unique_chars(string: &str) -> HashSet<char> {
+    string.chars().collect()
+}
+
+// Vec<T> -> BTreeSet<T>
+fn ordered_unique_items<T: Ord>(vec: Vec<T>) -> BTreeSet<T> {
+    vec.into_iter().collect()
+}
+
+// HashMap<K, V> -> LinkedList<(K, V)>
+fn entry_list<K, V>(map: HashMap<K, V>) -> LinkedList<(K, V)> {
+    map.into_iter().collect()
+}
+```
+
+### 12.4. Playground Code
+
+```rust
+let x = (0..5)
+    .flat_map(|x| x * 101..x * 111)
+    .enumerate()
+    .filter(|&(i, x)| (i + x) % 3 == 0)
+    .take(10)
+    .map(|(_, x)| x)
+    .collect::<Vec<usize>>();
+```
+
+## 13. This is us now
+
+![2021-11/jason-jarvis-stdlib-traits.png](https://github.com/EluvK/Image_server/raw/master/2021-11/jason-jarvis-stdlib-traits.png)
