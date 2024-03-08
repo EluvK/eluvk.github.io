@@ -1,0 +1,81 @@
+# HotStuff
+
+basic hotStuff protocol
+
+[HotStuff 论文](https://dl.acm.org/doi/pdf/10.1145/3293611.3331591)
+
+## MSG 组装
+
+- 一个 message 由`[type, node, QC]`构造组成，默认还有 viewNumber=curView,
+- type 有：`NEW-VIEW`,`PREPARE`,`PRE-COMMIT`,`COMMIT`,`DECIDE`
+- node 携带 Leader 提出的 proposal 消息 或是 Replica 返回的 QC.node
+- QC 携带经过 Leader 聚合签名，说明是大家都认可的
+Replica 发送的 `VoteMsg` 会对 message.partialSig 进行部分签名。
+
+![MSG](https://github.com/EluvK/Image_server/raw/master/2020-09/hotstuff-MSG.png)
+
+## PREPARE
+
+Replica
+
+- 发送自己本地最大的 `prepare-QC` 作为 `new-view`
+
+Leader
+
+- 等待 `n-f` 个 `new-view` 消息，从中找到最高的 `prepare-QC` 作为 `high-QC`,基于 `high-QC` 往后生成一个新块（因此保证不会冲突），把新块打包在 `proposal` 消息里，广播 message
+- [`PREPARE`, `proposal`, `high-QC`]
+
+Replica
+
+- 收到当前 view 的 `PREPARE` 消息，验签，确认新块 `safe` 即返回 `VoteMsg` 表示同意
+- [`PREPARE`, `proposal`, `-`]
+- `safe` 原则(满足一个即可)： 1. safety: 新块是本地 `lock-QC` 对应块的后续块(pre-block 是本地确认过的块) 2. liveness： QC 的 view-num > 本地 `lock-QC` 的 view-num (说明本地落后了?需要同步处理吧)
+
+## PRE-COMMIT
+
+Leader
+
+- 等待接受 `n-f` 个 `PREPARE` 的 `VoteMsg`，验签聚合成新签名，生成为新的 `prepare-QC` 存在本地，广播 message
+- [`PRE-COMMIT`, `-`, `prepare-QC`]
+
+Replica
+
+- 收到当前 view 的 `PRE-COMMIT` 消息，验签返回 `VoteMsg` 表示同意
+- [`PRE-COMMIT`, `prepare-QC.node`, `-`]
+
+## COMMIT
+
+Leader
+
+- 等待接受 `n-f` 个 `PRE-COMMIT` 的 `VoteMsg`，验签聚合成新签名，生成为新的 `pre-commit-QC`，广播 message
+- [`COMMIT`, `-`, `pre-commit-QC`]
+
+Replica
+
+- 收到当前 view 的 `COMMIT` 消息，验签返回 `VoteMsg` 表示同意
+- [`COMMIT`, `pre-commit-QC.node`, `-`]
+
+## DECIDE
+
+Leader
+
+- 等待接受 `n-f` 个 `COMMIT` 的 `VoteMsg`，验签聚合成新签名，生成新的 `commit-QC`，广播 message
+- [`DECIDE`, `-`, `commit-QC`]
+
+Replica
+
+- 收到当前 view 的 `DECIDE` 消息，确认了这个 `proposal` 是大家都会执行的，在本地执行，自身 view++，开启下一阶段
+
+## 说明
+
+后面三个阶段内容很相似
+
+Leader 广播的 `message.type` 表示这一回合大家来共识什么阶段，附带的 `xxx-QC` 表示 `xxx` 这个阶段已经被至少 `n-f` 人确认过了，这是一个大家都同意的验证。
+
+Replica 回复的 `VoteMsg.type` 表示这个 Replica 同意的这个阶段。
+
+三个 QC：
+
+- `prepare-QC` 可以理解为，Leader 宣布已经有 `n-f` 个节点知道了下一个要共识的内容是 `proposal` 了
+- `pre-commit-QC` 可以理解为，Leader 宣布已经有 `n-f` 个节点知道了：至少有 `n-f` 个节点知道下一个要共识的内容是 `proposal` 了。【但是这些节点并不知道 其它节点知不知道 有多少节点知道 下一个要共识的内容】
+- `commit-QC` 可以理解为，Leader 宣布已经有 `n-f` 个节点，这些节点不仅知道了至少有 `n-f` 个节点知道下个要共识的 `proposal`，而且还知道别人知道自己知道...,所以就算共识成功了。
