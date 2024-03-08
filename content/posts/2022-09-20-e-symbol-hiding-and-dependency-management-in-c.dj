@@ -66,7 +66,7 @@ C 语言这种默认的全局可访问性看起来使用简单，但却在实践
 
 不过 C++语言提供了匿名命名空间的特性，凡是在匿名命名空间中的符号都是不导出的。也就是说匿名命名空间中的符号只在本编译单元内部可见，外部是不能使用的。其作用类似于 C 语言中的 `static` ，但是写起来更加简洁。
 
-``` CPP
+```cpp
 // example.cpp
 
 namespace {
@@ -94,7 +94,7 @@ C++语言为了兼容 C，仍旧使用头文件机制发布 API。为了在 C++�
 
 以下面这个 Storage 类定义的头文件“Storage.h”为例：
 
-``` CPP
+```cpp
 // Storage.h
 
 #include "StorageType.h"
@@ -124,7 +124,7 @@ private:
 
 如上例中的 `static unsigned int totalCapacity` 是不需要定义到类的头文件中的，可以直接定义到该类实现文件的匿名命名空间中。
 
-``` CPP
+```cpp
 // Storage.cpp
 
 #include "Storage.h"
@@ -158,7 +158,7 @@ unsigned Storage::int getCharge() const {
 
 如上例中类的 `bool isValid() const` 私有成员方法的实现中访问了类的成员变量 `this->capacity`。我们修改 `isValid` 方法的实现，将 `capacity` 作为参数传递给它，这样 `isValid` 在类中的声明就可以变为 `static bool isValid(unsigned int capacity)` ，实现变为：
 
-``` CPP
+```cpp
 // Storage.cpp
 
 bool Storage::isValid(unsigned int capacity) {
@@ -173,7 +173,7 @@ bool Storage::isValid(unsigned int capacity) {
 
 > EluvK: 这一点我倒是觉得不太必要，有一点点为了说明这种优化方式而使用，实际情况下应该判断这个方法是不是不该放在接口类的定义里，放在子类实现的定义里更合适。
 
-``` CPP
+```cpp
 // Storage.h
 
 #include "StorageType.h"
@@ -188,7 +188,7 @@ private:
 };
 ```
 
-``` CPP
+```cpp
 // Storage.cpp
 
 #include "Storage.h"
@@ -225,7 +225,7 @@ unsigned Storage::int getCharge() const {
 
 对于上例，使用 `PIMPL` 后实现如下：
 
-``` CPP
+```cpp
 // storage.h
 
 class Storage {
@@ -239,7 +239,7 @@ private:
 };
 ```
 
-``` CPP
+```cpp
 // Storage.cpp
 
 #include "Storage.h"
@@ -326,18 +326,20 @@ unsigned int Storage::getCharge() const {
 
 方法是有的，那就是借助编译器扩展。
 
-GCC4之后支持使用 `-fvisibility=hidden` 编译选项，将库的所有符号默认设置为对外不可见。这样编译出的二进制就不会导出可供外部链接的符号。然后再结合 GCC 的 `__attribute__ ((visibility ("default")))` 属性，在代码中明确指定可以暴露给外部的 API，于是我们就可以显示的控制库的对外 API 的可见性。
+GCC4之后支持使用 `-fvisibility=hidden` 编译选项，将库的所有符号默认设置为对外不可见。这样编译出的二进制就不会导出可供外部链接的符号。
+
+然后再结合 GCC 的 `__attribute__ ((visibility ("default")))` 属性，在代码中明确指定可以暴露给外部的 API，于是我们就可以显示的控制库的对外 API 的可见性。
 
 如下代码示例：
 
-``` CPP
+```cpp
 // entry.h
 
 void function1();
 __attribute__ ((visibility ("default"))) void entry_point();
 ```
 
-``` CPP
+```cpp
 // entry.cpp
 
 #include "entry.h"
@@ -359,7 +361,7 @@ Windows 下也有类似的机制 `__declspec(dllexport)` ，它和 gcc 下的 `_
 
 为了让使用上述编译器扩展的代码能够跨平台，使用该特性的时候可以封装一个宏，根据代码所在的平台和编译器版本，自动转化成不同的实现。
 
-``` CPP
+```cpp
 // keywords.h
 
 #if defined _WIN32 || defined __CYGWIN__
@@ -390,7 +392,7 @@ Windows 下也有类似的机制 `__declspec(dllexport)` ，它和 gcc 下的 `_
 
 如上参考了 [Visibility](https://gcc.gnu.org/wiki/Visibility) 中给出的宏定义。它根据不同的平台和编译器版本，定义了 `MOD_PUBLIC` 和 `MOD_LOCAL` 的不同实现。
 
-``` CPP
+```cpp
 #include "keywords.h"
 
 MOD_PUBLIC void function(int a);
@@ -443,7 +445,7 @@ public:
 
 下面我们看看一个具体的 C 的头文件 executor_api.h：
 
-``` CPP
+```cpp
 // executor_api.h
 
 #ifndef H867A653E_0C66_4A68_80C4_B0F253647F7F
@@ -480,7 +482,7 @@ Include Guard 中的宏需要全局唯一，一般使用路径名和文件名的
 
 再往下是如下语句块：
 
-``` CPP
+```cpp
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -514,9 +516,15 @@ extern "C" {
 
 前面我们说了，头文件首先是给别人用的，但是为了避免重复声明，自己也可以包含自己对外发布的头文件。
 
-如本例，为了避免 `Executor` 的实现文件重复声明 `MOD_PUBLIC struct Executor* executor_clone(const struct Executor* e)` 和 `MOD_PUBLIC void executor_exec(struct Executor* e, CommandType cmd)` ，所以 executor.c 也包含了 executor_api.h。
+如本例，为了避免 `Executor` 的实现文件重复声明
 
-``` CPP
+`MOD_PUBLIC struct Executor* executor_clone(const struct Executor* e)` 和
+
+`MOD_PUBLIC void executor_exec(struct Executor* e, CommandType cmd)`
+
+所以 executor.c 也包含了 executor_api.h。
+
+```cpp
 // executor.c
 
 #include "executor/executor_api.h"
@@ -545,7 +553,7 @@ OK，接下来我们遇到的问题是，当按照内外部用途拆分开的头
 
 继续用上面的例子示例，当前社区对于单个库目录的主流布局如下：
 
-``` TEXT
+```text
 executor
 │
 │   README.md
