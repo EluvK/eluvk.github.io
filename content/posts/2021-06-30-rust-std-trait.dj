@@ -281,6 +281,7 @@ where A: PartialEq<B> + ?Sized, B: ?Sized;
 ### 3.8. Noted
 
 > Generally, we should only impl equality between different types if they contain the same kind of data and the only difference between the types is how they represent the data or how they allow interacting with the data.
+>
 > 通常来说我们仅会实现相同类型之间的可相等性，除非两种类型虽然包含同一类数据，但又有表达形式或交互形式的差异，这时我们才会考虑实现不同类型之间的可相等性。
 
 原 Blog 里举得糟糕的扑克牌花色和大小的问题，也说明了 `PartialEq` 并不能理解为其内容里有一部分相等。本质上它应该是就是 `Eq`，只是不满足自反性的 Eq。
@@ -321,10 +322,15 @@ All `PartialOrd` impls must ensure that comparisons are **transitive** and **dua
 - **duality**: `a < b` if and only if `b > a`.
 
 > noted that the original blog use older version `asymmetry`, which was delete in rust-lang this [PR: pull/85637](https://github.com/rust-lang/rust/pull/85637)
-> and here quote the [reason](https://github.com/rust-lang/rust/pull/85637/files/1cfc1874b526fd8a681ebfaf64c554077586c8b1) :
->> /// - asymmetry: if `a < b` then `!(a > b)`, as well as `a > b` implying `!(a < b)`;
->> It is redundant: it already follows from a < b being defined as `partial_cmp(a, b) == Some(Less)`, which implies `!(a > b)` (defined as `partial_cmp(a, b) != Some(Greater)`).
->> "asymmetry" is the wrong term, an "asymmetric" relation is a relation that satisfies "if `a < b` then `!(b < a)`".
+>
+> and here quote the [reason](https://github.com/rust-lang/rust/pull/85637/files/1cfc1874b526fd8a681ebfaf64c554077586c8b1)
+>
+> /// - asymmetry: if `a < b` then `!(a > b)`, as well as `a > b` implying `!(a < b)`;
+>
+> It is redundant: it already follows from a < b being defined as `partial_cmp(a, b) == Some(Less)`, which implies `!(a > b)` (defined as `partial_cmp(a, b) != Some(Greater)`).
+>
+> "asymmetry" is the wrong term, an "asymmetric" relation is a relation that satisfies "if `a < b` then `!(b < a)`".
+>
 > asymmtery (in the correct sense of the word) is a consequence of duality, so we could state it in the corollary section if you wish. antisymmetry is more closely related to what the docs are currently stating, but it is defined for `<=`-style relations: `R` is antisymmetric if `R(a, b) && R(b, a)` implies `a == b`.
 
 impl a `PartialOrd` manually
@@ -444,7 +450,7 @@ fn main() {
 
 需要注意的就是，要么都用 derive 宏的写法，要么都手动实现
 
-> Implementations of [`PartialEq`], `PartialOrd`, and [`Ord`] **must** agree with each other. It's easy to accidentally make them disagree by deriving some of the traits and manually implementing others.
+> Implementations of `PartialEq`, `PartialOrd`, and `Ord` **must** agree with each other. It's easy to accidentally make them disagree by deriving some of the traits and manually implementing others.
 
 ### 4.3. Noted
 
