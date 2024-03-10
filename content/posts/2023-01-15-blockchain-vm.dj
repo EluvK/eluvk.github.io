@@ -26,7 +26,7 @@ UTXO (Unspent Transaction Output) ，简单来说就是：
 1. 一个 UTXO 包含一个面额和一个当前的拥有者。
 2. 某个一账户的余额 是由 当前区块链网络里，所有属于这个账户的 UTXO 组成的：
 
-![utxo_1](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/utxo_1.png)
+![utxo_1](https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/utxo_1.png)
 
 一笔交易里可以包含多个 input \也可以有多个 output，只需要保证 `sum(inputs) > sum(outputs) + fee` 即可。
 
@@ -46,7 +46,7 @@ UTXO (Unspent Transaction Output) ，简单来说就是：
 
 #### 使用 output
 
-![utxo_2](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/utxo_2.png)
+![utxo_2](https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/utxo_2.png)
 
 这里涉及到的两个脚本：
 
@@ -55,7 +55,7 @@ UTXO (Unspent Transaction Output) ，简单来说就是：
 
 比特币虚拟机在执行交易时：需要验证解锁脚本能否解开锁定脚本，会把 **锁定脚本**( `scriptPubKey` )和对应索引的**解锁脚本**( `scriptSig` )拼接起来从左到右执行一遍。如果执行过程中**没有出现错误并且执行结果为真**，则验证通过，意味着钥匙打开了锁，这个 UTXO 可以被花费。
 
-![utxo_3](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/utxo_3.png)
+![utxo_3](https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/utxo_3.png)
 
 请注意，解锁脚本里不能出现 PUSHDATA 以外的任何操作码，否则会报错
 > 16: mandatory-script-verify-flag-failed (Only non-push operators allowed in signatures)
@@ -118,7 +118,7 @@ B 给 A 提供了一个锁定脚本模板：`OP_DUP OP_HASH160 <pubKeyHash> OP_E
 
 看一下执行过程 PPT:
 
-![bitcoin-sig-scrpit](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/bitcoin-sig-script.gif)
+![bitcoin-sig-scrpit](https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/bitcoin-sig-script.gif)
 
 注： 关于为什么使用公钥 hash,可以参考下面第一篇拓展阅读，介绍了“付款到公钥” 和 “付款到公钥哈希”的问题
 
@@ -138,17 +138,17 @@ B 给 A 提供了一个锁定脚本模板：`OP_DUP OP_HASH160 <pubKeyHash> OP_E
 
 #### 账户模型
 
-![eth-account-1](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/eth_account_1.png)
+![eth-account-1](https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/eth_account_1.png)
 
 整个以太坊会保存所有账户的状态：
 
-![eth-global-state](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/eth_global_state.jfif)
+![eth-global-state](https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/eth_global_state.jfif)
 
 #### 以太坊状态机
 
 `(nonce, from, to, value, input)` 是一个 `Transaction` 包含的最重要的几个字段，通过 `nonce` 防止重放攻击， `from` 和 `to` 分别表示了当前交易的发出者和接受者， `value` 是当前交易包含的 `Ether` ， `input` 中包含了合约调用相关的二进制信息。
 
-![eth-state-machine](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/eth_state_machine.png)
+![eth-state-machine](https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/eth_state_machine.png)
 
 每当一个 `Transaction` 被 `Ethereum` 主网挖到后， `from` 和 `to` 账户的 `Ether` 余额就会变动， `Ethereum` 就像一个状态机，它接受一个又一个的 `Transaction` 并不停改变自己的状态。
 
@@ -162,10 +162,10 @@ EVM 执行的过程：
 - `Memory` 作为临时的变量存储， `storage` 是账户状态。
 - 执行受到 `gas avail` 限制。
 
-![evm](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/evm1.jfif)
+![evm](https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/evm1.jfif)
 
 执行过程中的消息调用（CALL）：合约之间的调用，参数和返回值在 memory 中传递
-![evm](https://github.com/EluvK/Image_server/raw/master/2023-01/blockchain_vm_share/evm2.jfif)
+![evm](https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/evm2.jfif)
 
 ## 如何写一个简单堆栈虚拟机
 

@@ -12,7 +12,7 @@ basic hotStuff protocol
 - QC 携带经过 Leader 聚合签名，说明是大家都认可的
 Replica 发送的 `VoteMsg` 会对 message.partialSig 进行部分签名。
 
-![MSG](https://github.com/EluvK/Image_server/raw/master/2020-09/hotstuff-MSG.png)
+![MSG](https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2020-09/hotstuff-MSG.png)
 
 ## PREPARE
 
