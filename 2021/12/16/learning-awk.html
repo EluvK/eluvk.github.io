@@ -1,0 +1,1024 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Learning awk</title>
+  <meta name="description" content="主要参考 Understanding AWK 并在其上进行一些补充拓展。适合对 awk 了解不多，想学习使用的读者阅读使用，跟着示例一起操作学起来更快更有效~">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2021/12/16/learning-awk.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#Learning-awk"><span>Learning awk</span> <time datetime="2021-12-16">Dec 16, 2021</time></a>
+    </h1>
+<section id="s-1">
+
+    <h2>
+    <a href="#s-1"><span>说明</span> </a>
+    </h2>
+<p><span>主要参考 </span><a href="https://earthly.dev/blog/awk-examples/"><span>Understanding AWK</span></a><span> 并在其上进行一些补充拓展。适合对 </span><code>awk</code><span> 了解不多，想学习使用的读者阅读使用，跟着示例一起操作学起来更快更有效~</span></p>
+<p><span>这应该是个人学习总结，程序员的自我修养：</span><strong><strong><span>Learning Tools</span></strong></strong><span>系列的第一篇。后面有可能也会学习汇总一下 </span><code>sed</code><span>|</span><code>grep</code><span>|</span>&hellip;</p>
+<section id="s-2">
+
+    <h3>
+    <a href="#s-2"><span>其它参考资料列表</span> </a>
+    </h3>
+<ul>
+<li>
+<a href="https://www.gnu.org/software/gawk/manual/html_node/index.html"><span>The GNU awk User’s Guide</span></a><span> 官方文档永远是看花里胡哨 blog 迷惑时解惑的地方。</span>
+</li>
+</ul>
+</section>
+<section id="What-is-awk">
+
+    <h3>
+    <a href="#What-is-awk"><span>What is awk</span> </a>
+    </h3>
+<p><code>awk</code><span> 是一个记录处理工具，1977年由 Aho、Kernighan 和 Weinberger 编写，也正是这三位的名字缩写。</span><code>grep</code><span> 可以按行搜索，</span><code>sed</code><span> 可以按行做文本替换，</span><code>awk</code><span> 则是可以按行做计算。</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>If grep lets you search for lines, and sed lets you do replacements in lines then awk was designed to let you do calculations on lines.</span></p>
+</blockquote>
+
+</figure>
+</section>
+<section id="How-to-pronounce-awk">
+
+    <h3>
+    <a href="#How-to-pronounce-awk"><span>How to pronounce </span>&lsquo;<span>awk</span>&rsquo; </a>
+    </h3>
+<p><span>在一个远古论坛找到了一个年龄和我差不多大的帖子：</span><a href="http://computer-programming-forum.com/11-awk/2b3847ea18e1b35a.htm"><span>How to pronounce </span>&lsquo;<span>awk</span>&rsquo;<span>?</span></a><span>，就按照 </span><code>hawk [hɔːk]</code><span>的同音来读了。</span></p>
+</section>
+<section id="How-to-install-awk">
+
+    <h3>
+    <a href="#How-to-install-awk"><span>How to install awk</span> </a>
+    </h3>
+<p><span>Linux 系统自带，mac 如果没有，用 Homebrew(</span><code>brew install gawk</code><span>)装。本篇 blog 主要在 CentOS7中完成：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ awk --version</span>
+<span class="line">GNU awk 4.0.2</span>
+<span class="line">Copyright (C) 1989, 1991-2012 Free Software Foundation.</span></code></pre>
+
+</figure>
+<p><span>已经有了 Awk 了，开始吧</span></p>
+</section>
+</section>
+<section id="TO-BEGIN-WITH">
+
+    <h2>
+    <a href="#TO-BEGIN-WITH"><span>TO BEGIN WITH</span> </a>
+    </h2>
+<section id="awk-Print">
+
+    <h3>
+    <a href="#awk-Print"><span>awk Print</span> </a>
+    </h3>
+<p><span>默认情况下，</span><code>awk</code><span> 接受标准输入，输出标准输出，使用 </span><code>awk</code><span> 做的最简单的事情就是打印输入的内容：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ <span class="hl-built_in">echo</span> <span class="hl-string">&quot;one two three&quot;</span> | awk <span class="hl-string">&#x27;{ print }&#x27;</span></span>
+<span class="line">one two three</span></code></pre>
+
+</figure>
+<p><span>注： </span><code>{</code><span> 和 </span><code>}</code><span> 作为分隔符号，包含了一个 </span><code>action</code><span>，实际上，</span><code>awk</code><span> 的语法，整体上就是一句句的 </span><code>pattern { action }</code><span>，在后面的更多例子中慢慢体会。</span></p>
+<p><span>打印的时候也可以选择打印哪一列，或者哪一个值域(</span><strong><strong><span>fields</span></strong></strong><span> is a much more precise description)：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ <span class="hl-built_in">echo</span> <span class="hl-string">&quot;one two three&quot;</span> | awk <span class="hl-string">&#x27;{ print $1 }&#x27;</span></span>
+<span class="line">one </span>
+<span class="line">$ <span class="hl-built_in">echo</span> <span class="hl-string">&quot;one two three&quot;</span> | awk <span class="hl-string">&#x27;{ print $2 }&#x27;</span></span>
+<span class="line">two </span>
+<span class="line">$ <span class="hl-built_in">echo</span> <span class="hl-string">&quot;one two three&quot;</span> | awk <span class="hl-string">&#x27;{ print $3 }&#x27;</span></span>
+<span class="line">three</span></code></pre>
+
+</figure>
+<p><span>这里的序号是从1开始的，0表示一整行：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ <span class="hl-built_in">echo</span> <span class="hl-string">&quot;one two three&quot;</span> | awk <span class="hl-string">&#x27;{ print $0 }&#x27;</span></span>
+<span class="line">one two three</span></code></pre>
+
+</figure>
+<p><span>最开始说了，</span><code>awk</code><span> 是按行操作的，上面几个例子都是只有一行输入，如果有多行输入：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ <span class="hl-built_in">echo</span> <span class="hl-string">&quot;</span></span>
+<span class="line"><span class="hl-string"> one two three</span></span>
+<span class="line"><span class="hl-string"> four five six&quot;</span> \</span>
+<span class="line">| awk <span class="hl-string">&#x27;{ print $1, $2 }&#x27;</span></span>
+<span class="line"></span>
+<span class="line">one two</span>
+<span class="line">four five</span></code></pre>
+
+</figure>
+<p><span>除了</span><code>$1</code><span>,</span><code>$2</code><span>,</span>&hellip;<span>, 还有 </span><code>NF</code><span> 和 </span><code>NR</code><span> 两个特殊变量，</span><code>NF</code><span> 表示 </span><code>number of fields</code><span>，</span><code>NR</code><span> 表示 </span><code>number of records</code><span>。前者表示一行里面一共有多少个 </span><code>fields</code><span>，后者表示当前处理了多少行(从1开始)，这两个变量本身的值就是一个数，如果再带上$，就会得到对应的 </span><code>fields</code><span> 里的值了，体会一下下面两个例子：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ <span class="hl-built_in">echo</span> <span class="hl-string">&quot;one two three</span></span>
+<span class="line"><span class="hl-string"> four five six</span></span>
+<span class="line"><span class="hl-string"> seven eight nine &quot;</span> \</span>
+<span class="line"> | awk <span class="hl-string">&#x27;{ print NR, NF }&#x27;</span></span>
+<span class="line"></span>
+<span class="line">1 3</span>
+<span class="line">2 3</span>
+<span class="line">3 3</span></code></pre>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ <span class="hl-built_in">echo</span> <span class="hl-string">&quot;one two three</span></span>
+<span class="line"><span class="hl-string"> four five six</span></span>
+<span class="line"><span class="hl-string"> seven eight nine &quot;</span> \</span>
+<span class="line"> | awk <span class="hl-string">&#x27;{ print $NR, $NF }&#x27;</span></span>
+<span class="line"></span>
+<span class="line">one three</span>
+<span class="line">five six</span>
+<span class="line">nine nine</span></code></pre>
+
+</figure>
+<p><span>基本可以理解，</span><code>{ print NR }</code><span>是有意义的，而</span><code>{ print $NR }</code><span>可能很难找到使用的场合。另外 </span><code>$NF</code><span> 还可以用来计算倒数第几个：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ <span class="hl-built_in">echo</span> <span class="hl-string">&quot;one two three</span></span>
+<span class="line"><span class="hl-string"> four five six</span></span>
+<span class="line"><span class="hl-string"> seven eight nine &quot;</span> \</span>
+<span class="line"> | awk <span class="hl-string">&#x27;{ print $(NF-1) }&#x27;</span></span>
+<span class="line"></span>
+<span class="line">two</span>
+<span class="line">five</span>
+<span class="line">eight</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="SPEED-UP">
+
+    <h2>
+    <a href="#SPEED-UP"><span>SPEED UP</span> </a>
+    </h2>
+<section id="sample">
+
+    <h3>
+    <a href="#sample"><span>获取一些 sample 数据用来练习</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ curl https://s3.amazonaws.com/amazon-reviews-pds/tsv/amazon_reviews_us_Digital_Video_Games_v1_00.tsv.gz \</span>
+<span class="line">| gunzip -c &gt;&gt; gamereviews.tsv</span></code></pre>
+
+</figure>
+<ul>
+<li>
+<span>其它数据集可以从 </span><a href="https://s3.amazonaws.com/amazon-reviews-pds"><span>link</span></a><span> 里找找。</span>
+</li>
+<li>
+<span>完全下载下来压缩包26.2MB，解压出来约70MB 文本，</span><code>wc -l</code><span> 显示一共有145432行。可以在 </span><code>gunzip -c</code><span> 命令后加上</span><code>| head -n 10000</code><span>获取前 n 行。</span>
+</li>
+</ul>
+</section>
+<section id="s-3">
+
+    <h3>
+    <a href="#s-3"><span>数据集格式</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ <span class="hl-built_in">head</span> -n 2 gameviews.tsv</span>
+<span class="line">marketplace	customer_id	review_id   product_id  product_parent  product_title   product_category    star_rating helpful_votes   total_votes vine    verified_purchase   review_headline review_body review_date</span>
+<span class="line">US  21269168    RSH1OZ87OYK92   B013PURRZW  603406193   Madden NFL 16 - Xbox One Digital Code   Digital_Video_Games 2   2   3   N   N   A slight improvement from last year.    I keep buying madden every year hoping they get back to football. This years version is a little better than last years -- but that<span class="hl-string">&#x27;s not saying much.The game looks great. The only thing wrong with the animation, is the way the players are always tripping on each other.&lt;br /&gt;&lt;br /&gt;The gameplay is still slowed down by the bloated pre-play controls. What used to take two buttons is now a giant PITA to get done before an opponent snaps the ball or the play clock runs out.&lt;br /&gt;&lt;br /&gt;The turbo button is back, but the player movement is still slow and awkward. If you liked last years version, I&#x27;</span>m guessing you<span class="hl-string">&#x27;ll like this too. I haven&#x27;</span>t had a chance to play anything other than training and a few online games, so I<span class="hl-string">&#x27;m crossing my fingers and hoping the rest is better.&lt;br /&gt;&lt;br /&gt;The one thing I can recommend is NOT TO BUY THE MADDEN BUNDLE. The game comes as a download. So if you hate it, there&#x27;</span>s no trading it <span class="hl-keyword">in</span> at Gamestop.    2015-08-31</span></code></pre>
+
+</figure>
+<p><span>第一行是表头，代表下面每一行中每一列的含义：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">DATA COLUMNS:</span>
+<span class="line">01  marketplace       - 2 letter country code of the marketplace where the review was written.</span>
+<span class="line">02  customer_id       - Random identifier that can be used to aggregate reviews written by a single author.</span>
+<span class="line">03  review_id         - The unique ID of the review.</span>
+<span class="line">04  product_id        - The unique Product ID the review pertains to. </span>
+<span class="line">05  product_parent    - Random identifier that can be used to aggregate reviews for the same product.</span>
+<span class="line">06  product_title     - Title of the product.</span>
+<span class="line">07  product_category  - Broad product category that can be used to group reviews </span>
+<span class="line">08  star_rating       - The 1-5 star rating of the review.</span>
+<span class="line">09  helpful_votes     - Number of helpful votes.</span>
+<span class="line">10  total_votes       - Number of total votes the review received.</span>
+<span class="line">11  vine              - Review was written as part of the Vine program.</span>
+<span class="line">12  verified_purchase - The review is on a verified purchase.</span>
+<span class="line">13  review_headline   - The title of the review.</span>
+<span class="line">14  review_body       - The review text.</span>
+<span class="line">15  review_date       - The date the review was written.</span></code></pre>
+
+</figure>
+<p><span>回顾之前的 print 第几列：可以这样试一试：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ awk <span class="hl-string">&#x27;{print $1}&#x27;</span> gamereviews.tsv | <span class="hl-built_in">head</span> </span>
+<span class="line">marketplace</span>
+<span class="line">US</span>
+<span class="line">US</span>
+<span class="line">US</span>
+<span class="line">US</span>
+<span class="line">US</span>
+<span class="line">US</span>
+<span class="line">US</span>
+<span class="line">US</span>
+<span class="line">US</span>
+<span class="line"></span>
+<span class="line">$ awk <span class="hl-string">&#x27;{print $2}&#x27;</span> gamereviews.tsv | <span class="hl-built_in">head</span> </span>
+<span class="line">customer_id</span>
+<span class="line">21269168</span>
+<span class="line">133437</span>
+<span class="line">45765011</span>
+<span class="line">113118</span>
+<span class="line">22151364</span>
+<span class="line">22151364</span>
+<span class="line">38426028</span>
+<span class="line">6057518</span>
+<span class="line">20715661</span>
+<span class="line"></span>
+<span class="line">$ awk <span class="hl-string">&#x27;{print $3}&#x27;</span> gamereviews.tsv | <span class="hl-built_in">head</span> </span>
+<span class="line">review_id</span>
+<span class="line">RSH1OZ87OYK92</span>
+<span class="line">R1WFOQ3N9BO65I</span>
+<span class="line">R3YOOS71KM5M9</span>
+<span class="line">R3R14UATT3OUFU</span>
+<span class="line">RV2W9SGDNQA2C</span>
+<span class="line">R3CFKLIZ0I2KOB</span>
+<span class="line">R1LRYU1V0T3O38</span>
+<span class="line">R44QKV6FE5CJ2</span>
+<span class="line">R2TX1KLPXXXNYS</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># ......</span></span></code></pre>
+
+</figure>
+<p><span>打到第6列</span><strong><strong><span>标题</span></strong></strong><span>的时候，结果开始不对劲了：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ awk <span class="hl-string">&#x27;{print $6}&#x27;</span> gamereviews.tsv | <span class="hl-built_in">head</span> </span>
+<span class="line">product_title</span>
+<span class="line">Madden</span>
+<span class="line">Xbox</span>
+<span class="line">Command</span>
+<span class="line">Playstation</span>
+<span class="line">Saints</span>
+<span class="line">Double</span>
+<span class="line">Sims</span>
+<span class="line">Playstation</span>
+<span class="line">Playstation</span></code></pre>
+
+</figure>
+<p><span>至少上面看过，第二行，也就是第一条 review，title 应该是 </span><code>Madden NFL 16 - Xbox One Digital Code</code><span>，而这里只切割出来的第一个单词。</span></p>
+<p><span>原因就是，</span><code>awk</code><span> 默认以 </span><code> </code><span>，一个空格作为区分一行中不同 </span><code>fileds</code><span> 的分隔符 </span><code>Field Separators</code><span>。</span></p>
+</section>
+<section id="Field-Separators">
+
+    <h3>
+    <a href="#Field-Separators"><span>Field Separators</span> </a>
+    </h3>
+<p><span>使用参数</span><code> -F '{fields separators}' </code><span> 来覆盖默认的空格分隔符，这个数据集里的分隔符都是一个 </span><code>tab</code><span>，所以上面的命令可以改为：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ awk -F <span class="hl-string">&#x27;\t&#x27;</span> <span class="hl-string">&#x27;{print $6}&#x27;</span> gamereviews.tsv | <span class="hl-built_in">head</span> </span>
+<span class="line">product_title</span>
+<span class="line">Madden NFL 16 - Xbox One Digital Code</span>
+<span class="line">Xbox Live Gift Card</span>
+<span class="line">Command &amp; Conquer The Ultimate Collection [Instant Access]</span>
+<span class="line">Playstation Plus Subscription</span>
+<span class="line">Saints Row IV - Enter The Dominatrix [Online Game Code]</span>
+<span class="line">Double Dragon: Neon [Online Game Code]</span>
+<span class="line">Sims 4</span>
+<span class="line">Playstation Network Card</span>
+<span class="line">Playstation Network Card</span></code></pre>
+
+</figure>
+
+<figure class="blockquote">
+<blockquote><p><span>Noted: By default, awk does more than split the input on spaces. It splits based on one or more sequence of space or tab or newline characters. In addition, any of these three characters at the start or end of input gets trimmed and won’t be part of field contents. Newline characters come into play if the record separator results in newline within the record content.</span></p>
+</blockquote>
+
+</figure>
+<p><span>再回顾一下之前的 </span><code>NF</code><span> 和 </span><code>NR</code><span>，获取一下最后一行的日期(15  review</span><em><span>date)、第8个评分(08  star</span></em><span>rating)以及倒数第三个(13  review_headline)：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ awk -F <span class="hl-string">&#x27;\t&#x27;</span> <span class="hl-string">&#x27;{print NR,$NF,$8,$(NF-2) }&#x27;</span> gamereviews.tsv | <span class="hl-built_in">head</span> -n 10</span>
+<span class="line">1 review_date star_rating review_headline</span>
+<span class="line">2 2015-08-31 2 A slight improvement from last year.</span>
+<span class="line">3 2015-08-31 5 Five Stars</span>
+<span class="line">4 2015-08-31 5 Hail to the great Yuri!</span>
+<span class="line">5 2015-08-31 5 Five Stars</span>
+<span class="line">6 2015-08-31 5 Five Stars</span>
+<span class="line">7 2015-08-31 5 Five Stars</span>
+<span class="line">8 2015-08-31 4 i like the new skills like herbalism <span class="hl-keyword">in</span> this</span>
+<span class="line">9 2015-08-31 5 Five Stars</span>
+<span class="line">10 2015-08-31 5 Easy &amp; Fast</span></code></pre>
+
+</figure>
+</section>
+<section id="Pattern-Match-With-Regular-Expressions">
+
+    <h3>
+    <a href="#Pattern-Match-With-Regular-Expressions"><span>Pattern Match With Regular Expressions</span> </a>
+    </h3>
+<p><span>至此都是在对每一行进行操作，</span><code>awk</code><span> 实际包含模式匹配，之前提过，</span><code>awk</code><span> 的语法实际上是一条条的 </span><code>pattern { action }</code><span>，目前我们也只用上了</span><code>{print}</code><span>这个 </span><code>action</code><span>。</span></p>
+<p><span>关于模式匹配，一个简单的例子：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ <span class="hl-built_in">echo</span> <span class="hl-string">&quot;aa 1</span></span>
+<span class="line"><span class="hl-string">bb 2</span></span>
+<span class="line"><span class="hl-string">cc 3&quot;</span> | awk -F <span class="hl-string">&#x27; &#x27;</span> <span class="hl-string">&#x27;/bb/ {print $2}&#x27;</span></span>
+<span class="line">2</span></code></pre>
+
+</figure>
+<p><span>可以看到，对于 awk 扫描的三行数据，只有匹配到了 </span><code>bb</code><span> 的第二行，运行了 </span><code>print</code><span> 的 </span><code>action</code><span>。这里的</span><code>/bb/</code><span>就是 </span><code>pattern</code><span>。</span></p>
+<p><span>回到之前的数据集，比如我想匹配 </span><code>Minecraft</code><span> 这个游戏的 reviews，看看大家的评分，这么写：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ awk -F <span class="hl-string">&#x27;\t&#x27;</span> <span class="hl-string">&#x27;/Minecraft/ {print $6, $8}&#x27;</span> gamereviews.tsv | <span class="hl-built_in">head</span></span>
+<span class="line">Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 4</span>
+<span class="line">Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 5</span>
+<span class="line">Xbox 360 Live Points Card 5</span>
+<span class="line">Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 2</span>
+<span class="line">Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 5</span>
+<span class="line">Minecraft - Xbox 360 5</span>
+<span class="line">Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 1</span>
+<span class="line">Nom Nom Galaxy  - PS4 [Digital Code] 4</span>
+<span class="line">Minecraft - Xbox One Digital Code 5</span>
+<span class="line">Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 4</span></code></pre>
+
+</figure>
+<p><span>确实过滤出来了 </span><code>Minecraft</code><span>，但是同时，任何字段里面带有 </span><code>Minecraft</code><span> 的 reviews 都被统计进来了，包括任何提及它的别的游戏的 reviews:</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ awk -F <span class="hl-string">&#x27;\t&#x27;</span> <span class="hl-string">&#x27;/Minecraft/ {print $6, $8}&#x27;</span> gamereviews.tsv | <span class="hl-built_in">sort</span> | <span class="hl-built_in">uniq</span></span>
+<span class="line">8BitMMO [Game Connect] 2</span>
+<span class="line">Ace of Spades: Battle Builder [Online Game Code] 5</span>
+<span class="line">Agricultural Simulator Historical Farming [Download] 1</span>
+<span class="line">Bioschock Infinite: Clash <span class="hl-keyword">in</span> the Clouds 5</span>
+<span class="line">Blini Kids: Animals [Download] 5</span>
+<span class="line">Blockland 4</span>
+<span class="line">Blockland 5</span>
+<span class="line">Blockstorm [Download] 4</span>
+<span class="line">Borderlands 2 5</span>
+<span class="line">Call of Duty 4: Modern Warfare [Download] 5</span>
+<span class="line"><span class="hl-comment"># ...... more</span></span></code></pre>
+
+</figure>
+<p><span>所以还需要针对某个字段进行匹配：</span><code>pattern</code><span> 可以写成</span><code>$6 ~ /Minecraft/</code><span>来模糊匹配</span><code>06 product_title</code><span> 里面有 </span><code>Minecraft</code><span> 的</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ awk -F <span class="hl-string">&#x27;\t&#x27;</span> <span class="hl-string">&#x27; $6 ~ /Minecraft/ {print $4,$6,$8} &#x27;</span> gamereviews.tsv | <span class="hl-built_in">head</span> </span>
+<span class="line">B010KYDNDG Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 4</span>
+<span class="line">B010KYDNDG Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 5</span>
+<span class="line">B010KYDNDG Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 2</span>
+<span class="line">B010KYDNDG Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 5</span>
+<span class="line">B010BWCOWI Minecraft - Xbox 360 5</span>
+<span class="line">B010KYDNDG Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 1</span>
+<span class="line">B010KYDNDG Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 5</span>
+<span class="line">B00NMO0IA8 Minecraft - Xbox One Digital Code 5</span>
+<span class="line">B010KYDNDG Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 4</span>
+<span class="line">B010KYDNDG Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 4</span></code></pre>
+
+</figure>
+<p><span>或者根据我们确认到的</span><code>04  product_id</code><span> 值 </span><code>B010KYDNDG</code><span> 来准确匹配所有的 </span><code>Minecraft for PC/Mac [Online Game Code]</code><span>，使用</span><code>$4 == "B010KYDNDG"</code><span>:</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ awk -F <span class="hl-string">&#x27;\t&#x27;</span> <span class="hl-string">&#x27;$4 == &quot;B010KYDNDG&quot; {print $6, $8} &#x27;</span> gamereviews.tsv | <span class="hl-built_in">head</span></span>
+<span class="line">Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 4</span>
+<span class="line">Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 5</span>
+<span class="line">Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 2</span>
+<span class="line">Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 5</span>
+<span class="line">Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 1</span>
+<span class="line">Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 5</span>
+<span class="line">Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 4</span>
+<span class="line">Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 4</span>
+<span class="line">Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 5</span>
+<span class="line">Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code] 5</span></code></pre>
+
+</figure>
+<p><span>已经精确匹配了</span><code>$4 == "B010KYDNDG"</code><span>，修改一下 print 的字段，依次打印</span><code>15:review_date, 13:review_headline, 08:star_rating</code></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ awk -F <span class="hl-string">&#x27;\t&#x27;</span> <span class="hl-string">&#x27;$4 == &quot;B010KYDNDG&quot; {print $15, $13, $8} &#x27;</span> gamereviews.tsv | <span class="hl-built_in">head</span></span>
+<span class="line">2015-08-31 FUN 4</span>
+<span class="line">2015-08-31 ... have disks <span class="hl-keyword">for</span> games as a backup it was <span class="hl-built_in">nice</span> to be able to get the code <span class="hl-keyword">then</span> start ... 5</span>
+<span class="line">2015-08-30 Would rather a disk. There always seems to be ... 2</span>
+<span class="line">2015-08-29 Five Stars 5</span>
+<span class="line">2015-08-27 Very Disappointed Dad and Birthday Boy 1</span>
+<span class="line">2015-08-26 Five Stars 5</span>
+<span class="line">2015-08-24 Four Stars 4</span>
+<span class="line">2015-08-24 My son says it is fun. He likes it but we were a little ... 4</span>
+<span class="line">2015-08-24 MINECWAFT 5</span>
+<span class="line">2015-08-22 MINECRAFT!!! 5</span></code></pre>
+
+</figure>
+<p><span>总结一下：</span></p>
+<ul>
+<li>
+<code>awk</code><span> 的语法 </span><code>pattern { action }</code><span>。</span>
+</li>
+<li>
+<span>模糊匹配使用两个</span><code>/</code><span>包括来：</span><code>/regexp/</code>
+</li>
+<li>
+<span>针对字段模糊匹配： </span><code>$n ~ /regexp/</code><span> ,</span><code>~</code><span>表示匹配上, </span><code>!~</code><span>表示不匹配</span>
+</li>
+<li>
+<span>针对字段精确匹配： </span><code>$n == "value"</code>
+</li>
+</ul>
+</section>
+<section id="Case-Sensitivity-in-Matching">
+
+    <h3>
+    <a href="#Case-Sensitivity-in-Matching"><span>Case Sensitivity in Matching</span> </a>
+    </h3>
+<p><span>忽略大小写，可以设置 </span><code>IGNORECASE = 1</code></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">x = <span class="hl-string">&quot;aB&quot;</span></span>
+<span class="line"><span class="hl-keyword">if</span> (x ~ /ab/) …   <span class="hl-comment"># this test will fail</span></span>
+<span class="line"></span>
+<span class="line">IGNORECASE = 1</span>
+<span class="line"><span class="hl-keyword">if</span> (x ~ /ab/) …   <span class="hl-comment"># now it will succeed</span></span></code></pre>
+
+</figure>
+</section>
+<section id="Use-printf">
+
+    <h3>
+    <a href="#Use-printf"><span>Use printf</span> </a>
+    </h3>
+<p><span>上面已经可以按照我们期望的条件，匹配我们需要的内容并打印出来，</span><code>print</code><span> 这个 </span><code>action</code><span> 后面接的参数，如果用</span><code>,</code><span>隔开，就是按照默认的</span><code>输出域分隔符(Output Field Separators)</code><span>来分割每个 </span><code>fields</code><span>，这个分隔符在 awk 内部用 </span><code>OFS</code><span> 表示，还有 </span><code>ORS</code><span> 表示</span><code>输出记录分隔符(Output Record Separators)</code><span>。记单词就很容易记下来：</span><code>Field - 域（一个字段）</code><span>，</span><code>Record - 记录（一行内容）</code><span>。</span>
+<span>&gt; 其实之前的 </span><code>-F</code><span> 参数，也是修改的 </span><code>FS</code><span>。对应的输入记录分隔符为 </span><code>RS</code><span>，默认为一个换行符</span></p>
+<p><span>上面的命令，可以通过加上修改参数 </span><code>OFS</code><span> 和 </span><code>ORS</code><span> 来让结果更美观：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ awk <span class="hl-string">&#x27;{FS=&quot;\t&quot;; OFS=&quot; : &quot;; ORS= &quot;\n\n&quot;}  $4 == &quot;B010KYDNDG&quot; {print $15, $13, $8} &#x27;</span> gamereviews.tsv | <span class="hl-built_in">head</span></span>
+<span class="line">2015-08-31 : FUN : 4</span>
+<span class="line"></span>
+<span class="line">2015-08-31 : ... have disks <span class="hl-keyword">for</span> games as a backup it was <span class="hl-built_in">nice</span> to be able to get the code <span class="hl-keyword">then</span> start ... : 5</span>
+<span class="line"></span>
+<span class="line">2015-08-30 : Would rather a disk. There always seems to be ... : 2</span>
+<span class="line"></span>
+<span class="line">2015-08-29 : Five Stars : 5</span>
+<span class="line"></span>
+<span class="line">2015-08-27 : Very Disappointed Dad and Birthday Boy : 1</span></code></pre>
+
+</figure>
+<p><span>除了设置输出分隔符，也可以让输出内容按照我们期望的格式直接输出，</span><code>awk</code><span> 的 </span><code>printf</code><span> 和 C/Shell 的格式很像：</span></p>
+<section id="Control-Letters">
+
+    <h4>
+    <a href="#Control-Letters"><span>Control-Letters</span> </a>
+    </h4>
+<ul>
+<li>
+<code>%c</code><span> : Print a number as a character</span>
+</li>
+<li>
+<code>%d,%i</code><span> : Print a decimal integer</span>
+</li>
+<li>
+<code>%f</code><span> : Print a number in floating-point notation</span>
+</li>
+<li>
+<code>%s</code><span> : Print a string.</span>
+</li>
+<li>
+<code>%x</code><span> : 16 进制</span>
+</li>
+<li>
+<code>%o</code><span> : 8进制</span>
+</li>
+<li>
+<code>%u</code><span> : unsigned</span>
+</li>
+</ul>
+<p><span>更多格式控制符见 </span><a href="https://www.gnu.org/software/gawk/manual/gawk.html#Control-Letters"><span>Control-Letters</span></a></p>
+<p><span>用引号括住所有格式，后面的参数里按顺序填入对应的变量：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ awk -F <span class="hl-string">&#x27;\t&#x27;</span> <span class="hl-string">&#x27; $4 == &quot;B010KYDNDG&quot; {printf &quot;%s :%s %s\n&quot;, $15, $13, $8} &#x27;</span> gamereviews.tsv | <span class="hl-built_in">head</span></span>
+<span class="line">2015-08-31 :FUN 4</span>
+<span class="line">2015-08-31 :... have disks <span class="hl-keyword">for</span> games as a backup it was <span class="hl-built_in">nice</span> to be able to get the code <span class="hl-keyword">then</span> start ... 5</span>
+<span class="line">2015-08-30 :Would rather a disk. There always seems to be ... 2</span>
+<span class="line">2015-08-29 :Five Stars 5</span>
+<span class="line">2015-08-27 :Very Disappointed Dad and Birthday Boy 1</span>
+<span class="line">2015-08-26 :Five Stars 5</span>
+<span class="line">2015-08-24 :Four Stars 4</span>
+<span class="line">2015-08-24 :My son says it is fun. He likes it but we were a little ... 4</span>
+<span class="line">2015-08-24 :MINECWAFT 5</span>
+<span class="line">2015-08-22 :MINECRAFT!!! 5</span></code></pre>
+
+</figure>
+</section>
+<section id="Modifiers">
+
+    <h4>
+    <a href="#Modifiers"><span>Modifiers</span> </a>
+    </h4>
+<ul>
+<li>
+<code>width</code><span> 宽度修饰词：</span><code>printf "%4s", "foo"</code><span> =&gt; </span><code>·foo</code><span>  // </span><code>·</code><span>表示空格</span>
+</li>
+<li>
+<code>-</code><span> (Minus)，用在宽度修饰词前面，变成左对齐。（否则默认是右对齐）：</span><code>printf "%-4s", "foo"</code><span> =&gt; </span><code>foo·</code>
+</li>
+<li>
+<code>.</code><span> 精度修饰词，根据后面不同的格式控制符，含义稍有不同：</span><code>printf "%.4s", "foobar"</code><span> =&gt; </span><code>foob</code>
+</li>
+<li>
+<span>精度修饰词可以叠加再其它修饰词后面使用，例如控制内容长度为25，宽度为30且左对齐，可以写作</span><code>%-30.25s</code><span>:</span>
+</li>
+</ul>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ awk -F <span class="hl-string">&#x27;\t&#x27;</span> <span class="hl-string">&#x27; $4 == &quot;B010KYDNDG&quot; {printf &quot;%s : %-30.25s %s\n&quot;, $15, $13, $8} &#x27;</span> gamereviews.tsv | <span class="hl-built_in">head</span></span>
+<span class="line">2015-08-31 : FUN                            4</span>
+<span class="line">2015-08-31 : ... have disks <span class="hl-keyword">for</span> games       5</span>
+<span class="line">2015-08-30 : Would rather a disk. Ther      2</span>
+<span class="line">2015-08-29 : Five Stars                     5</span>
+<span class="line">2015-08-27 : Very Disappointed Dad and      1</span>
+<span class="line">2015-08-26 : Five Stars                     5</span>
+<span class="line">2015-08-24 : Four Stars                     4</span>
+<span class="line">2015-08-24 : My son says it is fun. He      4</span>
+<span class="line">2015-08-24 : MINECWAFT                      5</span>
+<span class="line">2015-08-22 : MINECRAFT!!!                   5</span></code></pre>
+
+</figure>
+<p><span>注： 原文章里提到了可以使用 </span><code>build-in</code><span> 方法 </span><code>substr</code><span> 来操作</span><code>$13</code><span>: </span><code>sub($13,1,25)</code><span>可以达到同样的效果。</span></p>
+<p><span>其它更多修饰词及用法见 </span><a href="https://www.gnu.org/software/gawk/manual/gawk.html#Format-Modifiers"><span>Format-Modifiers</span></a></p>
+</section>
+</section>
+<section id="BEGIN-and-END">
+
+    <h3>
+    <a href="#BEGIN-and-END"><span>BEGIN and END</span> </a>
+    </h3>
+<p><span>现在以及能够搜索、匹配、按格式打印了，来试着做一点计算。</span></p>
+<p><span>继续上面的例子，能够得到所有的评分，如果期望计算所有评分的平均值，我们需要一个临时变量来求和，</span><code>awk</code><span> 里，变量可以直接声明并使用：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ awk -F <span class="hl-string">&#x27;\t&#x27;</span> <span class="hl-string">&#x27; \</span></span>
+<span class="line"><span class="hl-string">$4 == &quot;B010KYDNDG&quot; {total = total + $8; printf &quot;now we have : %d \n&quot;, total} \</span></span>
+<span class="line"><span class="hl-string">&#x27;</span> gamereviews.tsv | <span class="hl-built_in">head</span></span>
+<span class="line">now we have : 4 </span>
+<span class="line">now we have : 9 </span>
+<span class="line">now we have : 11 </span>
+<span class="line">now we have : 16 </span>
+<span class="line">now we have : 17 </span>
+<span class="line">now we have : 22 </span>
+<span class="line">now we have : 26 </span>
+<span class="line">now we have : 30 </span>
+<span class="line">now we have : 35 </span>
+<span class="line">now we have : 40</span></code></pre>
+
+</figure>
+<p><span>每计算后都打印一次会输出太多无关内容，通过 </span><code>BEGIN</code><span> 或者 </span><code>END</code><span> 作为 </span><code>pattern</code><span> 的语句，可以在其它主要语句的运行前和运行后分别运行一次：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ awk -F <span class="hl-string">&#x27;\t&#x27;</span> <span class="hl-string">&#x27;\</span></span>
+<span class="line"><span class="hl-string">BEGIN {printf &quot;\nBEGIN:\n&quot;} \</span></span>
+<span class="line"><span class="hl-string">$4 == &quot;B010KYDNDG&quot; {total = total + $8; cnt = cnt + 1} \</span></span>
+<span class="line"><span class="hl-string">END {printf &quot;sum is %d, avg is %.2f\nEND\n&quot;, total, total/cnt} \</span></span>
+<span class="line"><span class="hl-string">&#x27;</span> gamereviews.tsv </span>
+<span class="line"></span>
+<span class="line">BEGIN:</span>
+<span class="line"><span class="hl-built_in">sum</span> is 131, avg is 3.97</span>
+<span class="line">END</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="SUPER-POWER">
+
+    <h2>
+    <a href="#SUPER-POWER"><span>SUPER POWER</span> </a>
+    </h2>
+<section id="awk-Scripts">
+
+    <h3>
+    <a href="#awk-Scripts"><span>awk Scripts</span> </a>
+    </h3>
+<p><span>随着语句越写越复杂，在不够熟练且思路不连贯的情况下想一口气在一整行命令里完成功能还是挺有难度的，把这些语句放到文件里编辑，可以排版一下格式，思路&amp;&amp;看起来都更清晰：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">`$ cat calc_avg_single.awk`</span>
+<span class="line"><span class="hl-meta prompt_"></span></span>
+<span class="line"><span class="hl-meta prompt_">#</span><span class="language-bash">!/bin/awk -f</span></span>
+<span class="line">BEGIN { </span>
+<span class="line">    FS = &quot;\t&quot;</span>
+<span class="line">    print &quot;BEGIN&quot; </span>
+<span class="line">}</span>
+<span class="line"><span class="hl-meta prompt_">$</span><span class="language-bash">4 == <span class="hl-string">&quot;B010KYDNDG&quot;</span> {</span> </span>
+<span class="line">    title = $6</span>
+<span class="line">    total = total + $8;</span>
+<span class="line">    cnt = cnt + 1;</span>
+<span class="line">}</span>
+<span class="line">END { </span>
+<span class="line">    print &quot;Average review of&quot;, title, &quot;is&quot;, total/cnt, &quot;starts&quot;</span>
+<span class="line">    print &quot;END&quot; </span>
+<span class="line">}</span>
+<span class="line"><span class="hl-meta prompt_"></span></span>
+<span class="line"><span class="hl-meta prompt_">$ </span><span class="language-bash">./calc_avg_single.awk gamereviews.tsv</span> </span>
+<span class="line">BEGIN</span>
+<span class="line">Average review of Minecraft for PC/Mac [Online Game Code] is 3.9697 starts</span>
+<span class="line">END</span></code></pre>
+
+</figure>
+<ul>
+<li>
+<code>-f awk.file</code><span> 让 </span><code>awk</code><span> 执行一个文件里的命令</span>
+</li>
+<li>
+<code>-F '\t'</code><span>需要写在 BEGIN 里了 </span><code>FS = "\t"</code>
+</li>
+</ul>
+</section>
+<section id="Arrays-in-awk">
+
+    <h3>
+    <a href="#Arrays-in-awk"><span>Arrays in awk</span> </a>
+    </h3>
+<p><span>Awk 内建了数组</span><a href="https://www.gnu.org/software/gawk/manual/html_node/Arrays.html#Arrays"><span>Array</span></a><span>，实时使用体验和字典一样</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">arr[<span class="hl-string">&quot;key1&quot;</span>] = <span class="hl-string">&quot;one&quot;</span></span>
+<span class="line">arr[<span class="hl-string">&quot;key2&quot;</span>] = <span class="hl-string">&quot;two&quot;</span></span>
+<span class="line">arr[<span class="hl-string">&quot;key3&quot;</span>] = <span class="hl-string">&quot;three&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">for</span> (i <span class="hl-keyword">in</span> arr){</span>
+<span class="line">    <span class="hl-built_in">print</span> i, arr[i]</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line">key1 one</span>
+<span class="line">key2 two</span>
+<span class="line">key3 three</span></code></pre>
+
+</figure>
+<p><span>利用这个方法同时存储计算所有 </span><code>title</code><span> 模糊匹配 </span><code>Minecraft</code><span> 的平均评价：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ <span class="hl-built_in">cat</span> calc_avg.awk </span>
+<span class="line"><span class="hl-comment">#!/bin/awk -f</span></span>
+<span class="line">BEGIN { </span>
+<span class="line">    FS = <span class="hl-string">&quot;\t&quot;</span></span>
+<span class="line">}</span>
+<span class="line"><span class="hl-variable">$6</span> ~ /Minecraft/ { </span>
+<span class="line">    title[<span class="hl-variable">$6</span>] = <span class="hl-variable">$6</span></span>
+<span class="line">    total[<span class="hl-variable">$6</span>] = total[<span class="hl-variable">$6</span>] + <span class="hl-variable">$8</span>;</span>
+<span class="line">    cnt[<span class="hl-variable">$6</span>] = cnt[<span class="hl-variable">$6</span>] + 1;</span>
+<span class="line">}</span>
+<span class="line">END { </span>
+<span class="line">    <span class="hl-keyword">for</span> (i <span class="hl-keyword">in</span> cnt) {</span>
+<span class="line">        <span class="hl-built_in">printf</span> <span class="hl-string">&quot;-----------------------\n&quot;</span>;</span>
+<span class="line">        <span class="hl-built_in">printf</span> <span class="hl-string">&quot;%s\n&quot;</span>, title[i]</span>
+<span class="line">        <span class="hl-built_in">printf</span> <span class="hl-string">&quot;avg: %.2f\t Count: %s \n&quot;</span>, total[i]/cnt[i], cnt[i]</span>
+<span class="line">        <span class="hl-built_in">printf</span> <span class="hl-string">&quot;-----------------------\n\n&quot;</span>;</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>运行效果如下：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ ./calc_avg.awk gamereviews.tsv </span>
+<span class="line">-----------------------</span>
+<span class="line">Minecraft - Xbox One Digital Code</span>
+<span class="line">avg: 4.38    Count: 52 </span>
+<span class="line">-----------------------</span>
+<span class="line"></span>
+<span class="line">-----------------------</span>
+<span class="line">Minecraft <span class="hl-keyword">for</span> PC/Mac [Online Game Code]</span>
+<span class="line">avg: 3.97    Count: 33 </span>
+<span class="line">-----------------------</span>
+<span class="line"></span>
+<span class="line">-----------------------</span>
+<span class="line">Minecraft - Xbox 360</span>
+<span class="line">avg: 5.00    Count: 1 </span>
+<span class="line">-----------------------</span>
+<span class="line"></span>
+<span class="line">-----------------------</span>
+<span class="line">Minecraft PlayStation 3 Edition - PS3 [Digital Code]</span>
+<span class="line">avg: 4.00    Count: 1 </span>
+<span class="line">-----------------------</span>
+<span class="line"></span>
+<span class="line">-----------------------</span>
+<span class="line">Xbox LIVE 1600 Microsoft Points <span class="hl-keyword">for</span> Minecraft: Xbox 360 Edition - Xbox 360 Digital Code</span>
+<span class="line">avg: 4.70    Count: 71 </span>
+<span class="line">-----------------------</span></code></pre>
+
+</figure>
+</section>
+<section id="Control-Statements">
+
+    <h3>
+    <a href="#Control-Statements"><span>Control Statements</span> </a>
+    </h3>
+<p><a href="https://www.gnu.org/software/gawk/manual/html_node/Statements.html#Statements"><span>流程控制语句</span></a>
+<span>基本和 C 那一套完全一致。</span></p>
+<section id="If-Else">
+
+    <h4>
+    <a href="#If-Else"><span>If-Else</span> </a>
+    </h4>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">if</span> (x % 2 == 0)</span>
+<span class="line">    <span class="hl-built_in">print</span> <span class="hl-string">&quot;x is even&quot;</span></span>
+<span class="line"><span class="hl-keyword">else</span></span>
+<span class="line">    <span class="hl-built_in">print</span> <span class="hl-string">&quot;x is odd&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="Do-While">
+
+    <h4>
+    <a href="#Do-While"><span>Do-While</span> </a>
+    </h4>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">while</span> (condition)</span>
+<span class="line">    body</span></code></pre>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">do</span></span>
+<span class="line">  body</span>
+<span class="line"><span class="hl-keyword">while</span> (condition)</span></code></pre>
+
+</figure>
+</section>
+<section id="For">
+
+    <h4>
+    <a href="#For"><span>For</span> </a>
+    </h4>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">for</span> (i <span class="hl-keyword">in</span> array)</span>
+<span class="line">    <span class="hl-keyword">do</span> something with array[i]</span></code></pre>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">for</span> (initialization; condition; increment)</span>
+<span class="line">  body</span></code></pre>
+
+</figure>
+</section>
+<section id="Switch">
+
+    <h4>
+    <a href="#Switch"><span>Switch</span> </a>
+    </h4>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">switch (expression) {</span>
+<span class="line"><span class="hl-keyword">case</span> value or regular expression:</span>
+<span class="line">    case-body</span>
+<span class="line">default:</span>
+<span class="line">    default-body</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="Break-Continue">
+
+    <h4>
+    <a href="#Break-Continue"><span>Break &amp;&amp; Continue</span> </a>
+    </h4>
+<p><code>Continue;</code></p>
+</section>
+<section id="Next">
+
+    <h4>
+    <a href="#Next"><span>Next</span> </a>
+    </h4>
+<p><span>The </span><code>next</code><span> statement forces awk to immediately stop processing the current record and go on to the next record.</span></p>
+</section>
+</section>
+</section>
+<section id="More-Sample-Exercise">
+
+    <h2>
+    <a href="#More-Sample-Exercise"><span>More Sample &amp;&amp; Exercise</span> </a>
+    </h2>
+<section id="s-4">
+
+    <h3>
+    <a href="#s-4"><span>统计特定类型文件大小</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-built_in">ls</span> -l *.txt | awk <span class="hl-string">&#x27;{sum+=$5} END {print sum}&#x27;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="80">
+
+    <h3>
+    <a href="#80"><span>找出文件中长度大于80的行</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">awk <span class="hl-string">&#x27;length&gt;80&#x27;</span> log.txt</span></code></pre>
+
+</figure>
+</section>
+<section id="s-5">
+
+    <h3>
+    <a href="#s-5"><span>打印九九乘法表</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-built_in">seq</span> 9 | sed <span class="hl-string">&#x27;H;g&#x27;</span> | awk -v RS=<span class="hl-string">&#x27;&#x27;</span> <span class="hl-string">&#x27;{for(i=1;i&lt;=NF;i++)printf(&quot;%dx%d=%d%s&quot;, i, NR, i*NR, i==NR?&quot;\n&quot;:&quot;\t&quot;)}&#x27;</span></span></code></pre>
+
+</figure>
+</section>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2021-12-16-learning-awk.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>
