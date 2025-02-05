@@ -13,6 +13,7 @@
 ### What is awk
 
 `awk` 是一个记录处理工具，1977年由 Aho、Kernighan 和 Weinberger 编写，也正是这三位的名字缩写。`grep` 可以按行搜索，`sed` 可以按行做文本替换，`awk` 则是可以按行做计算。
+
 > If grep lets you search for lines, and sed lets you do replacements in lines then awk was designed to let you do calculations on lines.
 
 ### How to pronounce 'awk'
@@ -212,7 +213,7 @@ Playstation
 
 至少上面看过，第二行，也就是第一条 review，title 应该是 `Madden NFL 16 - Xbox One Digital Code`，而这里只切割出来的第一个单词。
 
-原因就是，`awk` 默认以` `，一个空格作为区分一行中不同 `fileds` 的分隔符 `Field Separators`。
+原因就是，`awk` 默认以 ` `，一个空格作为区分一行中不同 `fileds` 的分隔符 `Field Separators`。
 
 ### Field Separators
 
