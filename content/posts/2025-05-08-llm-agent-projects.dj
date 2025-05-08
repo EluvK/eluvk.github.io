@@ -1,0 +1,73 @@
+# LLM Agent Projects
+
+汇总一些最近感兴趣的项目信息。
+
+## [MCP](https://github.com/modelcontextprotocol)
+
+MCP（Model Context Protocol，即模型上下文协议）是由 Anthropic（Claude 的母公司）提出的一个协议，旨在为 LLM（大型语言模型）通过一套标准化的协议提供拓展功能工具箱。赋予 LLM 访问外部数据，使用特定工具和 API 的能力。
+
+Latest MCP 版本为 [2025-03-26](https://modelcontextprotocol.io/specification/2025-03-26)，最新这一版本引入了对 `Streamable HTTP` 的支持，允许 LLM 通过 HTTP 流式传输数据。
+
+### MCP - Transport
+
+编码：所有消息均采用 **JSON-RPC 2.0** 格式，必须使用 **UTF-8** 编码。
+传输： **`stdio`**（优先支持）：通过标准输入/输出流通信。/ **`Streamable HTTP`**（新版推荐）：基于 HTTP 的增强传输，支持流式交互。
+
+#### Streamable HTTP
+
+- **统一端点**：单个 HTTP 路径（如 `/mcp`）同时处理 `POST`（客户端→服务端）和 `GET`（服务端→客户端）。
+
+| **方向**                | **HTTP 方法** | **Content-Type**          | **消息类型**                        | **响应逻辑**                                                                      |
+|-------------------------|---------------|---------------------------|-------------------------------------|-----------------------------------------------------------------------------------|
+| 客户端 → 服务端         | POST          | `application/json`        | 请求/通知/响应（或批量）            | - 纯响应/通知：返回 `202 Accepted`<br>- 含请求：返回 `application/json` 或 SSE 流 |
+| 服务端 → 客户端（推送） | GET           | `text/event-stream` (SSE) | 服务端主动发起的请求/通知（可批量） | 客户端需持续监听 SSE 流                                                           |
+
+### Feature
+
+MCP 区分服务端和客户端。客户端包括 Root 和 Sampling 两种功能。服务端包括 Prompts、Resources 和 Tools 三种功能。
+
+**Root**: MCP 客户端通过 roots 特性向服务端暴露文件系统的可访问根目录，明确服务端能操作的文件范围边界。
+
+**Sampling**: 允许服务端通过客户端请求 LLM 生成内容。服务端无需直接管理 API 密钥，通过客户端代理实现。
+
+**Prompts**: 服务端提供结构化提示词模板，客户端可动态获取并填充参数生成最终提示。
+
+**Resources**: 服务端暴露结构化数据（如文件、API 结果），供 LLM 获取上下文。
+
+**Tools**: 服务端提供可执行工具（如 API 调用），由 LLM 按需触发。
+
+## [PocketFlow](https://github.com/The-Pocket/PocketFlow)
+
+一个极其精炼的 LLM 框架，100 行 python 代码，概况了一个简单有效的大模型工作流，利用这些最基本的原语，可以构建出复杂的工作流。
+
+### 核心概念
+
+#### [Node](https://the-pocket.github.io/PocketFlow/core_abstraction/node.html)
+
+![node](https://github.com/the-pocket/.github/raw/main/assets/node.png?raw=true)
+
+node 是一个执行任务的最小单元，整体流程会分为 prep, exec, post 三个阶段。prep 阶段可能从shared store 里获取数据，exec 阶段执行任务，post 阶段将结果存入 shared store。
+
+exec 部分支持失败后间隔重试，还可以再使用最终 fallback。
+
+#### [Flow](https://the-pocket.github.io/PocketFlow/core_abstraction/flow.html)
+
+Flow 定义了 node 之间的执行顺序，每个 node 的执行结果可能影响下一个是哪一个 node。
+
+简单来说就是 node 作为顶点，flow 是边，构成一个有向图。
+
+定义里 Flow 也是继承自 Node，不过我感觉这部分的设计有点奇怪，还没体会到这种设计的好处...
+
+#### [Communication](https://the-pocket.github.io/PocketFlow/core_abstraction/communication.html)
+
+Nodes 和 Flow 之间的主要通过 shared store 来进行数据传递（通常是一个 dict）。
+
+#### Batch && Async
+
+还有一些批量的异步的概念，比较好理解。
+
+### Patterns
+
+官方给出的示意图，可以基于此设计实现的流行的模式。
+
+![pattern](https://github.com/The-Pocket/.github/raw/main/assets/design.png)
