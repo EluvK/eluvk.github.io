@@ -642,6 +642,8 @@ impl<T: Trait + Trait2> Trait3 for T {
 
 期待在未来Rust core team会把这个特性完善好。
 
+Update: 2025.03.31 Rust 1.86.0 该特性已 stable。无需手动转换上述 `take_trait(t)` 可直接使用不会报错。
+
 #### 5.3.3. 总结
 
 Rust 指针不支持超过两个宽度的大小。这意味着
