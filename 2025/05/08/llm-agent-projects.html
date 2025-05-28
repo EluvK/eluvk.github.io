@@ -1,0 +1,238 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLM Agent Projects</title>
+  <meta name="description" content="汇总一些最近感兴趣的项目信息。">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2025/05/08/llm-agent-projects.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#LLM-Agent-Projects"><span>LLM Agent Projects</span> <time datetime="2025-05-08">May 8, 2025</time></a>
+    </h1>
+<p><span>汇总一些最近感兴趣的项目信息。</span></p>
+<section id="MCP">
+
+    <h2>
+    <a href="#MCP"><a href="https://github.com/modelcontextprotocol"><span>MCP</span></a> </a>
+    </h2>
+<p><span>MCP（Model Context Protocol，即模型上下文协议）是由 Anthropic（Claude 的母公司）提出的一个协议，旨在为 LLM（大型语言模型）通过一套标准化的协议提供拓展功能工具箱。赋予 LLM 访问外部数据，使用特定工具和 API 的能力。</span></p>
+<p><span>Latest MCP 版本为 </span><a href="https://modelcontextprotocol.io/specification/2025-03-26"><span>2025-03-26</span></a><span>，最新这一版本引入了对 </span><code>Streamable HTTP</code><span> 的支持，允许 LLM 通过 HTTP 流式传输数据。</span></p>
+<section id="MCP-Transport">
+
+    <h3>
+    <a href="#MCP-Transport"><span>MCP - Transport</span> </a>
+    </h3>
+<p><span>编码：所有消息均采用 </span><strong><strong><span>JSON-RPC 2.0</span></strong></strong><span> 格式，必须使用 </span><strong><strong><span>UTF-8</span></strong></strong><span> 编码。</span>
+<span>传输： </span><strong><strong><code>stdio</code></strong></strong><span>（优先支持）：通过标准输入/输出流通信。/ </span><strong><strong><code>Streamable HTTP</code></strong></strong><span>（新版推荐）：基于 HTTP 的增强传输，支持流式交互。</span></p>
+<section id="Streamable-HTTP">
+
+    <h4>
+    <a href="#Streamable-HTTP"><span>Streamable HTTP</span> </a>
+    </h4>
+<ul>
+<li>
+<strong><strong><span>统一端点</span></strong></strong><span>：单个 HTTP 路径（如 </span><code>/mcp</code><span>）同时处理 </span><code>POST</code><span>（客户端→服务端）和 </span><code>GET</code><span>（服务端→客户端）。</span>
+</li>
+</ul>
+<table>
+<tr>
+<th><strong><strong><span>方向</span></strong></strong><span></span></th>
+<th><strong><strong><span>HTTP 方法</span></strong></strong><span></span></th>
+<th><strong><strong><span>Content-Type</span></strong></strong><span></span></th>
+<th><strong><strong><span>消息类型</span></strong></strong><span></span></th>
+<th><strong><strong><span>响应逻辑</span></strong></strong><span></span></th>
+</tr>
+<tr>
+<td><span>客户端 → 服务端</span></td>
+<td><span>POST</span></td>
+<td><code>application/json</code><span></span></td>
+<td><span>请求/通知/响应（或批量）</span></td>
+<td><span>- 纯响应/通知：返回 </span><code>202 Accepted</code><span>&lt;br&gt;- 含请求：返回 </span><code>application/json</code><span> 或 SSE 流</span></td>
+</tr>
+<tr>
+<td><span>服务端 → 客户端（推送）</span></td>
+<td><span>GET</span></td>
+<td><code>text/event-stream</code><span> (SSE)</span></td>
+<td><span>服务端主动发起的请求/通知（可批量）</span></td>
+<td><span>客户端需持续监听 SSE 流</span></td>
+</tr>
+</table>
+</section>
+</section>
+<section id="Feature">
+
+    <h3>
+    <a href="#Feature"><span>Feature</span> </a>
+    </h3>
+<p><span>MCP 区分服务端和客户端。客户端包括 Root 和 Sampling 两种功能。服务端包括 Prompts、Resources 和 Tools 三种功能。</span></p>
+<p><strong><strong><span>Root</span></strong></strong><span>: MCP 客户端通过 roots 特性向服务端暴露文件系统的可访问根目录，明确服务端能操作的文件范围边界。</span></p>
+<p><strong><strong><span>Sampling</span></strong></strong><span>: 允许服务端通过客户端请求 LLM 生成内容。服务端无需直接管理 API 密钥，通过客户端代理实现。</span></p>
+<p><strong><strong><span>Prompts</span></strong></strong><span>: 服务端提供结构化提示词模板，客户端可动态获取并填充参数生成最终提示。</span></p>
+<p><strong><strong><span>Resources</span></strong></strong><span>: 服务端暴露结构化数据（如文件、API 结果），供 LLM 获取上下文。</span></p>
+<p><strong><strong><span>Tools</span></strong></strong><span>: 服务端提供可执行工具（如 API 调用），由 LLM 按需触发。</span></p>
+</section>
+</section>
+<section id="PocketFlow">
+
+    <h2>
+    <a href="#PocketFlow"><a href="https://github.com/The-Pocket/PocketFlow"><span>PocketFlow</span></a> </a>
+    </h2>
+<p><span>一个极其精炼的 LLM 框架，100 行 python 代码，概况了一个简单有效的大模型工作流，利用这些最基本的原语，可以构建出复杂的工作流。</span></p>
+<section id="s-1">
+
+    <h3>
+    <a href="#s-1"><span>核心概念</span> </a>
+    </h3>
+<section id="Node">
+
+    <h4>
+    <a href="#Node"><a href="https://the-pocket.github.io/PocketFlow/core_abstraction/node.html"><span>Node</span></a> </a>
+    </h4>
+
+<figure>
+
+<img alt="node" src="https://github.com/the-pocket/.github/raw/main/assets/node.png?raw=true">
+</figure>
+<p><span>node 是一个执行任务的最小单元，整体流程会分为 prep, exec, post 三个阶段。prep 阶段可能从shared store 里获取数据，exec 阶段执行任务，post 阶段将结果存入 shared store。</span></p>
+<p><span>exec 部分支持失败后间隔重试，还可以再使用最终 fallback。</span></p>
+</section>
+<section id="Flow">
+
+    <h4>
+    <a href="#Flow"><a href="https://the-pocket.github.io/PocketFlow/core_abstraction/flow.html"><span>Flow</span></a> </a>
+    </h4>
+<p><span>Flow 定义了 node 之间的执行顺序，每个 node 的执行结果可能影响下一个是哪一个 node。</span></p>
+<p><span>简单来说就是 node 作为顶点，flow 是边，构成一个有向图。</span></p>
+<p><span>定义里 Flow 也是继承自 Node，不过我感觉这部分的设计有点奇怪，还没体会到这种设计的好处</span>&hellip;</p>
+</section>
+<section id="Communication">
+
+    <h4>
+    <a href="#Communication"><a href="https://the-pocket.github.io/PocketFlow/core_abstraction/communication.html"><span>Communication</span></a> </a>
+    </h4>
+<p><span>Nodes 和 Flow 之间的主要通过 shared store 来进行数据传递（通常是一个 dict）。</span></p>
+</section>
+<section id="Batch-Async">
+
+    <h4>
+    <a href="#Batch-Async"><span>Batch &amp;&amp; Async</span> </a>
+    </h4>
+<p><span>还有一些批量的异步的概念，比较好理解。</span></p>
+</section>
+</section>
+<section id="Patterns">
+
+    <h3>
+    <a href="#Patterns"><span>Patterns</span> </a>
+    </h3>
+<p><span>官方给出的示意图，可以基于此设计实现的流行的模式。</span></p>
+
+<figure>
+
+<img alt="pattern" src="https://github.com/The-Pocket/.github/raw/main/assets/design.png">
+</figure>
+</section>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2025-05-08-llm-agent-projects.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>
