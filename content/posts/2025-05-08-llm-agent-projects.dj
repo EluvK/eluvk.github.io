@@ -71,3 +71,291 @@ Nodes 和 Flow 之间的主要通过 shared store 来进行数据传递（通常
 官方给出的示意图，可以基于此设计实现的流行的模式。
 
 ![pattern](https://github.com/The-Pocket/.github/raw/main/assets/design.png)
+
+## [[RAG (Retrieval-Augmented Generation)] 技术介绍](https://github.com/FareedKhan-dev/all-rag-techniques)
+
+必备特性：长文档预处理、实时索引、嵌入模型质量（特定领域可能需要微调）
+
+核心难点：如何调整分块策略、相似度阈值，引入动态权重（根据使用频率）、反馈循环机制（根据是否采纳结果）来增强检索的相关性和准确性。
+
+概念汇总：
+
+- 嵌入模型（Embedding Models）：将文本转换为向量表示，可以用向量相似度来检索相关性。
+
+实践上以下的这些操作需要根据实际场景自由组合。
+
+感受：
+这个项目的文档真的读起来，比它看起来的样子更无趣，各种优化手段和思路都很好理解，但是原文似乎像是AI批量生成的内容一样冗余，为了写而写。
+技术上无论怎么操作最后的落脚点还是向量相似度检索/LLM回答、中间套上用 LLM 处理马上要喂给 LLM 的内容的各种手段实在不好评价。因为感觉这种方式十分不精确，也无法证明其完善性，实践上如果使用的（理论最佳）策略强依赖于原始材料的质量、完整性，也很难落地通用些的项目。
+后面一些引入了意图检测，加上一些合适的步骤来避免没法答硬回答的想法很好。
+
+### 01_simple_rag
+
+基础的 RAG 实现：将全文分割成一个个chunk，按照相似度检索出 top k 相关的 chunk，拼接成一个 Context prompt 传入 LLM。
+
+### 02_semantic_chunking
+
+提出一种分块策略：将大段落按照其中句子的语义进行分块，相比于固定段落/长度的分块策略，可以更好的精炼每个 chunk 的内容。也能提高检索的相关性准确性。具体有多种方法：
+
+- 百分位数法：计算所有相似性差异的 X 分位数，并在相似性下降超过该值的地方进行分块。
+- 标准差法：在相似性下降超过平均值减去 X 个标准差时进行分块。
+- 四分位距法（IQR）：使用四分位距（Q3 - Q1）来确定分块点。
+
+执行的时候都是：先按照一句句话分开，计算每句的嵌入向量，然后计算每两句之间的相似度，选择一种分块策略来决定分块点，按照分块点重新拼接成 chunk。最后将 chunk 计算嵌入向量。回归到 RAG 的基本流程。
+
+### 03_chunk_size_selector
+
+提出了一种分块策略：按照不同的 length，再叠加一些 overlap 来分块。将不同长度的 chunk 都计算嵌入向量相似度选择最相关的 top k 个 chunk。回归到 RAG 的基本流程。
+
+### 04_context_enriched_rag
+
+Context-Enriched Retrieval: 在分块检索到最相关的 chunk 后，传入附近的上下文（如前后几句话）来丰富 chunk 的内容。可以提高检索的相关性准确性。
+
+### 05_contextual_chunk_headers_rag
+
+标准的文本分块（chunking）可能丢失重要的上下文信息，导致检索效果较差。
+Contextual Chunk Headers (CCH) 方法通过为每个文本块生成高层次的上下文（如标题或章节名称），增强检索的准确性和回答的连贯性。
+
+通过为每个文本块生成标题并结合标题和内容进行检索。（个人评论：感觉如果最终的评价标准还是用向量相关性的话，对于原文内容的质量还是有很高的要求，在个人知识库里，一些不够完善的内容还是会影响检索效果。）
+
+### 06_augmentation_rag
+
+引入了 问题生成（Question Generation），给定文本段落，让AI生成相关问题，然后将这些问题也作为查询来检索相关的文本段落。
+
+```python
+system_prompt = "You are an expert at generating relevant questions from text. Create concise questions that can be answered using only the provided text. Focus on key information and concepts."
+
+# Define the user prompt with the text chunk and the number of questions to generate
+user_prompt = f"""
+Based on the following text, generate {num_questions} different questions that can be answered using only this text:
+
+{text_chunk}
+
+Format your response as a numbered list of questions only, with no additional text.
+"""
+```
+
+### 07_query_transform
+
+引入了查询转换（Query Transformation），在检索之前对查询进行转换或增强，以提高检索的相关性和准确性。
+包括三种方法：
+
+1. Rewrite 重写查询，用AI重写查询，使其更清晰或更具体。
+2. Step-back 回退提示，用AI生成更一般化的查询。
+3. Sub-query Decomposition 将复杂查询分解为多个子查询。
+
+```python
+system_prompt = "You are an AI assistant specialized in improving search queries. Your task is to rewrite user queries to be more specific, detailed, and likely to retrieve relevant information."
+
+# Define the user prompt with the original query to be rewritten
+user_prompt = f"""
+Rewrite the following query to make it more specific and detailed. Include relevant terms and concepts that might help in retrieving accurate information.
+
+Original query: {original_query}
+
+Rewritten query:
+"""
+```
+
+```python
+system_prompt = "You are an AI assistant specialized in search strategies. Your task is to generate broader, more general versions of specific queries to retrieve relevant background information."
+
+# Define the user prompt with the original query to be generalized
+user_prompt = f"""
+Generate a broader, more general version of the following query that could help retrieve useful background information.
+
+Original query: {original_query}
+
+Step-back query:
+"""
+```
+
+```python
+system_prompt = "You are an AI assistant specialized in breaking down complex questions. Your task is to decompose complex queries into simpler sub-questions that, when answered together, address the original query."
+    
+# Define the user prompt with the original query to be decomposed
+user_prompt = f"""
+Break down the following complex query into {num_subqueries} simpler sub-queries. Each sub-query should focus on a different aspect of the original question.
+
+Original query: {original_query}
+
+Generate {num_subqueries} sub-queries, one per line, in this format:
+1. [First sub-query]
+2. [Second sub-query]
+And so on...
+"""
+```
+
+### 08_reranker
+
+重排序核心概念：
+
+首先使用基本的检索方法（如向量相似度）获取初步的相关文档或段落。
+对初步检索到的文档进行评分，继续用AI模型对每个文档进行分析，计算其相关性分数。
+
+```python
+# Define the system prompt for the LLM
+system_prompt = """You are an expert at evaluating document relevance for search queries.
+Your task is to rate documents on a scale from 0 to 10 based on how well they answer the given query.
+
+Guidelines:
+- Score 0-2: Document is completely irrelevant
+- Score 3-5: Document has some relevant information but doesn't directly answer the query
+- Score 6-8: Document is relevant and partially answers the query
+- Score 9-10: Document is highly relevant and directly answers the query
+
+You MUST respond with ONLY a single integer score between 0 and 10. Do not include ANY other text."""
+
+# Define the user prompt for the LLM
+user_prompt = f"""Query: {query}
+
+Document:
+{result['text']}
+
+Rate this document's relevance to the query on a scale from 0 to 10:"""
+```
+
+根据评分结果对文档进行重排序，选择最相关的文档作为最终结果。
+
+### 09_rse
+
+Relevant Segment Extraction (RSE) 技术，通过识别文档中更连续的相关片段作为相关性排序依据，原理是倾向于认为相关性强的片段一般都是连续的，所以用区间片段的相关性累计值来作为选取片段的依据。
+
+### 10_contextual_compression
+
+在检索到的文本块中，过滤掉和查询无关的内容，仅保留最相关的部分；通过压缩上下文来减少噪声，提高语言模型生成的质量。
+
+选择性压缩（Selective）、摘要压缩（Summary）、提取压缩（Extraction）
+
+```python
+# Define system prompts for different compression approaches
+if compression_type == "selective":
+    system_prompt = """You are an expert at information filtering. 
+    Your task is to analyze a document chunk and extract ONLY the sentences or paragraphs that are directly 
+    relevant to the user's query. Remove all irrelevant content.
+
+    Your output should:
+    1. ONLY include text that helps answer the query
+    2. Preserve the exact wording of relevant sentences (do not paraphrase)
+    3. Maintain the original order of the text
+    4. Include ALL relevant content, even if it seems redundant
+    5. EXCLUDE any text that isn't relevant to the query
+
+    Format your response as plain text with no additional comments."""
+elif compression_type == "summary":
+    system_prompt = """You are an expert at summarization. 
+    Your task is to create a concise summary of the provided chunk that focuses ONLY on 
+    information relevant to the user's query.
+
+    Your output should:
+    1. Be brief but comprehensive regarding query-relevant information
+    2. Focus exclusively on information related to the query
+    3. Omit irrelevant details
+    4. Be written in a neutral, factual tone
+
+    Format your response as plain text with no additional comments."""
+else:  # extraction
+    system_prompt = """You are an expert at information extraction.
+    Your task is to extract ONLY the exact sentences from the document chunk that contain information relevant 
+    to answering the user's query.
+
+    Your output should:
+    1. Include ONLY direct quotes of relevant sentences from the original text
+    2. Preserve the original wording (do not modify the text)
+    3. Include ONLY sentences that directly relate to the query
+    4. Separate extracted sentences with newlines
+    5. Do not add any commentary or additional text
+
+    Format your response as plain text with no additional comments."""
+```
+
+### 11_feedback_loop_rag
+
+动态的根据用户反馈来调整相关性评分。**将成功的问答纳入知识库**，增强长期的学习能力。
+
+思路很自然，实现比较玩具。这并不是一个仅在 RAG 场景下才需要的能力。
+
+### 12_adaptive_rag
+
+用AI将用户查询的分类，再配合不同的检索策略来处理不同类型的查询。
+
+```python
+# Define the system prompt to guide the AI's classification
+system_prompt = """You are an expert at classifying questions. 
+    Classify the given query into exactly one of these categories:
+    - Factual: Queries seeking specific, verifiable information.
+    - Analytical: Queries requiring comprehensive analysis or explanation.
+    - Opinion: Queries about subjective matters or seeking diverse viewpoints.
+    - Contextual: Queries that depend on user-specific context.
+
+    Return ONLY the category name, without any explanation or additional text.
+"""
+
+# Create the user prompt with the query to be classified
+user_prompt = f"Classify this query: {query}"
+```
+
+### 13_self_rag
+
+自反式 RAG，特点：
+
+- 动态的（用LLM）决定是否要检索（在此前的 RAG 实现中，检索都是固定的步骤）。
+- 评估检索结果的相关性和准确性，如果不实用，不如直接使用 LLM 生成答案 / 反馈无法回答。
+
+### 14_proposition_chunking
+
+命题分块（Proposition Chunking），将文本分割成更小的命题单元（propositions），对生成的命题进行质量检查，包括准确性、清晰度、完整性和简洁性。
+
+### 15_multimodel_rag
+
+使用视觉模型来对图像内容进行描述和提取，覆盖依赖图像数据的问题。
+
+### 16_fusion_rag
+
+融合检索，结合语义检索和关键词检索两种方式，补全可能遗漏的关键词精确匹配的场景，来提高检索质量。
+
+把向量检索和 BM25 关键词检索的结果融合加权计算综合分数。
+
+### 17_graph_rag
+
+基于图的 RAG，将知识组织成连接图而非平面文档集合。根据相似度和概念重合度来定义边权，查询时图遍历来找到相关上下文内容。
+
+```python
+system_message = """Extract key concepts and entities from the provided text.
+Return ONLY a list of 5-10 key terms, entities, or concepts that are most important in this text.
+Format your response as a JSON array of strings."""
+```
+
+### 18_hierarchy_rag
+
+解决传统 RAG 在处理大规模知识库时，如果对所有文本块一视同仁，可能上下文丢失或者检索效率低的问题。
+
+层次化索引的 RAG，先通过摘要识别相关文档主要内容，再对内容进行分开嵌入，分为两个向量存储。
+
+### 19_HyDE_rag
+
+Hypothetical Document Embedding，假设文档嵌入，通过生成能回答用户问题的假设文档来作为嵌入搜索的参照对象。(看到这里真的笑出声了...)
+
+```python
+system_prompt = f"""You are an expert document creator. 
+Given a question, generate a detailed document that would directly answer this question.
+The document should be approximately {desired_length} characters long and provide an in-depth, 
+informative answer to the question. Write as if this document is from an authoritative source
+on the subject. Include specific details, facts, and explanations.
+Do not mention that this is a hypothetical document - just write the content directly."""
+
+# Define the user prompt with the query
+user_prompt = f"Question: {query}\n\nGenerate a document that fully answers this question:"
+```
+
+### 20_crag
+
+Corrective RAG，评估检索结果的相关性，当本地检索结果不足时，通过网络搜索来补充，结合多个来源的结果生成答案。
+
+### 21_rag_with_rl
+
+使用 Reinforcement Learning (强化学习) 来优化。
+
+定义学习的核心组件：状态、动作空间和奖励：
+动作逻辑包括：重写查询、扩展上下文、过滤上下文、生成答案。
+使用奖励函数基于余弦相似度评估生成答案的质量。
