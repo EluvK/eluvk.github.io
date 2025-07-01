@@ -1,0 +1,265 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HotStuff</title>
+  <meta name="description" content="basic hotStuff protocol">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2020/09/30/hotstuff.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#HotStuff"><span>HotStuff</span> <time datetime="2020-09-30">Sep 30, 2020</time></a>
+    </h1>
+<p><span>basic hotStuff protocol</span></p>
+<p><a href="https://dl.acm.org/doi/pdf/10.1145/3293611.3331591"><span>HotStuff 论文</span></a></p>
+<section id="MSG">
+
+    <h2>
+    <a href="#MSG"><span>MSG 组装</span> </a>
+    </h2>
+<ul>
+<li>
+<span>一个 message 由</span><code>[type, node, QC]</code><span>构造组成，默认还有 viewNumber=curView,</span>
+</li>
+<li>
+<span>type 有：</span><code>NEW-VIEW</code><span>,</span><code>PREPARE</code><span>,</span><code>PRE-COMMIT</code><span>,</span><code>COMMIT</code><span>,</span><code>DECIDE</code>
+</li>
+<li>
+<span>node 携带 Leader 提出的 proposal 消息 或是 Replica 返回的 QC.node</span>
+</li>
+<li>
+<span>QC 携带经过 Leader 聚合签名，说明是大家都认可的</span>
+<span>Replica 发送的 </span><code>VoteMsg</code><span> 会对 message.partialSig 进行部分签名。</span>
+</li>
+</ul>
+
+<figure>
+
+<img alt="MSG" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2020-09/hotstuff-MSG.png">
+</figure>
+</section>
+<section id="PREPARE">
+
+    <h2>
+    <a href="#PREPARE"><span>PREPARE</span> </a>
+    </h2>
+<p><span>Replica</span></p>
+<ul>
+<li>
+<span>发送自己本地最大的 </span><code>prepare-QC</code><span> 作为 </span><code>new-view</code>
+</li>
+</ul>
+<p><span>Leader</span></p>
+<ul>
+<li>
+<span>等待 </span><code>n-f</code><span> 个 </span><code>new-view</code><span> 消息，从中找到最高的 </span><code>prepare-QC</code><span> 作为 </span><code>high-QC</code><span>,基于 </span><code>high-QC</code><span> 往后生成一个新块（因此保证不会冲突），把新块打包在 </span><code>proposal</code><span> 消息里，广播 message</span>
+</li>
+<li>
+<span>[</span><code>PREPARE</code><span>, </span><code>proposal</code><span>, </span><code>high-QC</code><span>]</span>
+</li>
+</ul>
+<p><span>Replica</span></p>
+<ul>
+<li>
+<span>收到当前 view 的 </span><code>PREPARE</code><span> 消息，验签，确认新块 </span><code>safe</code><span> 即返回 </span><code>VoteMsg</code><span> 表示同意</span>
+</li>
+<li>
+<span>[</span><code>PREPARE</code><span>, </span><code>proposal</code><span>, </span><code>-</code><span>]</span>
+</li>
+<li>
+<code>safe</code><span> 原则(满足一个即可)： 1. safety: 新块是本地 </span><code>lock-QC</code><span> 对应块的后续块(pre-block 是本地确认过的块) 2. liveness： QC 的 view-num &gt; 本地 </span><code>lock-QC</code><span> 的 view-num (说明本地落后了?需要同步处理吧)</span>
+</li>
+</ul>
+</section>
+<section id="PRE-COMMIT">
+
+    <h2>
+    <a href="#PRE-COMMIT"><span>PRE-COMMIT</span> </a>
+    </h2>
+<p><span>Leader</span></p>
+<ul>
+<li>
+<span>等待接受 </span><code>n-f</code><span> 个 </span><code>PREPARE</code><span> 的 </span><code>VoteMsg</code><span>，验签聚合成新签名，生成为新的 </span><code>prepare-QC</code><span> 存在本地，广播 message</span>
+</li>
+<li>
+<span>[</span><code>PRE-COMMIT</code><span>, </span><code>-</code><span>, </span><code>prepare-QC</code><span>]</span>
+</li>
+</ul>
+<p><span>Replica</span></p>
+<ul>
+<li>
+<span>收到当前 view 的 </span><code>PRE-COMMIT</code><span> 消息，验签返回 </span><code>VoteMsg</code><span> 表示同意</span>
+</li>
+<li>
+<span>[</span><code>PRE-COMMIT</code><span>, </span><code>prepare-QC.node</code><span>, </span><code>-</code><span>]</span>
+</li>
+</ul>
+</section>
+<section id="COMMIT">
+
+    <h2>
+    <a href="#COMMIT"><span>COMMIT</span> </a>
+    </h2>
+<p><span>Leader</span></p>
+<ul>
+<li>
+<span>等待接受 </span><code>n-f</code><span> 个 </span><code>PRE-COMMIT</code><span> 的 </span><code>VoteMsg</code><span>，验签聚合成新签名，生成为新的 </span><code>pre-commit-QC</code><span>，广播 message</span>
+</li>
+<li>
+<span>[</span><code>COMMIT</code><span>, </span><code>-</code><span>, </span><code>pre-commit-QC</code><span>]</span>
+</li>
+</ul>
+<p><span>Replica</span></p>
+<ul>
+<li>
+<span>收到当前 view 的 </span><code>COMMIT</code><span> 消息，验签返回 </span><code>VoteMsg</code><span> 表示同意</span>
+</li>
+<li>
+<span>[</span><code>COMMIT</code><span>, </span><code>pre-commit-QC.node</code><span>, </span><code>-</code><span>]</span>
+</li>
+</ul>
+</section>
+<section id="DECIDE">
+
+    <h2>
+    <a href="#DECIDE"><span>DECIDE</span> </a>
+    </h2>
+<p><span>Leader</span></p>
+<ul>
+<li>
+<span>等待接受 </span><code>n-f</code><span> 个 </span><code>COMMIT</code><span> 的 </span><code>VoteMsg</code><span>，验签聚合成新签名，生成新的 </span><code>commit-QC</code><span>，广播 message</span>
+</li>
+<li>
+<span>[</span><code>DECIDE</code><span>, </span><code>-</code><span>, </span><code>commit-QC</code><span>]</span>
+</li>
+</ul>
+<p><span>Replica</span></p>
+<ul>
+<li>
+<span>收到当前 view 的 </span><code>DECIDE</code><span> 消息，确认了这个 </span><code>proposal</code><span> 是大家都会执行的，在本地执行，自身 view++，开启下一阶段</span>
+</li>
+</ul>
+</section>
+<section id="s-1">
+
+    <h2>
+    <a href="#s-1"><span>说明</span> </a>
+    </h2>
+<p><span>后面三个阶段内容很相似</span></p>
+<p><span>Leader 广播的 </span><code>message.type</code><span> 表示这一回合大家来共识什么阶段，附带的 </span><code>xxx-QC</code><span> 表示 </span><code>xxx</code><span> 这个阶段已经被至少 </span><code>n-f</code><span> 人确认过了，这是一个大家都同意的验证。</span></p>
+<p><span>Replica 回复的 </span><code>VoteMsg.type</code><span> 表示这个 Replica 同意的这个阶段。</span></p>
+<p><span>三个 QC：</span></p>
+<ul>
+<li>
+<code>prepare-QC</code><span> 可以理解为，Leader 宣布已经有 </span><code>n-f</code><span> 个节点知道了下一个要共识的内容是 </span><code>proposal</code><span> 了</span>
+</li>
+<li>
+<code>pre-commit-QC</code><span> 可以理解为，Leader 宣布已经有 </span><code>n-f</code><span> 个节点知道了：至少有 </span><code>n-f</code><span> 个节点知道下一个要共识的内容是 </span><code>proposal</code><span> 了。【但是这些节点并不知道 其它节点知不知道 有多少节点知道 下一个要共识的内容】</span>
+</li>
+<li>
+<code>commit-QC</code><span> 可以理解为，Leader 宣布已经有 </span><code>n-f</code><span> 个节点，这些节点不仅知道了至少有 </span><code>n-f</code><span> 个节点知道下个要共识的 </span><code>proposal</code><span>，而且还知道别人知道自己知道</span>&hellip;<span>,所以就算共识成功了。</span>
+</li>
+</ul>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2020-09-30-hotstuff.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>

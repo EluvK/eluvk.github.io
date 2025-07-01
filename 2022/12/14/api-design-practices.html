@@ -1,0 +1,259 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Api Design Practices</title>
+  <meta name="description" content="工作内容里，签名验签模块在重构后出现了一个偶现 bug，个别账号签名的数据验签失败。">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2022/12/14/api-design-practices.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#Api-Design-Practices"><span>Api Design Practices</span> <time datetime="2022-12-14">Dec 14, 2022</time></a>
+    </h1>
+<section id="0x00">
+
+    <h2>
+    <a href="#0x00"><span>0x00</span> </a>
+    </h2>
+<p><span>工作内容里，签名验签模块在重构后出现了一个偶现 bug，个别账号签名的数据验签失败。</span></p>
+<p><span>重构的时候单元测试覆盖过功能测试（私钥-公钥-签名-验签）是可以的，修改测试循环大量次数跑后，发现生成1万次随机私钥，会有60-80次会出现验签失败的问题。</span></p>
+<p><span>打印出来后出错的 case 后，发现共有的特点是，32 bytes 的私钥里，出错的都是第一个 byte 为 0 (hex: 0x00) 的私钥。一个随机账号出错的概率大概就是 </span><span class="math inline">\(\frac{1}{256}\)</span><span> 。</span></p>
+<p><span>所以原因大概率就是前置0 在存储使用的过程中丢失了的原因。进一步定位代码找到了出错的地方。</span></p>
+<p><span>先描述一下相关接口方法的使用。</span></p>
+</section>
+<section id="0x01">
+
+    <h2>
+    <a href="#0x01"><span>0x01</span> </a>
+    </h2>
+<p><span>签名验签使用的是 </span><code>openssl</code><span> 的库来实现其数学计算过程，其中私钥 32 bytes = 256 bit 是通过 </span><code>BigNumber</code><span> (简写为 </span><code>BN</code><span> ) 来保存的。在 </span><code>BN</code><span> 对象和其可读形式（无论是 hex 编码还是 base64编码）的转换过程中，第一步都要把 </span><code>BN</code><span> 转换成对应的 bytes 数据。</span></p>
+<p><span>openssl 在 </span><code>BN</code><span> 相关的接口里也提供了对应的转换方式：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">size_t</span> <span class="hl-title">BN_bn2bin</span><span class="hl-params">(<span class="hl-type">const</span> BIGNUM * in, <span class="hl-type">uint8_t</span> * out)</span></span>;</span></code></pre>
+
+</figure>
+<p><span>方法传入两个参数，第一个是入参 </span><code>BN *</code><span>，第二个是出参 </span><code>u8 *</code><span>，返回值表示转换的长度。</span></p>
+<p><span>非常的 C 风格，经验丰富的 coder 也会马上注意到，出参 to 指针指向的结果对象，其内存是由调用者来管理的，也就是说在调用之前我就需要明确申请好足够的空间来存放结果。但是我怎么知道 </span><code>BN * in</code><span> 会转换出多少 bytes 呢？</span></p>
+<p><span>对此 openssl 还提供了另外一个方法：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">size_t</span> <span class="hl-title">BN_num_bytes</span><span class="hl-params">(<span class="hl-type">const</span> BIGNUM *bn)</span></span></span>
+<span class="line"><span class="hl-function"></span></span></code></pre>
+
+</figure>
+<p><span>传入 </span><code>BN *</code><span>, 返回其对应的 bytes 长度。</span></p>
+</section>
+<section id="0x02">
+
+    <h2>
+    <a href="#0x02"><span>0x02</span> </a>
+    </h2>
+<p><span>所以使用方法大致如下：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-type">size_t</span> len = <span class="hl-built_in">BN_num_bytes</span>(bn);</span>
+<span class="line"></span>
+<span class="line"><span class="hl-type">uint8_t</span> * binary_result = (<span class="hl-type">uint8_t</span> *)<span class="hl-built_in">malloc</span>(len * <span class="hl-built_in">sizeof</span>(<span class="hl-type">uint8_t</span>)) <span class="hl-comment">// C malloc</span></span>
+<span class="line"><span class="hl-comment">// uint8_t * binary_result = new uint8_t[len] // or use C++ new</span></span>
+<span class="line"><span class="hl-built_in">memset</span>(binary_result, <span class="hl-number">0</span>, len * <span class="hl-built_in">sizeof</span>(<span class="hl-type">uint8_t</span>))</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">if</span> (<span class="hl-built_in">BN_bn2bin</span>(bn, binary_result) != len) {</span>
+<span class="line">    <span class="hl-comment">// TODO what?</span></span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// ...</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-built_in">free</span>(binary_result);</span>
+<span class="line"><span class="hl-comment">// delete[] binary_result // or use C++ delete</span></span></code></pre>
+
+</figure>
+<p><span>过程应该很简单清晰，获取长度 - 申请内存 - 调用转换方法。</span></p>
+<p><span>但是应该怎么处理 </span><code>BN_bn2bin</code><span> 方法的返回值呢？</span></p>
+</section>
+<section id="0x03">
+
+    <h2>
+    <a href="#0x03"><span>0x03</span> </a>
+    </h2>
+<p><span>这个返回的整数值，在某些类似场合下（比如读写文件）其含义或许是：实际写入的字节数。但是在这里，它一定是 </span><code>BN</code><span> 的实际 bytes 长度。其实现也就是如此：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">size_t</span> <span class="hl-title">BN_bn2bin</span><span class="hl-params">(<span class="hl-type">const</span> BIGNUM * in, <span class="hl-type">uint8_t</span> * out)</span> </span>{</span>
+<span class="line">  <span class="hl-type">size_t</span> n = <span class="hl-built_in">BN_num_bytes</span>(in);</span>
+<span class="line">  <span class="hl-built_in">bn_words_to_big_endian</span>(out, n, in-&gt;d, in-&gt;width);</span>
+<span class="line">  <span class="hl-keyword">return</span> n;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>返回值 </span><code>n</code><span> 也和我们调用 </span><code>BN_num_bytes</code><span> 获取长度得到的结果必定是一样的。那我们判断返回值 </span><code>if (BN_bn2bin(bn, binary_result) != len)</code><span> 的意义是什么？</span></p>
+<p><span>想要调用 </span><code>BN_bn2bin</code><span>，必定要先调用 </span><code>BN_num_bytes</code><span>，那 </span><code>BN_bn2bin</code><span> 的返回值我在使用前已经知道了。</span></p>
+<p><span>所以实践上可能还仅剩的意义大概是：在 debug 里多判断一次断言，release 下可以直接放过这个返回值了：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-type">size_t</span> len = <span class="hl-built_in">BN_num_bytes</span>(bn);</span>
+<span class="line"></span>
+<span class="line"><span class="hl-type">uint8_t</span> * binary_result = <span class="hl-keyword">new</span> <span class="hl-type">uint8_t</span>[len]</span>
+<span class="line"></span>
+<span class="line"><span class="hl-built_in">memset</span>(binary_result, <span class="hl-number">0</span>, len * <span class="hl-built_in">sizeof</span>(<span class="hl-type">uint8_t</span>))</span>
+<span class="line"></span>
+<span class="line">[[maybe_unused]] <span class="hl-type">size_t</span> ret = <span class="hl-built_in">BN_bn2bin</span>(bn, binary_result);</span>
+<span class="line"></span>
+<span class="line"><span class="hl-built_in">assert</span>(ret == len);</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// ... </span></span></code></pre>
+
+</figure>
+</section>
+<section id="0x04">
+
+    <h2>
+    <a href="#0x04"><span>0x04</span> </a>
+    </h2>
+<p><span>上面解释后也可以看出 </span><code>BN_bn2bin</code><span> 设计初衷就是一个通用的转换方式，所以按照上述的封装方式一定会得到一个通用的序列化方法。</span></p>
+<p><span>而对于私钥这种定长(32 bytes)的大整数，不可避免地出现有前置0的情况，比如 值为 </span><code>0x00ff..ffff</code><span>，经过上面的操作后得到的 </span><code>binary_result</code><span> 的长度是 31，如果在存储的时候没有考虑到这种情况，复制的时候就可能整体左移了一 bytes，变成了 </span><code>0xffff..ff00</code><span> 私钥的数值放大了256倍，都不是同一把私钥，自然无法验签了。这也就是最初遇到的 bug 的原因了。</span></p>
+<p><span>所以最好是把通用序列化和定长序列化区分开来。额外封装出能够自动补齐0的接口来。这里就不再展开了。</span></p>
+</section>
+<section id="0x05">
+
+    <h2>
+    <a href="#0x05"><span>0x05</span> </a>
+    </h2>
+<p><span>允许对内存的精确掌控也必然要求使用者足够仔细和周全。对于开发一个提供给他人使用的库来说，或许可以做的更好。例如这个例子里，通用的序列化方法和定长的序列化方式都可以提供出来，意义很弱的长度返回值也可以用现代语言里的容器取代。</span></p>
+<p><span>接口层面可能如下（随手写的举个例子，返回值 </span><code>Vec&lt;u8&gt;</code><span> 仅做表示意义）：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">pub</span> <span class="hl-keyword">enum</span> <span class="hl-title class_">PaddingScheme</span> {</span>
+<span class="line">    BigEndian,</span>
+<span class="line">    LittleEndian,</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">BigNum</span> {</span>
+<span class="line">    <span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">bn_to_bin</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;<span class="hl-type">Vec</span>&lt;<span class="hl-type">u8</span>&gt;, BnError&gt;;</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">bn_to_fixed_bin</span>(&amp;<span class="hl-keyword">self</span>, len: <span class="hl-type">usize</span>, padding: PaddingScheme) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;<span class="hl-type">Vec</span>&lt;<span class="hl-type">u8</span>&gt;, BnError&gt;;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="0x06">
+
+    <h2>
+    <a href="#0x06"><span>0x06</span> </a>
+    </h2>
+<p><span>原因相关但是跑题的感想：💩⛰ 代码重构起来，要么彻底了解前后背景设计原因，要么做好准备定位分析奇奇怪怪的问题。</span></p>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2022-12-14-api-design-practices.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>
