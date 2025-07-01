@@ -89,11 +89,11 @@ Nodes 和 Flow 之间的主要通过 shared store 来进行数据传递（通常
 技术上无论怎么操作最后的落脚点还是向量相似度检索/LLM回答、中间套上用 LLM 处理马上要喂给 LLM 的内容的各种手段实在不好评价。因为感觉这种方式十分不精确，也无法证明其完善性，实践上如果使用的（理论最佳）策略强依赖于原始材料的质量、完整性，也很难落地通用些的项目。
 后面一些引入了意图检测，加上一些合适的步骤来避免没法答硬回答的想法很好。
 
-### 01_simple_rag
+### 01 simple rag
 
 基础的 RAG 实现：将全文分割成一个个chunk，按照相似度检索出 top k 相关的 chunk，拼接成一个 Context prompt 传入 LLM。
 
-### 02_semantic_chunking
+### 02 semantic chunking
 
 提出一种分块策略：将大段落按照其中句子的语义进行分块，相比于固定段落/长度的分块策略，可以更好的精炼每个 chunk 的内容。也能提高检索的相关性准确性。具体有多种方法：
 
@@ -103,22 +103,22 @@ Nodes 和 Flow 之间的主要通过 shared store 来进行数据传递（通常
 
 执行的时候都是：先按照一句句话分开，计算每句的嵌入向量，然后计算每两句之间的相似度，选择一种分块策略来决定分块点，按照分块点重新拼接成 chunk。最后将 chunk 计算嵌入向量。回归到 RAG 的基本流程。
 
-### 03_chunk_size_selector
+### 03 chunk size selector
 
 提出了一种分块策略：按照不同的 length，再叠加一些 overlap 来分块。将不同长度的 chunk 都计算嵌入向量相似度选择最相关的 top k 个 chunk。回归到 RAG 的基本流程。
 
-### 04_context_enriched_rag
+### 04 context enriched rag
 
 Context-Enriched Retrieval: 在分块检索到最相关的 chunk 后，传入附近的上下文（如前后几句话）来丰富 chunk 的内容。可以提高检索的相关性准确性。
 
-### 05_contextual_chunk_headers_rag
+### 05 contextual chunk headers rag
 
 标准的文本分块（chunking）可能丢失重要的上下文信息，导致检索效果较差。
 Contextual Chunk Headers (CCH) 方法通过为每个文本块生成高层次的上下文（如标题或章节名称），增强检索的准确性和回答的连贯性。
 
 通过为每个文本块生成标题并结合标题和内容进行检索。（个人评论：感觉如果最终的评价标准还是用向量相关性的话，对于原文内容的质量还是有很高的要求，在个人知识库里，一些不够完善的内容还是会影响检索效果。）
 
-### 06_augmentation_rag
+### 06 augmentation rag
 
 引入了 问题生成（Question Generation），给定文本段落，让AI生成相关问题，然后将这些问题也作为查询来检索相关的文本段落。
 
@@ -135,7 +135,7 @@ Format your response as a numbered list of questions only, with no additional te
 """
 ```
 
-### 07_query_transform
+### 07 query transform
 
 引入了查询转换（Query Transformation），在检索之前对查询进行转换或增强，以提高检索的相关性和准确性。
 包括三种方法：
@@ -186,7 +186,7 @@ And so on...
 """
 ```
 
-### 08_reranker
+### 08 reranker
 
 重排序核心概念：
 
@@ -217,11 +217,11 @@ Rate this document's relevance to the query on a scale from 0 to 10:"""
 
 根据评分结果对文档进行重排序，选择最相关的文档作为最终结果。
 
-### 09_rse
+### 09 rse
 
 Relevant Segment Extraction (RSE) 技术，通过识别文档中更连续的相关片段作为相关性排序依据，原理是倾向于认为相关性强的片段一般都是连续的，所以用区间片段的相关性累计值来作为选取片段的依据。
 
-### 10_contextual_compression
+### 10 contextual compression
 
 在检索到的文本块中，过滤掉和查询无关的内容，仅保留最相关的部分；通过压缩上下文来减少噪声，提高语言模型生成的质量。
 
@@ -269,13 +269,13 @@ else:  # extraction
     Format your response as plain text with no additional comments."""
 ```
 
-### 11_feedback_loop_rag
+### 11 feedback loop rag
 
 动态的根据用户反馈来调整相关性评分。**将成功的问答纳入知识库**，增强长期的学习能力。
 
 思路很自然，实现比较玩具。这并不是一个仅在 RAG 场景下才需要的能力。
 
-### 12_adaptive_rag
+### 12 adaptive rag
 
 用AI将用户查询的分类，再配合不同的检索策略来处理不同类型的查询。
 
@@ -295,28 +295,28 @@ system_prompt = """You are an expert at classifying questions.
 user_prompt = f"Classify this query: {query}"
 ```
 
-### 13_self_rag
+### 13 self rag
 
 自反式 RAG，特点：
 
 - 动态的（用LLM）决定是否要检索（在此前的 RAG 实现中，检索都是固定的步骤）。
 - 评估检索结果的相关性和准确性，如果不实用，不如直接使用 LLM 生成答案 / 反馈无法回答。
 
-### 14_proposition_chunking
+### 14 proposition chunking
 
 命题分块（Proposition Chunking），将文本分割成更小的命题单元（propositions），对生成的命题进行质量检查，包括准确性、清晰度、完整性和简洁性。
 
-### 15_multimodel_rag
+### 15 multimodel rag
 
 使用视觉模型来对图像内容进行描述和提取，覆盖依赖图像数据的问题。
 
-### 16_fusion_rag
+### 16 fusion rag
 
 融合检索，结合语义检索和关键词检索两种方式，补全可能遗漏的关键词精确匹配的场景，来提高检索质量。
 
 把向量检索和 BM25 关键词检索的结果融合加权计算综合分数。
 
-### 17_graph_rag
+### 17 graph rag
 
 基于图的 RAG，将知识组织成连接图而非平面文档集合。根据相似度和概念重合度来定义边权，查询时图遍历来找到相关上下文内容。
 
@@ -326,13 +326,13 @@ Return ONLY a list of 5-10 key terms, entities, or concepts that are most import
 Format your response as a JSON array of strings."""
 ```
 
-### 18_hierarchy_rag
+### 18 hierarchy rag
 
 解决传统 RAG 在处理大规模知识库时，如果对所有文本块一视同仁，可能上下文丢失或者检索效率低的问题。
 
 层次化索引的 RAG，先通过摘要识别相关文档主要内容，再对内容进行分开嵌入，分为两个向量存储。
 
-### 19_HyDE_rag
+### 19 HyDE rag
 
 Hypothetical Document Embedding，假设文档嵌入，通过生成能回答用户问题的假设文档来作为嵌入搜索的参照对象。(看到这里真的笑出声了...)
 
@@ -348,11 +348,11 @@ Do not mention that this is a hypothetical document - just write the content dir
 user_prompt = f"Question: {query}\n\nGenerate a document that fully answers this question:"
 ```
 
-### 20_crag
+### 20 crag
 
 Corrective RAG，评估检索结果的相关性，当本地检索结果不足时，通过网络搜索来补充，结合多个来源的结果生成答案。
 
-### 21_rag_with_rl
+### 21 rag with rl
 
 使用 Reinforcement Learning (强化学习) 来优化。
 
