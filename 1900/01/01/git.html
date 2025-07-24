@@ -1,0 +1,386 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Git</title>
+  <meta name="description" content="book: git-scm">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/1900/01/01/git.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#Git"><span>Git</span> <time datetime="1900-01-01">Jan 1, 1900</time></a>
+    </h1>
+<p><span>book: </span><a href="https://git-scm.com/"><span>git-scm</span></a></p>
+<section id="config">
+
+    <h2>
+    <a href="#config"><span>config</span> </a>
+    </h2>
+<ul>
+<li>
+<code>git config --global gc.auto 0</code><span> # turn off automatica garbage collection</span>
+</li>
+</ul>
+</section>
+<section id="log">
+
+    <h2>
+    <a href="#log"><span>log</span> </a>
+    </h2>
+<ul>
+<li>
+<code>git log -n</code>
+</li>
+<li>
+<code>git log --pretty=oneline</code>
+</li>
+<li>
+<code>git log --graph --abbrev-commit --decorate --all --oneline</code>
+</li>
+</ul>
+</section>
+<section id="branch">
+
+    <h2>
+    <a href="#branch"><span>branch</span> </a>
+    </h2>
+<ul>
+<li>
+<code>git branch -d(D) [branch name]</code>
+</li>
+<li>
+<code>git branch -vv</code>
+</li>
+</ul>
+</section>
+<section id="rename">
+
+    <h2>
+    <a href="#rename"><span>rename</span> </a>
+    </h2>
+<section id="rename-local">
+
+    <h3>
+    <a href="#rename-local"><span>rename local</span> </a>
+    </h3>
+<ul>
+<li>
+<span>rename current branch: </span><code>git branch -m new_branch_name</code>
+</li>
+<li>
+<span>rename some other branch: </span><code>git branch -m old_branch_name new_branch_name</code>
+</li>
+</ul>
+</section>
+<section id="rename-remote">
+
+    <h3>
+    <a href="#rename-remote"><span>rename remote</span> </a>
+    </h3>
+<ul>
+<li>
+<span>rename local: </span><code>git branch -m new_branch_name</code>
+</li>
+<li>
+<span>delete remote: </span><code>git push --delete origin old_branch_name</code>
+</li>
+<li>
+<span>push upstream </span><code>git push origin --set-upstream new_branch_name</code>
+</li>
+</ul>
+</section>
+<section id="checkout">
+
+    <h3>
+    <a href="#checkout"><span>checkout</span> </a>
+    </h3>
+<ul>
+<li>
+<code>git checkout [branch name]</code>
+</li>
+<li>
+<code>git checkout -b [branch name]</code>
+</li>
+</ul>
+</section>
+<section id="rebase">
+
+    <h3>
+    <a href="#rebase"><span>rebase</span> </a>
+    </h3>
+<ul>
+<li>
+<code>git rebase [branch name]</code>
+</li>
+<li>
+<code>git rebase -i [commit hash]</code>
+</li>
+</ul>
+
+<figure class="blockquote">
+<blockquote><p><span>vim 超能力:</span></p>
+<p><span>在 vim 里 Normal 模式依次按下 </span><code>qsdwis{Blank Space}{Esc}{Home}{Arrow Down}q</code></p>
+<p><span>qs{...}q 记录{...}操作到寄存器 s / dw: delete word / insert </span><code>s</code><span> / next line</span></p>
+<p><span>后续只需要移动到第二个 </span><code>pick</code><span> 按下</span><code>3@s</code><span> 即可修改下面3个 </span><code>pick</code><span> 为 </span><code>s</code></p>
+<p><span>update: </span><code>cw</code><span> ( </span><code>= dwi</code><span>) 删除当前单词后进入插入模式</span></p>
+<p><span>can be easier: </span><code>qscws{Esc}{Arrow Down}q</code></p>
+</blockquote>
+
+</figure>
+<ul>
+<li>
+<code>git rebase &lt;remote&gt; &lt;local&gt;</code>
+</li>
+<li>
+<span>eg: git rebase origin/master dev</span>
+</li>
+<li>
+<span>会切换到 dev，但是如果没问题已经 rebase 好了，如果分两步做，先切到 dev 的时候变更的文件会触发需要重新编译。</span>
+</li>
+</ul>
+</section>
+</section>
+<section id="reset">
+
+    <h2>
+    <a href="#reset"><span>reset</span> </a>
+    </h2>
+<ul>
+<li>
+<code>git reset --hard [commit hash]</code>
+</li>
+<li>
+<code>git reset --soft [commit hash]</code>
+</li>
+</ul>
+</section>
+<section id="commit">
+
+    <h2>
+    <a href="#commit"><span>commit</span> </a>
+    </h2>
+<ul>
+<li>
+<code>git commit -m "commit info"</code>
+</li>
+<li>
+<code>git commit --amend --date="$(date -R)"</code><span> 更新 commit 时间</span>
+</li>
+</ul>
+</section>
+<section id="tag">
+
+    <h2>
+    <a href="#tag"><span>tag</span> </a>
+    </h2>
+<ul>
+<li>
+<code>git tag -a v0.1.0-alpha -m "release v0.1.0-alpha"</code>
+</li>
+<li>
+<code>git push origin master --tags</code>
+</li>
+</ul>
+</section>
+<section id="fetch">
+
+    <h2>
+    <a href="#fetch"><span>fetch</span> </a>
+    </h2>
+<ul>
+<li>
+<code>git fetch -p</code><span> 更新分支信息 || </span><code>git remote prune origin</code>
+</li>
+</ul>
+</section>
+<section id="re-create-the-very-first-commit">
+
+    <h2>
+    <a href="#re-create-the-very-first-commit"><span>re-create the very first commit</span> </a>
+    </h2>
+<ul>
+<li>
+<code>git update-ref -d HEAD</code>
+</li>
+</ul>
+</section>
+<section id="vscode">
+
+    <h2>
+    <a href="#vscode"><span>vscode 记住账户密码</span> </a>
+    </h2>
+<ul>
+<li>
+<code>git config --global credential.helper store</code>
+</li>
+</ul>
+</section>
+<section id="gc">
+
+    <h2>
+    <a href="#gc"><span>gc</span> </a>
+    </h2>
+<ul>
+<li>
+<code>git gc --prune=now</code>
+</li>
+</ul>
+<section id="git">
+
+    <h3>
+    <a href="#git"><span>git 代码统计</span> </a>
+    </h3>
+<ul>
+<li>
+<code>git log --format='%aN' | sort -u | while read name; do echo -en "$name\t"; git log --author="$name" --pretty=tformat: --numstat | grep "\(.cpp\|.h\|.txt\)$" | awk '{ add += $1; subs += $2; loc += $1 - $2 } END { printf "added lines: %s, removed lines: %s, total lines: %s\n", add, subs, loc }' -; done</code>
+</li>
+</ul>
+</section>
+<section id="s-1">
+
+    <h3>
+    <a href="#s-1"><span>单机多账户</span> </a>
+    </h3>
+<p><span>单机两个账户，比如工作账户作为主账户，私人账户偶尔使用：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ <span class="hl-built_in">cat</span> ~/.ssh/config </span>
+<span class="line"><span class="hl-comment"># github for main</span></span>
+<span class="line">        Host github.com</span>
+<span class="line">        HostName github.com</span>
+<span class="line">        IdentityFile ~/.ssh/id_rsa</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># github for private</span></span>
+<span class="line">        Host github-self.com</span>
+<span class="line">        HostName github.com</span>
+<span class="line">        IdentityFile ~/.ssh/self_key/id_rsa</span></code></pre>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ ssh -T git@github.com</span>
+<span class="line">Hi account_main! You have successfully authenticated, but GitHub does not provide shell access.</span>
+<span class="line"></span>
+<span class="line">$ ssh -T git@github-self.com</span>
+<span class="line">Hi account_self! You have successfully authenticated, but GitHub does not provide shell access.</span></code></pre>
+
+</figure>
+<p><span>用私人账户的仓库时，add remote 记得也要写清楚：</span><code>git@github-xxx</code></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ git config --<span class="hl-built_in">local</span> -l</span>
+<span class="line">...</span>
+<span class="line">remote.origin.url=git@github-self.com:EluvK/REPONAME.git</span>
+<span class="line">...</span></code></pre>
+
+</figure>
+</section>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/1900-01-01-git.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>
