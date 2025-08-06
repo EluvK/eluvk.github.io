@@ -38,7 +38,7 @@ enum Option<T> {
 
 ### Product Type | And | `+`
 
-比如一个 `Point` 结构体，它由两个 i32 组成，我们可以说这个 Point 包含一个 i32 **和(And)** 另一个 i32
+比如一个 `Point` 结构体，它由两个 i32 组成，我们可以说这个 Point 包含一个 i32 *和(And)* 另一个 i32
 
 ```rust
 struct Point {
@@ -51,7 +51,7 @@ struct Point {
 
 ### Sum Type | Or | `*`
 
-比如 `Option<T>` 可以是 `None` **或者(Or)** `Some(T)`，总可能数为 1 + N（其中 N 为 `T` 的可能数）。
+比如 `Option<T>` 可以是 `None` *或者(Or)* `Some(T)`，总可能数为 1 + N（其中 N 为 `T` 的可能数）。
 
 因此通常会说 Enum 是 Sum Type 在 Rust 中的实现方式，也可以称 Enum 为 [Tagged Union](https://en.wikipedia.org/wiki/Tagged_union)
 
@@ -71,7 +71,7 @@ type Point = i32 * i32;
 type OptionT = 1 + T;
 ```
 
-实际上还有 Exponential Type（指数类型），$A^B$ 表示从 $B$ 到 $A$ 的函数类型。其可能的数为 $A^{B}$，即 $A$ 的可能数的 $B$ 次方。那么自然我们可以把一个从 $B$ 到 $A$ 的函数认为是一个 Exponential Type。
+实际上还有 Exponential Type（指数类型），$`A^B` 表示从 $`B` 到 $`A` 的函数类型。其可能的数为 $`A^{B}`，即 $`A` 的可能数的 $`B` 次方。那么自然我们可以把一个从 $`B` 到 $`A` 的函数认为是一个 Exponential Type。
 
 ```rust
 fn func(b: B) -> A;
@@ -86,7 +86,7 @@ struct func {
 }
 ```
 
-自然这个类型 `func` 的可能数就是 $|A|^{|B|}$。
+自然这个类型 `func` 的可能数就是 $`A^{B}`。
 
 ## More in Enum
 
