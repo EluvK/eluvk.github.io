@@ -1,0 +1,194 @@
+# Best Enum
+
+在 Rust 吸引人的诸多优点中，Enum 肯定十分值得一提。对于从 C/C++ 转过来的开发者来说，看到这种自带 namespace 的枚举，不仅可以在一个枚举值里存储其他类型的值，甚至每个枚举值都可以有不同类型的值，实在令人耳目一新。
+
+```rust
+enum Message {
+    Join { id: u32, name: String },
+    Move(Point),
+    Quit,
+}
+struct Point {
+    x: i32,
+    y: i32,
+}
+```
+
+作为 Rust 的一等公民，也是完全融入到语言的类型系统里，最最基础的 `Option` 和 `Result` 类型都基于 Enum 实现：
+
+```rust
+enum Option<T> {
+    None,
+    Some(T),
+}
+```
+
+诸如模式匹配、穷尽性检查等特性都能用上，写出的代码的抽象层度高、可读性和简洁性都很不错。
+
+## 代数数据类型（Algebraic data type，缩写：ADT）
+
+包括 **和类型** 和 **积类型**两种。
+
+- 积类型（Product Type）：表示由多种类型组合而成，总可能数等于包含的每种类型的每种可能数的乘积。
+- 和类型（Sum Type）：表示可以是多种类型中的一种，总可能数等于包含的每种类型的可能数之和。
+
+如果一个语言的设计里提到了 ADT，那么通常它都会包含能覆盖这两种类型的实现。
+
+能看出 Rust 的 Enum 是和类型的，Tuple/Struct 是积类型的。
+
+### Product Type | And | `+`
+
+比如一个 `Point` 结构体，它由两个 i32 组成，我们可以说这个 Point 包含一个 i32 **和(And)** 另一个 i32
+
+```rust
+struct Point {
+    x: i32,
+    y: i32,
+}
+```
+
+所有 Point 的集合会包含所有可能的 (x, y) 对。
+
+### Sum Type | Or | `*`
+
+比如 `Option<T>` 可以是 `None` **或者(Or)** `Some(T)`，总可能数为 1 + N（其中 N 为 `T` 的可能数）。
+
+因此通常会说 Enum 是 Sum Type 在 Rust 中的实现方式，也可以称 Enum 为 [Tagged Union](https://en.wikipedia.org/wiki/Tagged_union)
+
+- tag (Discriminant) 表明这是哪一类枚举成员，编译器会最小化其大小，甚至一些情况下可以做到 0 大小。（niche optimization， e.g. `Option<&T>` ）
+- union (Payload) 保存枚举值的实例, 根据 tag 的不同而解释不同
+
+Tagged Union 有很多类似含义的术语 variant/discriminated union/disjoint union/sum type/coproduct 等。
+
+这在函数式编程语言里很常见，Rust 也是从 Haskell 等语言中借鉴了这个思想。
+
+### Exponential Type | Function | `^`
+
+我们其实可以用代数的方式来表示这些类型，这里的 `×` 表示积，`+` 表示和，所有类型都可以类比成一个多项式：
+
+```rust
+type Point = i32 * i32;
+type OptionT = 1 + T;
+```
+
+实际上还有 Exponential Type（指数类型），$A^B$ 表示从 $B$ 到 $A$ 的函数类型。其可能的数为 $A^{B}$，即 $A$ 的可能数的 $B$ 次方。那么自然我们可以把一个从 $B$ 到 $A$ 的函数认为是一个 Exponential Type。
+
+```rust
+fn func(b: B) -> A;
+
+// 如果我们认为 func 是一个类型，那么它的类型可以表示为如下：
+// 其包含 B 的所有可能值的个数个成员，每个成员对应一个 A 的可能值的结果
+struct func {
+    b1: A,
+    b2: A,
+    // ...
+    bn: A,
+}
+```
+
+自然这个类型 `func` 的可能数就是 $|A|^{|B|}$。
+
+## More in Enum
+
+### FixPoint
+
+如果尝试写过 Rust 里的链表，一定会对这个递归结构很熟悉：
+
+```rust
+enum List<T> {
+    Nil(),
+    Cons(T, Box<List<T>>),
+}
+```
+
+仅作类型分析，我们稍作简化，去掉因为递归无限大小引入的 `Box`，同时假定类型 `T` 是 `i32`，那么这个链表的类型可以写成：
+
+```rust
+enum IntList {
+    Nil(),
+    Cons(i32, IntList), // missing Box, won't compile
+}
+```
+
+`IntList` 类型就可以代数地表示为：
+
+```rust
+type IntList = 1 + (i32 * IntList)
+```
+
+`IntList` 在等式左右两边都出现了，所以这里其实是一个递归定义，实际上 `IntList` 刚好是
+
+```rust
+type IntListF<X> = 1 + (i32 * X)
+```
+
+的不动点，即 `IntList = IntListF(IntList)`。
+
+### 递归表达集合
+
+上面的递归定义，也可以让一个 Enum 表达出某个集合的所有可能值。比如所有的自然数的集合就可以用下面这个枚举来表达：
+
+```rust
+enum Nat {
+    Zero,
+    Succ(Box<Nat>),
+}
+```
+
+`Nat` 的可能值就可以是所有的自然数：0, 1, 2, 3, ...
+
+如果在 `Succ` 里增加一些内容，就会演变成链表。所以可以把链表看成是自然数的一个泛化。
+
+> lists are natural numbers which carry content.
+
+## Enum in API
+
+其实写这篇 blog 的最最出发点是实践里多次遇到了一个问题，然后在查找相关资料时发现了一些有趣的思想记录在上面。
+
+遇到的问题就是，当我们以这种 和类型 的思想来设计了一个 API 的 schema 后，如何能让它更好用。
+
+举个例子你有一个 API `POST /action` 需要在 reqbody 里填入 `Action`，它可以是 `Move`, `Attack`, `Heal` 等等，且不同的 `Action` 会有不同的参数。那么很自然可以用类似这样的 Enum 来表达：
+
+```rust
+enum Action {
+    Move(Direction),
+    Attack(Target),
+    Heal(Amount),
+}
+// ... Direction, Target, Amount 等类型定义
+```
+
+尽管 OpenAPI 3.0 支持 [`oneOf` 语法](https://swagger.io/docs/specification/v3_0/data-models/oneof-anyof-allof-not/)，可以写出这样的 schema：
+
+```yaml
+Action:
+  oneOf:
+    - $ref: '#/components/schemas/Move'
+    - $ref: '#/components/schemas/Attack'
+    - $ref: '#/components/schemas/Heal'
+```
+
+但是实际情况下其它检查工具的支持不完善、语言代码生成工具不支持等问题，会导致不得不使用退化成 object 的方式来表达：
+
+```yaml
+Action:
+  type: object
+  properties:
+    move:
+      $ref: '#/components/schemas/Move'
+    attack:
+      $ref: '#/components/schemas/Attack'
+    heal:
+      $ref: '#/components/schemas/Heal'
+```
+
+这种方式虽然可以表达出 Action 的所有可能值，但是却失去了 Enum 的语义。所以成员都只能定义成可选的，但业务又要求**有且仅有一个**成员存在。于是就会出现许多小问题：
+
+- 在接收到请求的时候不得不额外的做唯一性检查，这本该是生成工具自动完成的内容，不应该混杂在业务逻辑里
+- 不同语言的 SDK 代码、前端调用时都需要理解这个约束。因为它们不一定有 sum type 的概念
+
+Not a perfect world.
+
+## References && Further Reading
+
+[What Are Sum, Product, and Pi Types?](https://manishearth.github.io/blog/2017/03/04/what-are-sum-product-and-pi-types/)
