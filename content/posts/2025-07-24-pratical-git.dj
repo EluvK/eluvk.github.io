@@ -23,6 +23,33 @@ TL;DR 一些自以为是的 Git 经验和实践建议，有感而发，慎重参
 
 个人可能是有些奇妙的羞耻感，对于一些“愚蠢”的中间错误，不想留下痕迹给后人看，所以我会倾向于继续合并掉这些中间过程。也可以合理地解释为 Git 历史是用来回溯的，冗余甚至错误的信息只会增加负面影响，所以没有必要保留。
 
+## .git~~ignore~~include
+
+看到的一篇[文章](https://rgbcu.be/blog/gitignore/)讲如何把你的 .gitignore 文件用成只允许特定文件的白名单，其他的都不允许提交。之前知道这种 `!` 的用法，但从来没想过要这么做。
+
+感觉是有趣的一个实践，保持了我喜欢的“默认拒绝”，“保证知道你在做什么的”特点。
+
+还能顺便解决你没用过的各种 IDE 的配置文件、不同操作系统平台的特别文件（点名批评 .DS_Store）被其它人失误提交的问题。
+
+具体执行大概可以这么写：
+
+```text
+*
+
+!.gitignore
+
+# whitelist `src` directories and their children, regardless of place
+!src/
+!src/**/
+!src/**/*.rs
+!Cargo.{toml,lock}
+
+!/docs/
+!/docs/*.md
+```
+
+tradeoff 是你需要手动维护这个白名单，添加的任何新模块都要注明一下。
+
 ## Looking forward
 
 受限于环境，自己还没享受到但是期望的流程：
