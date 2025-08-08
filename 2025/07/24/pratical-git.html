@@ -1,0 +1,184 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Practical Git</title>
+  <meta name="description" content="TL;DR 一些自以为是的 Git 经验和实践建议，有感而发，慎重参考。">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2025/07/24/pratical-git.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#Practical-Git"><span>Practical Git</span> <time datetime="2025-07-24">Jul 24, 2025</time></a>
+    </h1>
+<p><span>TL;DR 一些自以为是的 Git 经验和实践建议，有感而发，慎重参考。</span></p>
+<section id="Merge-vs-Rebase">
+
+    <h2>
+    <a href="#Merge-vs-Rebase"><span>Merge vs Rebase</span> </a>
+    </h2>
+<p><span>建议：</span><strong><strong><span>Merge into main, but rebase feature branches</span></strong></strong></p>
+<p><span>不建议：自己执行任何一句 git merge 命令，（起码我想不到某一个场景是必须这么做的）。让你的 CI 工具来做这件事（把特性分支最终合入主干）。</span></p>
+<p><span>如果你需要解决多个特性之间的冲突，梳理清楚其先后顺序，让后来的特性分支 rebase 到前面的特性分支上。或者更好的，提取出稳定的公共的部分作为共同前缀。</span>
+<span>如果冲突多到你难以处理 rebase 命令，且不是因为你自己的 commit 历史过于复杂上，那必定是需求拆解的问题。</span></p>
+<p><span>最终在主干上的所有的 merge 节点的集合就是你二分查找问题的截点。</span></p>
+</section>
+<section id="Commit-Message">
+
+    <h2>
+    <a href="#Commit-Message"><span>Commit Message</span> </a>
+    </h2>
+<p><span>如果你的组织有规范，遵守它。不过如果规范形式主义远大于实际意义，不妨试试那个神奇的 </span><a href="https://code.visualstudio.com/docs/copilot/copilot-smart-actions#_generate-a-commit-message-and-pr-information"><span>✨ 按钮</span></a><span>来减少心智负担。</span></p>
+<p><span>有种我赞同的说法是：如果你的项目里所有的 commit message 都有着简短的总结和无比详细的描述，那通常说明这里的 CI 和 Review 流程太差劲了。</span></p>
+<p><span>开发过程中不是所有 commit 都需要有意义，你可以在第一个 commit 里写下特性包含的内容和方向。完成一点就可以提交保存下来，甚至可以直接 </span><code>--allow-empty</code><span> 来提交一个空的 commit 梳理自己的思路。后续 commit 随时提交，写个 </span><code>.</code><span> 就行。当你差不多满意了，rebase -i 全部 fixup 到第一个就行，优美一点还可以 amend date 让时间戳更正确。</span></p>
+<p><span>个人可能是有些奇妙的羞耻感，对于一些“愚蠢”的中间错误，不想留下痕迹给后人看，所以我会倾向于继续合并掉这些中间过程。也可以合理地解释为 Git 历史是用来回溯的，冗余甚至错误的信息只会增加负面影响，所以没有必要保留。</span></p>
+</section>
+<section id="gitignoreinclude">
+
+    <h2>
+    <a href="#gitignoreinclude"><span>.git</span><sub><sub><span>ignore</span></sub></sub><span>include</span> </a>
+    </h2>
+<p><span>看到的一篇</span><a href="https://rgbcu.be/blog/gitignore/"><span>文章</span></a><span>讲如何把你的 .gitignore 文件用成只允许特定文件的白名单，其他的都不允许提交。之前知道这种 </span><code>!</code><span> 的用法，但从来没想过要这么做。</span></p>
+<p><span>感觉是有趣的一个实践，保持了我喜欢的“默认拒绝”，“保证知道你在做什么的”特点。</span></p>
+<p><span>还能顺便解决你没用过的各种 IDE 的配置文件、不同操作系统平台的特别文件（点名批评 .DS_Store）被其它人失误提交的问题。</span></p>
+<p><span>具体执行大概可以这么写：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">*</span>
+<span class="line"></span>
+<span class="line">!.gitignore</span>
+<span class="line"></span>
+<span class="line"># whitelist `src` directories and their children, regardless of place</span>
+<span class="line">!src/</span>
+<span class="line">!src/**/</span>
+<span class="line">!src/**/*.rs</span>
+<span class="line">!Cargo.{toml,lock}</span>
+<span class="line"></span>
+<span class="line">!/docs/</span>
+<span class="line">!/docs/*.md</span></code></pre>
+
+</figure>
+<p><span>tradeoff 是你需要手动维护这个白名单，添加的任何新模块都要注明一下。</span></p>
+</section>
+<section id="Looking-forward">
+
+    <h2>
+    <a href="#Looking-forward"><span>Looking forward</span> </a>
+    </h2>
+<p><span>受限于环境，自己还没享受到但是期望的流程：</span></p>
+<ol>
+<li>
+<span>所有改动是小且明确的，且并不是所有变动都需要完整的真实环境验证才能合入主干。很多时候只需要 CI 跑通就行了。</span>
+</li>
+<li>
+<span>CI 和 CI 后操作是无需手动干预的，如设置好检视OK + CI 全部通过以后可自动执行合入操作。</span>
+</li>
+<li>
+<span>成熟的团队，代码检视工作甚至都可以是后置的，不阻塞合入。检视意见完全可以在后续用新的 patch 继续处理。</span>
+</li>
+</ol>
+<p><span>在开发之后，CI、检视、合入、发布这些步骤都不应该是完全同步阻塞的。</span></p>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2025-07-24-pratical-git.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>

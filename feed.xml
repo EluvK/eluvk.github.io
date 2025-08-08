@@ -1,0 +1,3415 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+<link href="https://eluvk.github.io/feed.xml" rel="self" type="application/atom+xml"/>
+<link href="https://eluvk.github.io" rel="alternate" type="text/html"/>
+<updated>2025-08-08T08:09:09.800Z</updated>
+<id>https://eluvk.github.io/feed.xml</id>
+<title type="html">eluvk</title>
+<subtitle>Yet another programming blog by eluvk.</subtitle>
+<author><name>EluvK</name></author>
+
+<entry>
+<title type="text">Best Enum</title>
+<link href="https://eluvk.github.io/2025/08/06/best-enum.html" rel="alternate" type="text/html" title="Best Enum" />
+<published>2025-08-06T00:00:00+00:00</published>
+<updated>2025-08-06T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2025/08/06/best-enum</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[在 Rust 吸引人的诸多优点中，Enum 肯定十分值得一提。对于从 C/C++ 转过来的开发者来说，看到这种自带 namespace 的枚举，不仅可以在一个枚举值里存储其他类型的值，甚至每个枚举值都可以有不同类型的值，实在令人耳目一新。]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2025/08/06/best-enum.html"><![CDATA[
+    <h1>
+    <a href="#Best-Enum"><span>Best Enum</span> <time datetime="2025-08-06">Aug 6, 2025</time></a>
+    </h1>
+<p><span>在 Rust 吸引人的诸多优点中，Enum 肯定十分值得一提。对于从 C/C++ 转过来的开发者来说，看到这种自带 namespace 的枚举，不仅可以在一个枚举值里存储其他类型的值，甚至每个枚举值都可以有不同类型的值，实在令人耳目一新。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">Message</span> {</span>
+<span class="line">    Join { id: <span class="hl-type">u32</span>, name: <span class="hl-type">String</span> },</span>
+<span class="line">    <span class="hl-title function_ invoke__">Move</span>(Point),</span>
+<span class="line">    Quit,</span>
+<span class="line">}</span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    x: <span class="hl-type">i32</span>,</span>
+<span class="line">    y: <span class="hl-type">i32</span>,</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>作为 Rust 的一等公民，也是完全融入到语言的类型系统里，最最基础的 </span><code>Option</code><span> 和 </span><code>Result</code><span> 类型都基于 Enum 实现：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">Option</span>&lt;T&gt; {</span>
+<span class="line">    <span class="hl-literal">None</span>,</span>
+<span class="line">    <span class="hl-title function_ invoke__">Some</span>(T),</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>诸如模式匹配、穷尽性检查等特性都能用上，写出的代码的抽象层度高、可读性和简洁性都很不错。</span></p>
+<section id="Algebraic-data-type-ADT">
+
+    <h2>
+    <a href="#Algebraic-data-type-ADT"><span>代数数据类型（Algebraic data type，缩写：ADT）</span> </a>
+    </h2>
+<p><span>包括 </span><strong><strong><span>和类型</span></strong></strong><span> 和 </span><strong><strong><span>积类型</span></strong></strong><span>两种。</span></p>
+<ul>
+<li>
+<span>积类型（Product Type）：表示由多种类型组合而成，总可能数等于包含的每种类型的每种可能数的乘积。</span>
+</li>
+<li>
+<span>和类型（Sum Type）：表示可以是多种类型中的一种，总可能数等于包含的每种类型的可能数之和。</span>
+</li>
+</ul>
+<p><span>如果一个语言的设计里提到了 ADT，那么通常它都会包含能覆盖这两种类型的实现。</span></p>
+<p><span>能看出 Rust 的 Enum 是和类型的，Tuple/Struct 是积类型的。</span></p>
+<section id="Product-Type-And">
+
+    <h3>
+    <a href="#Product-Type-And"><span>Product Type | And | </span><code>+</code> </a>
+    </h3>
+<p><span>比如一个 </span><code>Point</code><span> 结构体，它由两个 i32 组成，我们可以说这个 Point 包含一个 i32 </span><strong><span>和(And)</span></strong><span> 另一个 i32</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    x: <span class="hl-type">i32</span>,</span>
+<span class="line">    y: <span class="hl-type">i32</span>,</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>所有 Point 的集合会包含所有可能的 (x, y) 对。</span></p>
+</section>
+<section id="Sum-Type-Or">
+
+    <h3>
+    <a href="#Sum-Type-Or"><span>Sum Type | Or | </span><code>*</code> </a>
+    </h3>
+<p><span>比如 </span><code>Option&lt;T&gt;</code><span> 可以是 </span><code>None</code><span> </span><strong><span>或者(Or)</span></strong><span> </span><code>Some(T)</code><span>，总可能数为 1 + N（其中 N 为 </span><code>T</code><span> 的可能数）。</span></p>
+<p><span>因此通常会说 Enum 是 Sum Type 在 Rust 中的实现方式，也可以称 Enum 为 </span><a href="https://en.wikipedia.org/wiki/Tagged_union"><span>Tagged Union</span></a></p>
+<ul>
+<li>
+<span>tag (Discriminant) 表明这是哪一类枚举成员，编译器会最小化其大小，甚至一些情况下可以做到 0 大小。（niche optimization， e.g. </span><code>Option&lt;&amp;T&gt;</code><span> ）</span>
+</li>
+<li>
+<span>union (Payload) 保存枚举值的实例, 根据 tag 的不同而解释不同</span>
+</li>
+</ul>
+<p><span>Tagged Union 有很多类似含义的术语 variant/discriminated union/disjoint union/sum type/coproduct 等。</span></p>
+<p><span>这在函数式编程语言里很常见，Rust 也是从 Haskell 等语言中借鉴了这个思想。</span></p>
+</section>
+<section id="Exponential-Type-Function">
+
+    <h3>
+    <a href="#Exponential-Type-Function"><span>Exponential Type | Function | </span><code>^</code> </a>
+    </h3>
+<p><span>我们其实可以用代数的方式来表示这些类型，这里的 </span><code>×</code><span> 表示积，</span><code>+</code><span> 表示和，所有类型都可以类比成一个多项式：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">type</span> <span class="hl-title class_">Point</span> = <span class="hl-type">i32</span> * <span class="hl-type">i32</span>;</span>
+<span class="line"><span class="hl-keyword">type</span> <span class="hl-title class_">OptionT</span> = <span class="hl-number">1</span> + T;</span></code></pre>
+
+</figure>
+<p><span>实际上还有 Exponential Type（指数类型），</span><span class="math inline">\(A^B\)</span><span> 表示从 </span><span class="math inline">\(B\)</span><span> 到 </span><span class="math inline">\(A\)</span><span> 的函数类型。其可能的数为 </span><span class="math inline">\(A^{B}\)</span><span>，即 </span><span class="math inline">\(A\)</span><span> 的可能数的 </span><span class="math inline">\(B\)</span><span> 次方。那么自然我们可以把一个从 </span><span class="math inline">\(B\)</span><span> 到 </span><span class="math inline">\(A\)</span><span> 的函数认为是一个 Exponential Type。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">func</span>(b: B) <span class="hl-punctuation">-&gt;</span> A;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// 如果我们认为 func 是一个类型，那么它的类型可以表示为如下：</span></span>
+<span class="line"><span class="hl-comment">// 其包含 B 的所有可能值的个数个成员，每个成员对应一个 A 的可能值的结果</span></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">func</span> {</span>
+<span class="line">    b1: A,</span>
+<span class="line">    b2: A,</span>
+<span class="line">    <span class="hl-comment">// ...</span></span>
+<span class="line">    bn: A,</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>自然这个类型 </span><code>func</code><span> 的可能数就是 </span><span class="math inline">\(A^{B}\)</span><span>。</span></p>
+</section>
+</section>
+<section id="More-in-Enum">
+
+    <h2>
+    <a href="#More-in-Enum"><span>More in Enum</span> </a>
+    </h2>
+<section id="FixPoint">
+
+    <h3>
+    <a href="#FixPoint"><span>FixPoint</span> </a>
+    </h3>
+<p><span>如果尝试写过 Rust 里的链表，一定会对这个递归结构很熟悉：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">List</span>&lt;T&gt; {</span>
+<span class="line">    <span class="hl-title function_ invoke__">Nil</span>(),</span>
+<span class="line">    <span class="hl-title function_ invoke__">Cons</span>(T, <span class="hl-type">Box</span>&lt;List&lt;T&gt;&gt;),</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>仅作类型分析，我们稍作简化，去掉因为递归无限大小引入的 </span><code>Box</code><span>，同时假定类型 </span><code>T</code><span> 是 </span><code>i32</code><span>，那么这个链表的类型可以写成：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">IntList</span> {</span>
+<span class="line">    <span class="hl-title function_ invoke__">Nil</span>(),</span>
+<span class="line">    <span class="hl-title function_ invoke__">Cons</span>(<span class="hl-type">i32</span>, IntList), <span class="hl-comment">// missing Box, won&#x27;t compile</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><code>IntList</code><span> 类型就可以代数地表示为：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">type</span> <span class="hl-title class_">IntList</span> = <span class="hl-number">1</span> + (<span class="hl-type">i32</span> * IntList)</span></code></pre>
+
+</figure>
+<p><code>IntList</code><span> 在等式左右两边都出现了，所以这里其实是一个递归定义，实际上 </span><code>IntList</code><span> 刚好是</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">type</span> <span class="hl-title class_">IntListF</span>&lt;X&gt; = <span class="hl-number">1</span> + (<span class="hl-type">i32</span> * X)</span></code></pre>
+
+</figure>
+<p><span>的不动点，即 </span><code>IntList = IntListF(IntList)</code><span>。</span></p>
+</section>
+<section id="s-1">
+
+    <h3>
+    <a href="#s-1"><span>递归表达集合</span> </a>
+    </h3>
+<p><span>上面的递归定义，也可以让一个 Enum 表达出某个集合的所有可能值。比如所有的自然数的集合就可以用下面这个枚举来表达：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">Nat</span> {</span>
+<span class="line">    Zero,</span>
+<span class="line">    <span class="hl-title function_ invoke__">Succ</span>(<span class="hl-type">Box</span>&lt;Nat&gt;),</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><code>Nat</code><span> 的可能值就可以是所有的自然数：0, 1, 2, 3, </span>&hellip;</p>
+<p><span>如果在 </span><code>Succ</code><span> 里增加一些内容，就会演变成链表。所以可以把链表看成是自然数的一个泛化。</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>lists are natural numbers which carry content.</span></p>
+</blockquote>
+
+</figure>
+</section>
+</section>
+<section id="Enum-in-API">
+
+    <h2>
+    <a href="#Enum-in-API"><span>Enum in API</span> </a>
+    </h2>
+<p><span>其实写这篇 blog 的最最出发点是实践里多次遇到了一个问题，然后在查找相关资料时发现了一些有趣的思想记录在上面。</span></p>
+<p><span>遇到的问题就是，当我们以这种 和类型 的思想来设计了一个 API 的 schema 后，如何能让它更好用。</span></p>
+<p><span>举个例子你有一个 API </span><code>POST /action</code><span> 需要在 reqbody 里填入 </span><code>Action</code><span>，它可以是 </span><code>Move</code><span>, </span><code>Attack</code><span>, </span><code>Heal</code><span> 等等，且不同的 </span><code>Action</code><span> 会有不同的参数。那么很自然可以用类似这样的 Enum 来表达：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">Action</span> {</span>
+<span class="line">    <span class="hl-title function_ invoke__">Move</span>(Direction),</span>
+<span class="line">    <span class="hl-title function_ invoke__">Attack</span>(Target),</span>
+<span class="line">    <span class="hl-title function_ invoke__">Heal</span>(Amount),</span>
+<span class="line">}</span>
+<span class="line"><span class="hl-comment">// ... Direction, Target, Amount 等类型定义</span></span></code></pre>
+
+</figure>
+<p><span>尽管 OpenAPI 3.0 支持 </span><a href="https://swagger.io/docs/specification/v3_0/data-models/oneof-anyof-allof-not/"><code>oneOf</code><span> 语法</span></a><span>，可以写出这样的 schema：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-attr">Action:</span></span>
+<span class="line">  <span class="hl-attr">oneOf:</span></span>
+<span class="line">    <span class="hl-bullet">-</span> <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Move&#x27;</span></span>
+<span class="line">    <span class="hl-bullet">-</span> <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Attack&#x27;</span></span>
+<span class="line">    <span class="hl-bullet">-</span> <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Heal&#x27;</span></span></code></pre>
+
+</figure>
+<p><span>但是实际情况下其它检查工具的支持不完善、语言代码生成工具不支持等问题，会导致不得不使用退化成 object 的方式来表达：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-attr">Action:</span></span>
+<span class="line">  <span class="hl-attr">type:</span> <span class="hl-string">object</span></span>
+<span class="line">  <span class="hl-attr">properties:</span></span>
+<span class="line">    <span class="hl-attr">move:</span></span>
+<span class="line">      <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Move&#x27;</span></span>
+<span class="line">    <span class="hl-attr">attack:</span></span>
+<span class="line">      <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Attack&#x27;</span></span>
+<span class="line">    <span class="hl-attr">heal:</span></span>
+<span class="line">      <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Heal&#x27;</span></span></code></pre>
+
+</figure>
+<p><span>这种方式虽然可以表达出 Action 的所有可能值，但是却失去了 Enum 的语义。所以成员都只能定义成可选的，但业务又要求</span><strong><strong><span>有且仅有一个</span></strong></strong><span>成员存在。于是就会出现许多小问题：</span></p>
+<ul>
+<li>
+<span>在接收到请求的时候不得不额外的做唯一性检查，这本该是生成工具自动完成的内容，不应该混杂在业务逻辑里</span>
+</li>
+<li>
+<span>不同语言的 SDK 代码、前端调用时都需要理解这个约束。因为它们不一定有 sum type 的概念</span>
+</li>
+</ul>
+<p><span>Not a perfect world.</span></p>
+</section>
+<section id="References-Further-Reading">
+
+    <h2>
+    <a href="#References-Further-Reading"><span>References &amp;&amp; Further Reading</span> </a>
+    </h2>
+<p><a href="https://manishearth.github.io/blog/2017/03/04/what-are-sum-product-and-pi-types/"><span>What Are Sum, Product, and Pi Types?</span></a></p>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">Practical Git</title>
+<link href="https://eluvk.github.io/2025/07/24/pratical-git.html" rel="alternate" type="text/html" title="Practical Git" />
+<published>2025-07-24T00:00:00+00:00</published>
+<updated>2025-07-24T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2025/07/24/pratical-git</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[TL;DR 一些自以为是的 Git 经验和实践建议，有感而发，慎重参考。]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2025/07/24/pratical-git.html"><![CDATA[
+    <h1>
+    <a href="#Practical-Git"><span>Practical Git</span> <time datetime="2025-07-24">Jul 24, 2025</time></a>
+    </h1>
+<p><span>TL;DR 一些自以为是的 Git 经验和实践建议，有感而发，慎重参考。</span></p>
+<section id="Merge-vs-Rebase">
+
+    <h2>
+    <a href="#Merge-vs-Rebase"><span>Merge vs Rebase</span> </a>
+    </h2>
+<p><span>建议：</span><strong><strong><span>Merge into main, but rebase feature branches</span></strong></strong></p>
+<p><span>不建议：自己执行任何一句 git merge 命令，（起码我想不到某一个场景是必须这么做的）。让你的 CI 工具来做这件事（把特性分支最终合入主干）。</span></p>
+<p><span>如果你需要解决多个特性之间的冲突，梳理清楚其先后顺序，让后来的特性分支 rebase 到前面的特性分支上。或者更好的，提取出稳定的公共的部分作为共同前缀。</span>
+<span>如果冲突多到你难以处理 rebase 命令，且不是因为你自己的 commit 历史过于复杂上，那必定是需求拆解的问题。</span></p>
+<p><span>最终在主干上的所有的 merge 节点的集合就是你二分查找问题的截点。</span></p>
+</section>
+<section id="Commit-Message">
+
+    <h2>
+    <a href="#Commit-Message"><span>Commit Message</span> </a>
+    </h2>
+<p><span>如果你的组织有规范，遵守它。不过如果规范形式主义远大于实际意义，不妨试试那个神奇的 </span><a href="https://code.visualstudio.com/docs/copilot/copilot-smart-actions#_generate-a-commit-message-and-pr-information"><span>✨ 按钮</span></a><span>来减少心智负担。</span></p>
+<p><span>有种我赞同的说法是：如果你的项目里所有的 commit message 都有着简短的总结和无比详细的描述，那通常说明这里的 CI 和 Review 流程太差劲了。</span></p>
+<p><span>开发过程中不是所有 commit 都需要有意义，你可以在第一个 commit 里写下特性包含的内容和方向。完成一点就可以提交保存下来，甚至可以直接 </span><code>--allow-empty</code><span> 来提交一个空的 commit 梳理自己的思路。后续 commit 随时提交，写个 </span><code>.</code><span> 就行。当你差不多满意了，rebase -i 全部 fixup 到第一个就行，优美一点还可以 amend date 让时间戳更正确。</span></p>
+<p><span>个人可能是有些奇妙的羞耻感，对于一些“愚蠢”的中间错误，不想留下痕迹给后人看，所以我会倾向于继续合并掉这些中间过程。也可以合理地解释为 Git 历史是用来回溯的，冗余甚至错误的信息只会增加负面影响，所以没有必要保留。</span></p>
+</section>
+<section id="gitignoreinclude">
+
+    <h2>
+    <a href="#gitignoreinclude"><span>.git</span><sub><sub><span>ignore</span></sub></sub><span>include</span> </a>
+    </h2>
+<p><span>看到的一篇</span><a href="https://rgbcu.be/blog/gitignore/"><span>文章</span></a><span>讲如何把你的 .gitignore 文件用成只允许特定文件的白名单，其他的都不允许提交。之前知道这种 </span><code>!</code><span> 的用法，但从来没想过要这么做。</span></p>
+<p><span>感觉是有趣的一个实践，保持了我喜欢的“默认拒绝”，“保证知道你在做什么的”特点。</span></p>
+<p><span>还能顺便解决你没用过的各种 IDE 的配置文件、不同操作系统平台的特别文件（点名批评 .DS_Store）被其它人失误提交的问题。</span></p>
+<p><span>具体执行大概可以这么写：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">*</span>
+<span class="line"></span>
+<span class="line">!.gitignore</span>
+<span class="line"></span>
+<span class="line"># whitelist `src` directories and their children, regardless of place</span>
+<span class="line">!src/</span>
+<span class="line">!src/**/</span>
+<span class="line">!src/**/*.rs</span>
+<span class="line">!Cargo.{toml,lock}</span>
+<span class="line"></span>
+<span class="line">!/docs/</span>
+<span class="line">!/docs/*.md</span></code></pre>
+
+</figure>
+<p><span>tradeoff 是你需要手动维护这个白名单，添加的任何新模块都要注明一下。</span></p>
+</section>
+<section id="Looking-forward">
+
+    <h2>
+    <a href="#Looking-forward"><span>Looking forward</span> </a>
+    </h2>
+<p><span>受限于环境，自己还没享受到但是期望的流程：</span></p>
+<ol>
+<li>
+<span>所有改动是小且明确的，且并不是所有变动都需要完整的真实环境验证才能合入主干。很多时候只需要 CI 跑通就行了。</span>
+</li>
+<li>
+<span>CI 和 CI 后操作是无需手动干预的，如设置好检视OK + CI 全部通过以后可自动执行合入操作。</span>
+</li>
+<li>
+<span>成熟的团队，代码检视工作甚至都可以是后置的，不阻塞合入。检视意见完全可以在后续用新的 patch 继续处理。</span>
+</li>
+</ol>
+<p><span>在开发之后，CI、检视、合入、发布这些步骤都不应该是完全同步阻塞的。</span></p>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">LLM Agent Projects</title>
+<link href="https://eluvk.github.io/2025/05/08/llm-agent-projects.html" rel="alternate" type="text/html" title="LLM Agent Projects" />
+<published>2025-05-08T00:00:00+00:00</published>
+<updated>2025-05-08T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2025/05/08/llm-agent-projects</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[汇总一些最近感兴趣的项目信息。]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2025/05/08/llm-agent-projects.html"><![CDATA[
+    <h1>
+    <a href="#LLM-Agent-Projects"><span>LLM Agent Projects</span> <time datetime="2025-05-08">May 8, 2025</time></a>
+    </h1>
+<p><span>汇总一些最近感兴趣的项目信息。</span></p>
+<section id="MCP">
+
+    <h2>
+    <a href="#MCP"><a href="https://github.com/modelcontextprotocol"><span>MCP</span></a> </a>
+    </h2>
+<p><span>MCP（Model Context Protocol，即模型上下文协议）是由 Anthropic（Claude 的母公司）提出的一个协议，旨在为 LLM（大型语言模型）通过一套标准化的协议提供拓展功能工具箱。赋予 LLM 访问外部数据，使用特定工具和 API 的能力。</span></p>
+<p><span>Latest MCP 版本为 </span><a href="https://modelcontextprotocol.io/specification/2025-03-26"><span>2025-03-26</span></a><span>，最新这一版本引入了对 </span><code>Streamable HTTP</code><span> 的支持，允许 LLM 通过 HTTP 流式传输数据。</span></p>
+<section id="MCP-Transport">
+
+    <h3>
+    <a href="#MCP-Transport"><span>MCP - Transport</span> </a>
+    </h3>
+<p><span>编码：所有消息均采用 </span><strong><strong><span>JSON-RPC 2.0</span></strong></strong><span> 格式，必须使用 </span><strong><strong><span>UTF-8</span></strong></strong><span> 编码。</span>
+<span>传输： </span><strong><strong><code>stdio</code></strong></strong><span>（优先支持）：通过标准输入/输出流通信。/ </span><strong><strong><code>Streamable HTTP</code></strong></strong><span>（新版推荐）：基于 HTTP 的增强传输，支持流式交互。</span></p>
+<section id="Streamable-HTTP">
+
+    <h4>
+    <a href="#Streamable-HTTP"><span>Streamable HTTP</span> </a>
+    </h4>
+<ul>
+<li>
+<strong><strong><span>统一端点</span></strong></strong><span>：单个 HTTP 路径（如 </span><code>/mcp</code><span>）同时处理 </span><code>POST</code><span>（客户端→服务端）和 </span><code>GET</code><span>（服务端→客户端）。</span>
+</li>
+</ul>
+<table>
+<tr>
+<th><strong><strong><span>方向</span></strong></strong><span></span></th>
+<th><strong><strong><span>HTTP 方法</span></strong></strong><span></span></th>
+<th><strong><strong><span>Content-Type</span></strong></strong><span></span></th>
+<th><strong><strong><span>消息类型</span></strong></strong><span></span></th>
+<th><strong><strong><span>响应逻辑</span></strong></strong><span></span></th>
+</tr>
+<tr>
+<td><span>客户端 → 服务端</span></td>
+<td><span>POST</span></td>
+<td><code>application/json</code><span></span></td>
+<td><span>请求/通知/响应（或批量）</span></td>
+<td><span>- 纯响应/通知：返回 </span><code>202 Accepted</code><span>&lt;br&gt;- 含请求：返回 </span><code>application/json</code><span> 或 SSE 流</span></td>
+</tr>
+<tr>
+<td><span>服务端 → 客户端（推送）</span></td>
+<td><span>GET</span></td>
+<td><code>text/event-stream</code><span> (SSE)</span></td>
+<td><span>服务端主动发起的请求/通知（可批量）</span></td>
+<td><span>客户端需持续监听 SSE 流</span></td>
+</tr>
+</table>
+</section>
+</section>
+<section id="Feature">
+
+    <h3>
+    <a href="#Feature"><span>Feature</span> </a>
+    </h3>
+<p><span>MCP 区分服务端和客户端。客户端包括 Root 和 Sampling 两种功能。服务端包括 Prompts、Resources 和 Tools 三种功能。</span></p>
+<p><strong><strong><span>Root</span></strong></strong><span>: MCP 客户端通过 roots 特性向服务端暴露文件系统的可访问根目录，明确服务端能操作的文件范围边界。</span></p>
+<p><strong><strong><span>Sampling</span></strong></strong><span>: 允许服务端通过客户端请求 LLM 生成内容。服务端无需直接管理 API 密钥，通过客户端代理实现。</span></p>
+<p><strong><strong><span>Prompts</span></strong></strong><span>: 服务端提供结构化提示词模板，客户端可动态获取并填充参数生成最终提示。</span></p>
+<p><strong><strong><span>Resources</span></strong></strong><span>: 服务端暴露结构化数据（如文件、API 结果），供 LLM 获取上下文。</span></p>
+<p><strong><strong><span>Tools</span></strong></strong><span>: 服务端提供可执行工具（如 API 调用），由 LLM 按需触发。</span></p>
+</section>
+</section>
+<section id="PocketFlow">
+
+    <h2>
+    <a href="#PocketFlow"><a href="https://github.com/The-Pocket/PocketFlow"><span>PocketFlow</span></a> </a>
+    </h2>
+<p><span>一个极其精炼的 LLM 框架，100 行 python 代码，概况了一个简单有效的大模型工作流，利用这些最基本的原语，可以构建出复杂的工作流。</span></p>
+<section id="s-1">
+
+    <h3>
+    <a href="#s-1"><span>核心概念</span> </a>
+    </h3>
+<section id="Node">
+
+    <h4>
+    <a href="#Node"><a href="https://the-pocket.github.io/PocketFlow/core_abstraction/node.html"><span>Node</span></a> </a>
+    </h4>
+
+<figure>
+
+<img alt="node" src="https://github.com/the-pocket/.github/raw/main/assets/node.png?raw=true">
+</figure>
+<p><span>node 是一个执行任务的最小单元，整体流程会分为 prep, exec, post 三个阶段。prep 阶段可能从shared store 里获取数据，exec 阶段执行任务，post 阶段将结果存入 shared store。</span></p>
+<p><span>exec 部分支持失败后间隔重试，还可以再使用最终 fallback。</span></p>
+</section>
+<section id="Flow">
+
+    <h4>
+    <a href="#Flow"><a href="https://the-pocket.github.io/PocketFlow/core_abstraction/flow.html"><span>Flow</span></a> </a>
+    </h4>
+<p><span>Flow 定义了 node 之间的执行顺序，每个 node 的执行结果可能影响下一个是哪一个 node。</span></p>
+<p><span>简单来说就是 node 作为顶点，flow 是边，构成一个有向图。</span></p>
+<p><span>定义里 Flow 也是继承自 Node，不过我感觉这部分的设计有点奇怪，还没体会到这种设计的好处</span>&hellip;</p>
+</section>
+<section id="Communication">
+
+    <h4>
+    <a href="#Communication"><a href="https://the-pocket.github.io/PocketFlow/core_abstraction/communication.html"><span>Communication</span></a> </a>
+    </h4>
+<p><span>Nodes 和 Flow 之间的主要通过 shared store 来进行数据传递（通常是一个 dict）。</span></p>
+</section>
+<section id="Batch-Async">
+
+    <h4>
+    <a href="#Batch-Async"><span>Batch &amp;&amp; Async</span> </a>
+    </h4>
+<p><span>还有一些批量的异步的概念，比较好理解。</span></p>
+</section>
+</section>
+<section id="Patterns">
+
+    <h3>
+    <a href="#Patterns"><span>Patterns</span> </a>
+    </h3>
+<p><span>官方给出的示意图，可以基于此设计实现的流行的模式。</span></p>
+
+<figure>
+
+<img alt="pattern" src="https://github.com/The-Pocket/.github/raw/main/assets/design.png">
+</figure>
+</section>
+</section>
+<section id="RAG-Retrieval-Augmented-Generation">
+
+    <h2>
+    <a href="#RAG-Retrieval-Augmented-Generation"><span>[</span><a href="https://github.com/FareedKhan-dev/all-rag-techniques"><span>RAG (Retrieval-Augmented Generation)] 技术介绍</span></a> </a>
+    </h2>
+<p><span>必备特性：长文档预处理、实时索引、嵌入模型质量（特定领域可能需要微调）</span></p>
+<p><span>核心难点：如何调整分块策略、相似度阈值，引入动态权重（根据使用频率）、反馈循环机制（根据是否采纳结果）来增强检索的相关性和准确性。</span></p>
+<p><span>概念汇总：</span></p>
+<ul>
+<li>
+<span>嵌入模型（Embedding Models）：将文本转换为向量表示，可以用向量相似度来检索相关性。</span>
+</li>
+</ul>
+<p><span>实践上以下的这些操作需要根据实际场景自由组合。</span></p>
+<p><span>感受：</span>
+<span>这个项目的文档真的读起来，比它看起来的样子更无趣，各种优化手段和思路都很好理解，但是原文似乎像是AI批量生成的内容一样冗余，为了写而写。</span>
+<span>技术上无论怎么操作最后的落脚点还是向量相似度检索/LLM回答、中间套上用 LLM 处理马上要喂给 LLM 的内容的各种手段实在不好评价。因为感觉这种方式十分不精确，也无法证明其完善性，实践上如果使用的（理论最佳）策略强依赖于原始材料的质量、完整性，也很难落地通用些的项目。</span>
+<span>后面一些引入了意图检测，加上一些合适的步骤来避免没法答硬回答的想法很好。</span></p>
+<section id="01-simple-rag">
+
+    <h3>
+    <a href="#01-simple-rag"><span>01 simple rag</span> </a>
+    </h3>
+<p><span>基础的 RAG 实现：将全文分割成一个个chunk，按照相似度检索出 top k 相关的 chunk，拼接成一个 Context prompt 传入 LLM。</span></p>
+</section>
+<section id="02-semantic-chunking">
+
+    <h3>
+    <a href="#02-semantic-chunking"><span>02 semantic chunking</span> </a>
+    </h3>
+<p><span>提出一种分块策略：将大段落按照其中句子的语义进行分块，相比于固定段落/长度的分块策略，可以更好的精炼每个 chunk 的内容。也能提高检索的相关性准确性。具体有多种方法：</span></p>
+<ul>
+<li>
+<span>百分位数法：计算所有相似性差异的 X 分位数，并在相似性下降超过该值的地方进行分块。</span>
+</li>
+<li>
+<span>标准差法：在相似性下降超过平均值减去 X 个标准差时进行分块。</span>
+</li>
+<li>
+<span>四分位距法（IQR）：使用四分位距（Q3 - Q1）来确定分块点。</span>
+</li>
+</ul>
+<p><span>执行的时候都是：先按照一句句话分开，计算每句的嵌入向量，然后计算每两句之间的相似度，选择一种分块策略来决定分块点，按照分块点重新拼接成 chunk。最后将 chunk 计算嵌入向量。回归到 RAG 的基本流程。</span></p>
+</section>
+<section id="03-chunk-size-selector">
+
+    <h3>
+    <a href="#03-chunk-size-selector"><span>03 chunk size selector</span> </a>
+    </h3>
+<p><span>提出了一种分块策略：按照不同的 length，再叠加一些 overlap 来分块。将不同长度的 chunk 都计算嵌入向量相似度选择最相关的 top k 个 chunk。回归到 RAG 的基本流程。</span></p>
+</section>
+<section id="04-context-enriched-rag">
+
+    <h3>
+    <a href="#04-context-enriched-rag"><span>04 context enriched rag</span> </a>
+    </h3>
+<p><span>Context-Enriched Retrieval: 在分块检索到最相关的 chunk 后，传入附近的上下文（如前后几句话）来丰富 chunk 的内容。可以提高检索的相关性准确性。</span></p>
+</section>
+<section id="05-contextual-chunk-headers-rag">
+
+    <h3>
+    <a href="#05-contextual-chunk-headers-rag"><span>05 contextual chunk headers rag</span> </a>
+    </h3>
+<p><span>标准的文本分块（chunking）可能丢失重要的上下文信息，导致检索效果较差。</span>
+<span>Contextual Chunk Headers (CCH) 方法通过为每个文本块生成高层次的上下文（如标题或章节名称），增强检索的准确性和回答的连贯性。</span></p>
+<p><span>通过为每个文本块生成标题并结合标题和内容进行检索。（个人评论：感觉如果最终的评价标准还是用向量相关性的话，对于原文内容的质量还是有很高的要求，在个人知识库里，一些不够完善的内容还是会影响检索效果。）</span></p>
+</section>
+<section id="06-augmentation-rag">
+
+    <h3>
+    <a href="#06-augmentation-rag"><span>06 augmentation rag</span> </a>
+    </h3>
+<p><span>引入了 问题生成（Question Generation），给定文本段落，让AI生成相关问题，然后将这些问题也作为查询来检索相关的文本段落。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_prompt = <span class="hl-string">&quot;You are an expert at generating relevant questions from text. Create concise questions that can be answered using only the provided text. Focus on key information and concepts.&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Define the user prompt with the text chunk and the number of questions to generate</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-string">Based on the following text, generate <span class="hl-subst">{num_questions}</span> different questions that can be answered using only this text:</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string"><span class="hl-subst">{text_chunk}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Format your response as a numbered list of questions only, with no additional text.</span></span>
+<span class="line"><span class="hl-string">&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="07-query-transform">
+
+    <h3>
+    <a href="#07-query-transform"><span>07 query transform</span> </a>
+    </h3>
+<p><span>引入了查询转换（Query Transformation），在检索之前对查询进行转换或增强，以提高检索的相关性和准确性。</span>
+<span>包括三种方法：</span></p>
+<ol>
+<li>
+<span>Rewrite 重写查询，用AI重写查询，使其更清晰或更具体。</span>
+</li>
+<li>
+<span>Step-back 回退提示，用AI生成更一般化的查询。</span>
+</li>
+<li>
+<span>Sub-query Decomposition 将复杂查询分解为多个子查询。</span>
+</li>
+</ol>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_prompt = <span class="hl-string">&quot;You are an AI assistant specialized in improving search queries. Your task is to rewrite user queries to be more specific, detailed, and likely to retrieve relevant information.&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Define the user prompt with the original query to be rewritten</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-string">Rewrite the following query to make it more specific and detailed. Include relevant terms and concepts that might help in retrieving accurate information.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Original query: <span class="hl-subst">{original_query}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Rewritten query:</span></span>
+<span class="line"><span class="hl-string">&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_prompt = <span class="hl-string">&quot;You are an AI assistant specialized in search strategies. Your task is to generate broader, more general versions of specific queries to retrieve relevant background information.&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Define the user prompt with the original query to be generalized</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-string">Generate a broader, more general version of the following query that could help retrieve useful background information.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Original query: <span class="hl-subst">{original_query}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Step-back query:</span></span>
+<span class="line"><span class="hl-string">&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_prompt = <span class="hl-string">&quot;You are an AI assistant specialized in breaking down complex questions. Your task is to decompose complex queries into simpler sub-questions that, when answered together, address the original query.&quot;</span></span>
+<span class="line">    </span>
+<span class="line"><span class="hl-comment"># Define the user prompt with the original query to be decomposed</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-string">Break down the following complex query into <span class="hl-subst">{num_subqueries}</span> simpler sub-queries. Each sub-query should focus on a different aspect of the original question.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Original query: <span class="hl-subst">{original_query}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Generate <span class="hl-subst">{num_subqueries}</span> sub-queries, one per line, in this format:</span></span>
+<span class="line"><span class="hl-string">1. [First sub-query]</span></span>
+<span class="line"><span class="hl-string">2. [Second sub-query]</span></span>
+<span class="line"><span class="hl-string">And so on...</span></span>
+<span class="line"><span class="hl-string">&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="08-reranker">
+
+    <h3>
+    <a href="#08-reranker"><span>08 reranker</span> </a>
+    </h3>
+<p><span>重排序核心概念：</span></p>
+<p><span>首先使用基本的检索方法（如向量相似度）获取初步的相关文档或段落。</span>
+<span>对初步检索到的文档进行评分，继续用AI模型对每个文档进行分析，计算其相关性分数。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment"># Define the system prompt for the LLM</span></span>
+<span class="line">system_prompt = <span class="hl-string">&quot;&quot;&quot;You are an expert at evaluating document relevance for search queries.</span></span>
+<span class="line"><span class="hl-string">Your task is to rate documents on a scale from 0 to 10 based on how well they answer the given query.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Guidelines:</span></span>
+<span class="line"><span class="hl-string">- Score 0-2: Document is completely irrelevant</span></span>
+<span class="line"><span class="hl-string">- Score 3-5: Document has some relevant information but doesn&#x27;t directly answer the query</span></span>
+<span class="line"><span class="hl-string">- Score 6-8: Document is relevant and partially answers the query</span></span>
+<span class="line"><span class="hl-string">- Score 9-10: Document is highly relevant and directly answers the query</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">You MUST respond with ONLY a single integer score between 0 and 10. Do not include ANY other text.&quot;&quot;&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Define the user prompt for the LLM</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;&quot;&quot;Query: <span class="hl-subst">{query}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Document:</span></span>
+<span class="line"><span class="hl-string"><span class="hl-subst">{result[<span class="hl-string">&#x27;text&#x27;</span>]}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Rate this document&#x27;s relevance to the query on a scale from 0 to 10:&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+<p><span>根据评分结果对文档进行重排序，选择最相关的文档作为最终结果。</span></p>
+</section>
+<section id="09-rse">
+
+    <h3>
+    <a href="#09-rse"><span>09 rse</span> </a>
+    </h3>
+<p><span>Relevant Segment Extraction (RSE) 技术，通过识别文档中更连续的相关片段作为相关性排序依据，原理是倾向于认为相关性强的片段一般都是连续的，所以用区间片段的相关性累计值来作为选取片段的依据。</span></p>
+</section>
+<section id="10-contextual-compression">
+
+    <h3>
+    <a href="#10-contextual-compression"><span>10 contextual compression</span> </a>
+    </h3>
+<p><span>在检索到的文本块中，过滤掉和查询无关的内容，仅保留最相关的部分；通过压缩上下文来减少噪声，提高语言模型生成的质量。</span></p>
+<p><span>选择性压缩（Selective）、摘要压缩（Summary）、提取压缩（Extraction）</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment"># Define system prompts for different compression approaches</span></span>
+<span class="line"><span class="hl-keyword">if</span> compression_type == <span class="hl-string">&quot;selective&quot;</span>:</span>
+<span class="line">    system_prompt = <span class="hl-string">&quot;&quot;&quot;You are an expert at information filtering. </span></span>
+<span class="line"><span class="hl-string">    Your task is to analyze a document chunk and extract ONLY the sentences or paragraphs that are directly </span></span>
+<span class="line"><span class="hl-string">    relevant to the user&#x27;s query. Remove all irrelevant content.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Your output should:</span></span>
+<span class="line"><span class="hl-string">    1. ONLY include text that helps answer the query</span></span>
+<span class="line"><span class="hl-string">    2. Preserve the exact wording of relevant sentences (do not paraphrase)</span></span>
+<span class="line"><span class="hl-string">    3. Maintain the original order of the text</span></span>
+<span class="line"><span class="hl-string">    4. Include ALL relevant content, even if it seems redundant</span></span>
+<span class="line"><span class="hl-string">    5. EXCLUDE any text that isn&#x27;t relevant to the query</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Format your response as plain text with no additional comments.&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-keyword">elif</span> compression_type == <span class="hl-string">&quot;summary&quot;</span>:</span>
+<span class="line">    system_prompt = <span class="hl-string">&quot;&quot;&quot;You are an expert at summarization. </span></span>
+<span class="line"><span class="hl-string">    Your task is to create a concise summary of the provided chunk that focuses ONLY on </span></span>
+<span class="line"><span class="hl-string">    information relevant to the user&#x27;s query.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Your output should:</span></span>
+<span class="line"><span class="hl-string">    1. Be brief but comprehensive regarding query-relevant information</span></span>
+<span class="line"><span class="hl-string">    2. Focus exclusively on information related to the query</span></span>
+<span class="line"><span class="hl-string">    3. Omit irrelevant details</span></span>
+<span class="line"><span class="hl-string">    4. Be written in a neutral, factual tone</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Format your response as plain text with no additional comments.&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-keyword">else</span>:  <span class="hl-comment"># extraction</span></span>
+<span class="line">    system_prompt = <span class="hl-string">&quot;&quot;&quot;You are an expert at information extraction.</span></span>
+<span class="line"><span class="hl-string">    Your task is to extract ONLY the exact sentences from the document chunk that contain information relevant </span></span>
+<span class="line"><span class="hl-string">    to answering the user&#x27;s query.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Your output should:</span></span>
+<span class="line"><span class="hl-string">    1. Include ONLY direct quotes of relevant sentences from the original text</span></span>
+<span class="line"><span class="hl-string">    2. Preserve the original wording (do not modify the text)</span></span>
+<span class="line"><span class="hl-string">    3. Include ONLY sentences that directly relate to the query</span></span>
+<span class="line"><span class="hl-string">    4. Separate extracted sentences with newlines</span></span>
+<span class="line"><span class="hl-string">    5. Do not add any commentary or additional text</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Format your response as plain text with no additional comments.&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="11-feedback-loop-rag">
+
+    <h3>
+    <a href="#11-feedback-loop-rag"><span>11 feedback loop rag</span> </a>
+    </h3>
+<p><span>动态的根据用户反馈来调整相关性评分。</span><strong><strong><span>将成功的问答纳入知识库</span></strong></strong><span>，增强长期的学习能力。</span></p>
+<p><span>思路很自然，实现比较玩具。这并不是一个仅在 RAG 场景下才需要的能力。</span></p>
+</section>
+<section id="12-adaptive-rag">
+
+    <h3>
+    <a href="#12-adaptive-rag"><span>12 adaptive rag</span> </a>
+    </h3>
+<p><span>用AI将用户查询的分类，再配合不同的检索策略来处理不同类型的查询。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment"># Define the system prompt to guide the AI&#x27;s classification</span></span>
+<span class="line">system_prompt = <span class="hl-string">&quot;&quot;&quot;You are an expert at classifying questions. </span></span>
+<span class="line"><span class="hl-string">    Classify the given query into exactly one of these categories:</span></span>
+<span class="line"><span class="hl-string">    - Factual: Queries seeking specific, verifiable information.</span></span>
+<span class="line"><span class="hl-string">    - Analytical: Queries requiring comprehensive analysis or explanation.</span></span>
+<span class="line"><span class="hl-string">    - Opinion: Queries about subjective matters or seeking diverse viewpoints.</span></span>
+<span class="line"><span class="hl-string">    - Contextual: Queries that depend on user-specific context.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Return ONLY the category name, without any explanation or additional text.</span></span>
+<span class="line"><span class="hl-string">&quot;&quot;&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Create the user prompt with the query to be classified</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;Classify this query: <span class="hl-subst">{query}</span>&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="13-self-rag">
+
+    <h3>
+    <a href="#13-self-rag"><span>13 self rag</span> </a>
+    </h3>
+<p><span>自反式 RAG，特点：</span></p>
+<ul>
+<li>
+<span>动态的（用LLM）决定是否要检索（在此前的 RAG 实现中，检索都是固定的步骤）。</span>
+</li>
+<li>
+<span>评估检索结果的相关性和准确性，如果不实用，不如直接使用 LLM 生成答案 / 反馈无法回答。</span>
+</li>
+</ul>
+</section>
+<section id="14-proposition-chunking">
+
+    <h3>
+    <a href="#14-proposition-chunking"><span>14 proposition chunking</span> </a>
+    </h3>
+<p><span>命题分块（Proposition Chunking），将文本分割成更小的命题单元（propositions），对生成的命题进行质量检查，包括准确性、清晰度、完整性和简洁性。</span></p>
+</section>
+<section id="15-multimodel-rag">
+
+    <h3>
+    <a href="#15-multimodel-rag"><span>15 multimodel rag</span> </a>
+    </h3>
+<p><span>使用视觉模型来对图像内容进行描述和提取，覆盖依赖图像数据的问题。</span></p>
+</section>
+<section id="16-fusion-rag">
+
+    <h3>
+    <a href="#16-fusion-rag"><span>16 fusion rag</span> </a>
+    </h3>
+<p><span>融合检索，结合语义检索和关键词检索两种方式，补全可能遗漏的关键词精确匹配的场景，来提高检索质量。</span></p>
+<p><span>把向量检索和 BM25 关键词检索的结果融合加权计算综合分数。</span></p>
+</section>
+<section id="17-graph-rag">
+
+    <h3>
+    <a href="#17-graph-rag"><span>17 graph rag</span> </a>
+    </h3>
+<p><span>基于图的 RAG，将知识组织成连接图而非平面文档集合。根据相似度和概念重合度来定义边权，查询时图遍历来找到相关上下文内容。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_message = <span class="hl-string">&quot;&quot;&quot;Extract key concepts and entities from the provided text.</span></span>
+<span class="line"><span class="hl-string">Return ONLY a list of 5-10 key terms, entities, or concepts that are most important in this text.</span></span>
+<span class="line"><span class="hl-string">Format your response as a JSON array of strings.&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="18-hierarchy-rag">
+
+    <h3>
+    <a href="#18-hierarchy-rag"><span>18 hierarchy rag</span> </a>
+    </h3>
+<p><span>解决传统 RAG 在处理大规模知识库时，如果对所有文本块一视同仁，可能上下文丢失或者检索效率低的问题。</span></p>
+<p><span>层次化索引的 RAG，先通过摘要识别相关文档主要内容，再对内容进行分开嵌入，分为两个向量存储。</span></p>
+</section>
+<section id="19-HyDE-rag">
+
+    <h3>
+    <a href="#19-HyDE-rag"><span>19 HyDE rag</span> </a>
+    </h3>
+<p><span>Hypothetical Document Embedding，假设文档嵌入，通过生成能回答用户问题的假设文档来作为嵌入搜索的参照对象。(看到这里真的笑出声了</span>&hellip;<span>)</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_prompt = <span class="hl-string">f&quot;&quot;&quot;You are an expert document creator. </span></span>
+<span class="line"><span class="hl-string">Given a question, generate a detailed document that would directly answer this question.</span></span>
+<span class="line"><span class="hl-string">The document should be approximately <span class="hl-subst">{desired_length}</span> characters long and provide an in-depth, </span></span>
+<span class="line"><span class="hl-string">informative answer to the question. Write as if this document is from an authoritative source</span></span>
+<span class="line"><span class="hl-string">on the subject. Include specific details, facts, and explanations.</span></span>
+<span class="line"><span class="hl-string">Do not mention that this is a hypothetical document - just write the content directly.&quot;&quot;&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Define the user prompt with the query</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;Question: <span class="hl-subst">{query}</span>\n\nGenerate a document that fully answers this question:&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="20-crag">
+
+    <h3>
+    <a href="#20-crag"><span>20 crag</span> </a>
+    </h3>
+<p><span>Corrective RAG，评估检索结果的相关性，当本地检索结果不足时，通过网络搜索来补充，结合多个来源的结果生成答案。</span></p>
+</section>
+<section id="21-rag-with-rl">
+
+    <h3>
+    <a href="#21-rag-with-rl"><span>21 rag with rl</span> </a>
+    </h3>
+<p><span>使用 Reinforcement Learning (强化学习) 来优化。</span></p>
+<p><span>定义学习的核心组件：状态、动作空间和奖励：</span>
+<span>动作逻辑包括：重写查询、扩展上下文、过滤上下文、生成答案。</span>
+<span>使用奖励函数基于余弦相似度评估生成答案的质量。</span></p>
+</section>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">Rust Dispatch</title>
+<link href="https://eluvk.github.io/2023/08/18/rust-dispatch.html" rel="alternate" type="text/html" title="Rust Dispatch" />
+<published>2023-08-18T00:00:00+00:00</published>
+<updated>2023-08-18T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2023/08/18/rust-dispatch</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[学习的过程总是 无数个一知半解 + 一个恍然大悟的循环，两者的重要性难分伯仲。]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2023/08/18/rust-dispatch.html"><![CDATA[
+    <h1>
+    <a href="#Rust-Dispatch"><span>Rust Dispatch</span> <time datetime="2023-08-18">Aug 18, 2023</time></a>
+    </h1>
+
+<figure class="blockquote">
+<blockquote><p><span>学习的过程总是 无数个一知半解 + 一个恍然大悟的循环，两者的重要性难分伯仲。</span></p>
+</blockquote>
+
+</figure>
+<section id="Dispatch">
+
+    <h2>
+    <a href="#Dispatch"><span>分发（Dispatch）</span> </a>
+    </h2>
+<p><span>当代码涉及到多态(polymorphism)时，需要机制判断最终执行的代码到底是哪一个具体的实现版本。这个过程就叫分发。</span></p>
+<p><span>首先定义一点基础代码，作为后续内容的代码示例的默认前提：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Show</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">print</span>(&amp;<span class="hl-keyword">self</span>);</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Show</span> <span class="hl-keyword">for</span> <span class="hl-title class_">usize</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">print</span>(&amp;<span class="hl-keyword">self</span>) {</span>
+<span class="line">        <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;usize show: {:?}&quot;</span>, &amp;<span class="hl-keyword">self</span>);</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Show</span> <span class="hl-keyword">for</span> <span class="hl-title class_">String</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">print</span>(&amp;<span class="hl-keyword">self</span>) {</span>
+<span class="line">        <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;string show: {:?}&quot;</span>, &amp;<span class="hl-keyword">self</span>);</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="Static-Dispatch">
+
+    <h2>
+    <a href="#Static-Dispatch"><span>静态分发（Static Dispatch）</span> </a>
+    </h2>
+<section id="s-1">
+
+    <h3>
+    <a href="#s-1"><span>泛型</span> </a>
+    </h3>
+<p><span>类似于 C++ 里的模板，Rust 里的泛型(generic)包括加上 traits bounds 的泛型都是静态分发。具体实现是单态化(</span><a href="https://en.wikipedia.org/wiki/Monomorphization"><span>monomorphization</span></a><span>)：</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>In programming languages, monomorphization is a compile-time process where polymorphic functions are replaced by many monomorphic functions for each unique instantiation.</span></p>
+</blockquote>
+
+</figure>
+<p><span>即代码在编译期间 多态方法 被多个单独的 单态方法 替换。</span></p>
+<p><span>比如以下实现：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">do_print</span>&lt;T&gt;(x: T)</span>
+<span class="line"><span class="hl-keyword">where</span></span>
+<span class="line">    T: Show,</span>
+<span class="line">{</span>
+<span class="line">    x.<span class="hl-title function_ invoke__">print</span>();</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">number</span> = <span class="hl-number">42usize</span>;</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">string</span> = <span class="hl-string">&quot;Dispatch&quot;</span>.<span class="hl-title function_ invoke__">to_string</span>();</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-title function_ invoke__">do_print</span>(number); <span class="hl-comment">// usize show: 42</span></span>
+<span class="line">    <span class="hl-title function_ invoke__">do_print</span>(string); <span class="hl-comment">// string show: &quot;Dispatch&quot;</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>实际会被展开成类似：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">do_print_for_usize</span>(x: <span class="hl-type">usize</span>) {</span>
+<span class="line">    x.<span class="hl-title function_ invoke__">print</span>();</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">do_print_for_string</span>(x: <span class="hl-type">String</span>) {</span>
+<span class="line">    x.<span class="hl-title function_ invoke__">print</span>();</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">number</span> = <span class="hl-number">42usize</span>;</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">string</span> = <span class="hl-string">&quot;Dispatch&quot;</span>.<span class="hl-title function_ invoke__">to_string</span>();</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-title function_ invoke__">do_print_for_usize</span>(number); <span class="hl-comment">// usize show: 42</span></span>
+<span class="line">    <span class="hl-title function_ invoke__">do_print_for_string</span>(string); <span class="hl-comment">// string show: &quot;Dispatch&quot;</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>通过编译期间的单态化，编译器去除了泛型的概念，优点是在运行期间无性能损耗，缺点是滥用泛型会导致生成的单态化代码变多，编译时间增加，生成的二进制文件体积变大。这和 C++ 模板是一致的。</span></p>
+</section>
+<section id="impl-Trait">
+
+    <h3>
+    <a href="#impl-Trait"><span>impl Trait</span> </a>
+    </h3>
+<p><span>除了泛型之外，</span><code>impl Trait</code><span> 也用作静态分发，</span><code>impl Trait</code><span> 可以用在参数类型和返回值类型里。比如上述的 </span><code>fn do_print&lt;T: Show&gt;(x: T);</code><span> 也可以用 </span><code>impl Trait</code><span> 的形式写成：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">do_print</span>(x: <span class="hl-keyword">impl</span> <span class="hl-title class_">Show</span>) {</span>
+<span class="line">    x.<span class="hl-title function_ invoke__">print</span>()</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>当 </span><code>impl Trait</code><span> 作为返回值类型时，需要注意编译器需要推导出返回值的具体类型来实现单态化，因此无法写出 </span><code>if - else</code><span> 等不同分支下返回不同类型（虽然它们都实现了这个 Trait ）的代码。编译器无法推导出单态化的目标类型，一般会在后一种类型的返回处报错：</span><code>expect A but get B...</code></p>
+<p><span>实际编码中作为返回值写 </span><code>impl Trait</code><span> 的形式有两种用途：</span></p>
+<ol>
+<li>
+<span>让编译器推导类型，避免写特别长的类型</span>
+</li>
+<li>
+<span>用在返回闭包的场景</span>
+</li>
+</ol>
+<p><span>第一个场景：看下面这个例子，实现了一个连接两个 Vector 的函数</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">combine_vec</span>&lt;T&gt;(v: <span class="hl-type">Vec</span>&lt;T&gt;, u: <span class="hl-type">Vec</span>&lt;T&gt;) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">impl</span> <span class="hl-title class_">Iterator</span>&lt;Item = T&gt;</span>
+<span class="line"><span class="hl-keyword">where</span></span>
+<span class="line">    T: <span class="hl-built_in">Clone</span>,</span>
+<span class="line">{</span>
+<span class="line">    v.<span class="hl-title function_ invoke__">into_iter</span>().<span class="hl-title function_ invoke__">chain</span>(u.<span class="hl-title function_ invoke__">into_iter</span>()).<span class="hl-title function_ invoke__">cycle</span>()</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main___</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">v1</span> = <span class="hl-built_in">vec!</span>[<span class="hl-number">1</span>, <span class="hl-number">2</span>, <span class="hl-number">3</span>];</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">v2</span> = <span class="hl-built_in">vec!</span>[<span class="hl-number">5</span>, <span class="hl-number">6</span>, <span class="hl-number">7</span>];</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">v3</span> = <span class="hl-title function_ invoke__">combine_vec</span>(v1, v2);</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">1</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">2</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">3</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">5</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">6</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">7</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">1</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>泛型函数 </span><code>combine_vec</code><span> 的真实返回值是 </span><code>std::iter::Cycle&lt;std::iter::Chain&lt;std::vec::IntoIter&lt;T&gt;, std::vec::IntoIter&lt;T&gt;&gt;&gt;</code><span>，这里编译的时候会推导出返回值的类型和泛型 </span><code>T</code><span> 的类型，实际上会生成类似如下代码：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">combine_vec_for_i32_with_explicit_return_type</span>(</span>
+<span class="line">    v: <span class="hl-type">Vec</span>&lt;<span class="hl-type">i32</span>&gt;,</span>
+<span class="line">    u: <span class="hl-type">Vec</span>&lt;<span class="hl-type">i32</span>&gt;,</span>
+<span class="line">) <span class="hl-punctuation">-&gt;</span> std::iter::Cycle&lt;std::iter::Chain&lt;std::vec::IntoIter&lt;<span class="hl-type">i32</span>&gt;, std::vec::IntoIter&lt;<span class="hl-type">i32</span>&gt;&gt;&gt; {</span>
+<span class="line">    v.<span class="hl-title function_ invoke__">into_iter</span>().<span class="hl-title function_ invoke__">chain</span>(u.<span class="hl-title function_ invoke__">into_iter</span>()).<span class="hl-title function_ invoke__">cycle</span>()</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>很明显我们的这个函数的意图是利用迭代器的 </span><code>chain</code><span> 方法连接两个 </span><code>Vec</code><span>，因此返回的类型一定还是原先泛型 </span><code>T</code><span> 的迭代器，因此简单的写上 </span><code>impl Iterator&lt;...&gt;</code><span>，剩下的工作让编译器去做就好了。</span></p>
+<p><span>因为即使我们写成确切的类型，也不会给对读代码的人提供更多有帮助的信息，徒增阅读负担而已。</span></p>
+<p><span>第二个场景：Rust 里闭包类型是匿名的，无法显示的写出来，这种情况下我们只能只用 </span><code>impl Trait</code><span> 的形式来写：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">adder_function</span>(y: <span class="hl-type">i32</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">impl</span> <span class="hl-title class_">Fn</span>(<span class="hl-type">i32</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">i32</span> {</span>
+<span class="line">    <span class="hl-keyword">move</span> |x: <span class="hl-type">i32</span>| x + y</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">double_positive</span>&lt;<span class="hl-symbol">&#x27;a</span>&gt;(numbers: &amp;<span class="hl-symbol">&#x27;a</span> <span class="hl-type">Vec</span>&lt;<span class="hl-type">i32</span>&gt;) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">impl</span> <span class="hl-title class_">Iterator</span>&lt;Item = <span class="hl-type">i32</span>&gt; + <span class="hl-symbol">&#x27;a</span> {</span>
+<span class="line">    numbers.<span class="hl-title function_ invoke__">iter</span>().<span class="hl-title function_ invoke__">filter</span>(|x| x &gt; &amp;&amp;<span class="hl-number">0</span>).<span class="hl-title function_ invoke__">map</span>(|x| x * <span class="hl-number">2</span>)</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">add_one</span> = <span class="hl-title function_ invoke__">adder_function</span>(<span class="hl-number">1</span>);</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">3</span>, <span class="hl-title function_ invoke__">add_one</span>(<span class="hl-number">2</span>));</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">v</span> = <span class="hl-built_in">vec!</span>[-<span class="hl-number">3</span>, <span class="hl-number">2</span>, -<span class="hl-number">4</span>, <span class="hl-number">1</span>];</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">v2</span> = <span class="hl-title function_ invoke__">double_positive</span>(&amp;v).collect::&lt;<span class="hl-type">Vec</span>&lt;<span class="hl-type">i32</span>&gt;&gt;();</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(v2, <span class="hl-built_in">vec!</span>[<span class="hl-number">4</span>, <span class="hl-number">2</span>]);</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="Dynamic-Dispatch">
+
+    <h2>
+    <a href="#Dynamic-Dispatch"><span>动态分发（Dynamic Dispatch）</span> </a>
+    </h2>
+<p><span>静态分发的缺点：无法返回多种类型 正是动态分发要解决的问题。使用 Trait Object 表达 </span><strong><strong><span>实现了某种 Trait 的类型(的集合)</span></strong></strong><span> 这种类型，这种类型有点像 OOP 语言里的基类/抽象类，本身无法实例化出对象。</span></p>
+<section id="Trait-Object">
+
+    <h3>
+    <a href="#Trait-Object"><span>Trait Object</span> </a>
+    </h3>
+<p><span>Trait Object 本身可以理解为有固定大小的类型，其包含两个指针，一个指向其实际的类型，一个指向实现了 TraitObject 的这个 Trait 的虚表，可以理解为如下表达：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">pub</span> <span class="hl-keyword">struct</span> <span class="hl-title class_">TraitObject</span> {</span>
+<span class="line">    <span class="hl-keyword">pub</span> data: *<span class="hl-title function_ invoke__">mut</span> (),</span>
+<span class="line">    <span class="hl-keyword">pub</span> vtable: *<span class="hl-title function_ invoke__">mut</span> (),</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>虽然 Trait Object 大小是确定，但是并不能写出形如 </span><code>fn x() -&gt; Trait Object</code><span> 的代码，你会得到编译器的警告：</span></p>
+
+<figure class="blockquote">
+<blockquote><p><code>return type cannot have an unboxed trait object, doesn't have a size known at compile-time</code></p>
+</blockquote>
+
+</figure>
+<p><span>嗯？这是因为 Trait Object 所表达的实现了该 Trait 的类型的集合，其中的元素的大小是不确定的。Trait Object 本身是无法实例化的，作为返回值自然是没有意义的，真正要作为返回值的是某个实现了该 Trait 的类型的实例。因此要明确并不是因为 Trait Object 本身大小不固定，大小就是宽指针是固定的。</span></p>
+</section>
+<section id="dyn-Trait">
+
+    <h3>
+    <a href="#dyn-Trait"><span>dyn Trait</span> </a>
+    </h3>
+<p><span>明白了 Trait Object 的概念，代码中要表示一个 Trait Object，需要使用 </span><code>dyn</code><span> 关键字：</span><code>dyn SomeTrait</code><span> 表示 </span><code>SomeTrait</code><span> 的 Trait Object</span></p>
+<p><span>这里有些历史，在 2016 年之前还没有 </span><code>dyn</code><span> 这个关键字，</span><a href="https://github.com/rust-lang/rfcs/blob/master/text/2113-dyn-trait-syntax.md"><span>RFC-2113</span></a><span> 中引入了这个关键字语法，并在 rust 1.26/2021 edition 后必须使用 </span><code>dyn</code><span> 才能表示 Trait Object</span></p>
+<p><span>要求使用 </span><code>dyn</code><span> 就是为了清晰表达含义，区分 Trait 和 TraitObject。提案里给出了几个实例：比如下面代码：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">SomeTrait</span> <span class="hl-keyword">for</span> <span class="hl-title class_">AnotherTrait</span> {...}</span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">SomeTrait</span> {...}</span></code></pre>
+
+</figure>
+<p><span>这在引入 dyn 关键字之前都是合法的代码（现在会提示了），能分清楚这里的几个 xxxTrait，哪个是 Trait ，哪个是 Trait Object 么 :）</span></p>
+<p><span>第一条按照 </span><code>impl trait for type</code><span> 的语法，</span><code>SomeTrait</code><span> 是 Trait, </span><code>AnotherTrait</code><span> 应该是 Trait Object；</span></p>
+<p><span>第二条很容易理解为给 </span><code>SomeTrait</code><span> 实现一些默认方法，但是应该在定义处 </span><code>trait SomeTrait {...}</code><span> 里实现默认方法，这里其实是表达给 </span><code>SomeTrait</code><span> 的 Trait Object 实现方法。</span></p>
+<p><span>当然如今这样写已经会被编译器警告了，正确的写法是：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">SomeTrait</span> <span class="hl-keyword">for</span> <span class="hl-title class_">dyn</span> AnotherTrait {...}</span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">dyn</span> SomeTrait {...}</span></code></pre>
+
+</figure>
+
+<figure class="blockquote">
+<blockquote><p><span>拓展知识: Trait Object 都是 unsized ，所以 Trait 在设计的时候都是默认 </span><code>?Sized</code><span> 来支持 Trait Object：</span><a href="https://blog.eluvk.cn/?p=836#toc-head-16"><span>Trait Object Sizeness</span></a></p>
+<p><span>因此如果定义 </span><code>trait SomeTrait : Sized</code><span> ，那么这个 Trait 就不能使用 Trait Object 了。换句话说，Trait Object 要求不能包含 </span><code>Sized</code><span> Bounds。</span></p>
+<p><a href="https://doc.rust-lang.org/reference/items/traits.html#object-safety"><span>traits#object-safety</span></a></p>
+<ul>
+<li>
+<span>All supertraits must also be object safe.</span>
+</li>
+<li>
+<code>Sized</code><span> must not be a supertrait. In other words, it must not require </span><code>Self: Sized</code><span>.</span>
+</li>
+</ul>
+</blockquote>
+
+</figure>
+</section>
+<section id="vtable-in-Rust">
+
+    <h3>
+    <a href="#vtable-in-Rust"><span>vtable in Rust</span> </a>
+    </h3>
+<p><span>首先先看一下 C++ 里的虚表实现，对于一个子类对象，其内存布局包括：(注：这里只考虑继承包含虚函数父类的子类的情况，仅为和 Rust 虚表对比，不能完全代表真实内存布局实现)</span></p>
+<table>
+<tr>
+<th><span>子类内存布局</span></th>
+<th></th>
+<th><span>vtable</span></th>
+</tr>
+<tr>
+<td><span>虚表指针</span></td>
+<td>&mdash;<span>&gt;</span></td>
+<td><span>析构方法指针</span></td>
+</tr>
+<tr>
+<td><span>子类成员/数据</span></td>
+<td></td>
+<td><span>成员方法指针</span></td>
+</tr>
+</table>
+<p><span>指向虚表的指针和自身成员数据。</span></p>
+<p><span>对于多继承的情况，会有多个虚表指针：</span></p>
+<table>
+<tr>
+<th><span>vtable</span></th>
+<th></th>
+<th><span>子类内存布局</span></th>
+<th></th>
+<th><span>vtable</span></th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td><span>虚表指针</span></td>
+<td>&mdash;<span>&gt;</span></td>
+<td><span>析构方法指针</span></td>
+</tr>
+<tr>
+<td><span>析构方法指针</span></td>
+<td><span>&lt;</span>&mdash;<span></span></td>
+<td><span>虚表指针</span></td>
+<td></td>
+<td><span>成员方法指针</span></td>
+</tr>
+<tr>
+<td><span>成员方法指针</span></td>
+<td></td>
+<td><span>子类成员/数据</span></td>
+<td></td>
+<td></td>
+</tr>
+</table>
+<p><span>而 Rust 里，如上 TraitObject 的 raw code：很容易得出单 Trait 下的 TraitObject 布局：</span></p>
+<table>
+<tr>
+<th><span>子类布局</span></th>
+<th></th>
+<th><span>Trait Object</span></th>
+<th></th>
+<th><span>vtable</span></th>
+</tr>
+<tr>
+<td><span>成员数据</span></td>
+<td><span>&lt;</span>&mdash;<span></span></td>
+<td><span>数据指针</span></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td><span>虚表指针</span></td>
+<td>&mdash;<span>&gt;</span></td>
+<td><span>析构方法指针</span></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td><span>成员方法指针</span></td>
+</tr>
+</table>
+<p><span>那么如果我想写出多个 Trait Bounds 的 Trait Object 呢？如下代码：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">FirstTrait</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">first</span>(&amp;<span class="hl-keyword">self</span>);</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">SecondTrait</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">second</span>(&amp;<span class="hl-keyword">self</span>);</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Subject</span> {</span>
+<span class="line">    subjects: <span class="hl-keyword">dyn</span> FirstTrait + SecondTrait, <span class="hl-comment">// error: only auto traits can be used</span></span>
+<span class="line">                                            <span class="hl-comment">// as additional traits in a trait object</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>会在 </span><code>+ SecondTrait</code><span> 处得到如上提示，以及如下建议：</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>consider creating a new trait with all of these as supertraits and using that trait here instead: </span><code>trait NewTrait: FirstTrait + SecondTrait {}</code></p>
+</blockquote>
+
+</figure>
+<p><span>（rustc 真贴心地教你写代码）按照提示需要这样写：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">AllTrait</span>: FirstTrait + SecondTrait {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Subject</span> {</span>
+<span class="line">    subjects: <span class="hl-keyword">dyn</span> AllTrait,</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>很容易猜测到这是因为 TraitObject 的实现方式：仅包含两个指针，无法增加更多的 vtable 指针来达成类似 C++ </span><code>: public A, public B</code><span> 多继承的效果。</span></p>
+<p><span>拓展知识：目前 supertrait 下还不支持 upcasting coercion: </span><a href="https://github.com/rust-lang/rust/issues/65991"><span>issues</span></a></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">need_first_trait</span>(o: &amp;<span class="hl-keyword">dyn</span> FirstTrait) {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Subject</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">call_as_first_trait</span>(&amp;<span class="hl-keyword">self</span>) {</span>
+<span class="line">        <span class="hl-title function_ invoke__">need_first_trait</span>(&amp;<span class="hl-keyword">self</span>.subjects) <span class="hl-comment">// error: cannot cast `dyn AllTrait` to `dyn FirstTrait`,</span></span>
+<span class="line">                                         <span class="hl-comment">// trait upcasting coercion is experimental</span></span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>目前编译器还无法识别出应该放入哪个 </span><code>FirstTrait</code><span> 的 Trait Object 的虚表，可以用下面的方式手动补充实现：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">AllTrait</span>: FirstTrait + SecondTrait {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">as_first_trait</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> &amp;<span class="hl-keyword">dyn</span> FirstTrait;</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span>&lt;T: FirstTrait + SecondTrait&gt; AllTrait <span class="hl-keyword">for</span> <span class="hl-title class_">T</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">as_first_trait</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> &amp;<span class="hl-keyword">dyn</span> FirstTrait {</span>
+<span class="line">        <span class="hl-keyword">self</span></span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Subject</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">call_as_first_trait</span>(&amp;<span class="hl-keyword">self</span>) {</span>
+<span class="line">        <span class="hl-title function_ invoke__">need_first_trait</span>(<span class="hl-keyword">self</span>.subjects.<span class="hl-title function_ invoke__">as_first_trait</span>())</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="s-2">
+
+    <h2>
+    <a href="#s-2"><span>参考资料</span> </a>
+    </h2>
+<p><a href="https://doc.rust-lang.org/rust-by-example/trait/impl_trait.html"><span>rust example - impl Trait</span></a></p>
+</section>
+<section id="s-3">
+
+    <h2>
+    <a href="#s-3"><span>拓展阅读</span> </a>
+    </h2>
+<ul>
+<li>
+<a href="https://doc.rust-lang.org/reference/items/traits.html#object-safety"><span>Trait Object Safety</span></a>
+</li>
+<li>
+<a href="https://smallcultfollowing.com/babysteps/blog/2022/03/29/dyn-can-we-make-dyn-sized/"><span>dyn * can we make dyn sized?</span></a>
+</li>
+</ul>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">Blockchain VM</title>
+<link href="https://eluvk.github.io/2023/01/15/blockchain-vm.html" rel="alternate" type="text/html" title="Blockchain VM" />
+<published>2023-01-15T00:00:00+00:00</published>
+<updated>2023-01-15T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2023/01/15/blockchain-vm</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[这是22年5月份在我在公司内部分享的关于区块链虚拟机的基础介绍，整理资料的时候翻出来发到博客上。]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2023/01/15/blockchain-vm.html"><![CDATA[
+    <h1>
+    <a href="#Blockchain-VM"><span>Blockchain VM</span> <time datetime="2023-01-15">Jan 15, 2023</time></a>
+    </h1>
+<p><span>这是22年5月份在我在公司内部分享的关于区块链虚拟机的基础介绍，整理资料的时候翻出来发到博客上。</span></p>
+<section id="s-1">
+
+    <h2>
+    <a href="#s-1"><span>什么是区块链虚拟机</span> </a>
+    </h2>
+<section id="s-2">
+
+    <h3>
+    <a href="#s-2"><span>区块链</span> </a>
+    </h3>
+<ul>
+<li>
+<span>不可篡改的去中心化分布式账本</span>
+</li>
+<li>
+<span>运用密码学加密，把块（一些记录）连接起来形成链</span>
+</li>
+</ul>
+</section>
+<section id="s-3">
+
+    <h3>
+    <a href="#s-3"><span>虚拟机</span> </a>
+    </h3>
+<ul>
+<li>
+<span>用来模拟计算机的程序</span>
+</li>
+<li>
+<span>虚拟的 CPU、内存、存储</span>
+</li>
+<li>
+<span>使用起来和物理机器没有区别</span>
+</li>
+</ul>
+</section>
+</section>
+<section id="s-4">
+
+    <h2>
+    <a href="#s-4"><span>从比特币脚本到以太坊虚拟机</span> </a>
+    </h2>
+<section id="s-5">
+
+    <h3>
+    <a href="#s-5"><span>比特币脚本</span> </a>
+    </h3>
+<section id="UTXO">
+
+    <h4>
+    <a href="#UTXO"><span>UTXO 模型</span> </a>
+    </h4>
+<p><span>UTXO (Unspent Transaction Output) ，简单来说就是：</span></p>
+<ol>
+<li>
+<span>一个 UTXO 包含一个面额和一个当前的拥有者。</span>
+</li>
+<li>
+<span>某个一账户的余额 是由 当前区块链网络里，所有属于这个账户的 UTXO 组成的：</span>
+</li>
+</ol>
+
+<figure>
+
+<img alt="utxo_1" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/utxo_1.png">
+</figure>
+<p><span>一笔交易里可以包含多个 input \也可以有多个 output，只需要保证 </span><code>sum(inputs) &gt; sum(outputs) + fee</code><span> 即可。</span></p>
+<p><span>如果一个用户想要发送一笔交易，发送 X 个币到一个特定的地址，有时候，他们拥有的 UTXO 的一些子集组合起来面值恰好是 X，在这种情况下，他们可以创造一个交易：花费他们的 UTXO 并创造出一笔新的、价值 X 的 UTXO ，由目标地址占有。当这种完美的配对不可能的时候，用户就必须打包其和值 大于 X 的 UTXO 输入集合，并添加一笔拥有第二个目标地址的 UTXO ，称为“变更输出”，分配剩下的币到一个由他们自己控制的地址。</span></p>
+<section id="s-6">
+
+    <h5>
+    <a href="#s-6"><span>思考？</span> </a>
+    </h5>
+<p><span>账户模型和 UTXO 模型相比，有什么优势，有什么缺点？</span></p>
+<ul>
+<li>
+<span>账号模型特点：</span>
+<span>- 余额状态简单，绝大多数情况下，并不会关心自己的资产由哪些面值组成，一般只关心总额多少。而 UTXO 模型需要统计当前状态下的所有 UTXO。</span>
+<span>- 状态数据和用户数量正相关，不会随着时间增大而无限增加</span>
+<span>- 轻量级客户端更容易编写</span>
+</li>
+<li>
+<span>UTXO 模型特点：</span>
+<span>- 资产的可追溯性更强</span>
+<span>- UTXO 模型理论上来说可以并行地利用不同的 UTXO 签发多笔交易。但是如果双花，同一个 UTXO 最终也只会在一个交易里被确认。</span>
+</li>
+</ul>
+</section>
+</section>
+<section id="output">
+
+    <h4>
+    <a href="#output"><span>使用 output</span> </a>
+    </h4>
+
+<figure>
+
+<img alt="utxo_2" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/utxo_2.png">
+</figure>
+<p><span>这里涉及到的两个脚本：</span></p>
+<ul>
+<li>
+<span>锁定脚本 </span><code>scriptPubKey</code>
+</li>
+<li>
+<span>解锁脚本 </span><code>scriptSig</code>
+</li>
+</ul>
+<p><span>比特币虚拟机在执行交易时：需要验证解锁脚本能否解开锁定脚本，会把 </span><strong><strong><span>锁定脚本</span></strong></strong><span>( </span><code>scriptPubKey</code><span> )和对应索引的</span><strong><strong><span>解锁脚本</span></strong></strong><span>( </span><code>scriptSig</code><span> )拼接起来从左到右执行一遍。如果执行过程中</span><strong><strong><span>没有出现错误并且执行结果为真</span></strong></strong><span>，则验证通过，意味着钥匙打开了锁，这个 UTXO 可以被花费。</span></p>
+
+<figure>
+
+<img alt="utxo_3" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/utxo_3.png">
+</figure>
+<p><span>请注意，解锁脚本里不能出现 PUSHDATA 以外的任何操作码，否则会报错</span>
+<span>&gt; 16: mandatory-script-verify-flag-failed (Only non-push operators allowed in signatures)</span></p>
+<p><span>解锁脚本里只能有数据不能出现逻辑操作，否则任何 UTXO 都可以用 </span><code>OP_RETURN</code><span> 解锁:</span>
+<code>OP_TRUE OP_RETURN</code></p>
+</section>
+<section id="Script">
+
+    <h4>
+    <a href="#Script"><span>脚本 Script</span> </a>
+    </h4>
+<p><a href="https://github.com/bitcoin/bitcoin/blob/master/src/script/interpreter.cpp"><span>bitcoin-core 源码 interpreter.cpp</span></a><span>里的注释：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">/**</span></span>
+<span class="line"><span class="hl-comment"> * Script is a stack machine (like Forth) that evaluates a predicate</span></span>
+<span class="line"><span class="hl-comment"> * returning a bool indicating valid or not.  There are no loops.</span></span>
+<span class="line"><span class="hl-comment"> */</span></span></code></pre>
+
+</figure>
+<p><span>Script 是一种类 Forth、基于栈式模型、无状态的、非图灵完备的语言。</span>
+<span>opcodes 分为常量、流程控制、栈操作、算术运算、位运算、密码学运算、保留字等若干类，还包括3个内部使用的伪指令。</span></p>
+<section id="A-simple-example">
+
+    <h5>
+    <a href="#A-simple-example"><span>A simple example</span> </a>
+    </h5>
+<p><span>先看一个简单的例子，只需要用到几个简单的操作符：</span></p>
+<table>
+<tr>
+<th><span>Word</span></th>
+<th><span>Opcode</span></th>
+<th><span>Hex</span></th>
+<th><span>Input</span></th>
+<th><span>Output</span></th>
+<th><span>Description</span></th>
+</tr>
+<tr>
+<td><span>OP</span><em><span>1</span>&hellip;<span>OP</span></em><span>16</span></td>
+<td><span>81-96</span></td>
+<td><span>0x51-0x60</span></td>
+<td><span>Nothing</span></td>
+<td><span>1-16</span></td>
+<td><span>push the number into stack</span></td>
+</tr>
+<tr>
+<td><span>OP_ADD</span></td>
+<td><span>147</span></td>
+<td><span>0x93</span></td>
+<td><span>a b</span></td>
+<td><span>out</span></td>
+<td><span>a is added to b.</span></td>
+</tr>
+<tr>
+<td><span>OP_EQUAL</span></td>
+<td><span>135</span></td>
+<td><span>0x87</span></td>
+<td><span>x1 x2</span></td>
+<td><span>True/false</span></td>
+<td><span>Return True if x1 == x2, or false</span></td>
+</tr>
+</table>
+<p><span>比如 A 需要转账给 B 一笔钱，那么 B 就需要提供一个收款方式（锁定脚本模板），A 按照 B 提供的</span><strong><strong><span>锁定脚本</span></strong></strong><span>把钱锁定，就相当于完成了对 B 的转账。</span></p>
+<p><span>假如 B 提供的收款方式是：因为只有我知道 </span><code>x + 2 = 3</code><span> 的解是 </span><code>x = 1</code><span> ，所以告诉 A，你只需要把金额通过以下脚本锁定：</span>
+<code>OP_2 OP_ADD 3 OP_EQUAL</code></p>
+<p><span>当 B 需要使用这笔钱的时候：B 就可以使用</span><strong><strong><span>解锁脚本</span></strong></strong><span>：</span><code>OP_1</code><span> 来证明自己可以使用这笔钱了：</span>
+<span>因为：解锁脚本 + 锁定脚本: </span><code>OP_1 OP_2 OP_ADD 3 OP_EQUAL</code><span> 的执行结果是 True</span></p>
+<p><span>当然，这样提供锁定脚本的方法</span>&ldquo;<span>只能用一次</span>&rdquo;<span>，因为你的解锁方式使用过以后就相当于公开了。</span></p>
+</section>
+<section id="s-7">
+
+    <h5>
+    <a href="#s-7"><span>实际点的例子</span> </a>
+    </h5>
+<p><span>下面举几个在后面的脚本中会出现的指令，全部的指令可参考</span><a href="https://en.bitcoin.it/wiki/Script#Opcodes"><span>官方文档</span></a><span>和源码。</span></p>
+<p><span>举例几个：</span></p>
+<table>
+<tr>
+<th><span>Word</span></th>
+<th><span>Opcode</span></th>
+<th><span>Hex</span></th>
+<th><span>Input</span></th>
+<th><span>Output</span></th>
+<th><span>Description</span></th>
+</tr>
+<tr>
+<td><code>OP_DUP</code><span></span></td>
+<td><span>118</span></td>
+<td><span>0x76</span></td>
+<td><span>x</span></td>
+<td><span>x x</span></td>
+<td><span>Duplicates the top stack item.</span></td>
+</tr>
+<tr>
+<td><code>OP_HASH160</code><span></span></td>
+<td><span>169</span></td>
+<td><span>0xa9</span></td>
+<td><span>in</span></td>
+<td><span>hash</span></td>
+<td><span>The input is hashed twice: first with SHA-256 and then with RIPEMD-160.</span></td>
+</tr>
+<tr>
+<td><code>OP_EQUALVERIFY</code><span></span></td>
+<td><span>136</span></td>
+<td><span>0x88</span></td>
+<td><span>x1 x2</span></td>
+<td><span>Nothing / fail</span></td>
+<td><span>Same as OP</span><em><span>EQUAL, but runs OP</span></em><span>VERIFY afterward.</span></td>
+</tr>
+<tr>
+<td><code>OP_CHECKSIG</code><span></span></td>
+<td><span>172</span></td>
+<td><span>0xac</span></td>
+<td><span>sig pubkey</span></td>
+<td><span>True / false</span></td>
+<td><span>The entire transaction</span>&rsquo;<span>s outputs, inputs, and script (from the most recently-executed OP</span><em><span>CODESEPARATOR to the end) are hashed. The signature used by OP</span></em><span>CHECKSIG must be a valid signature for this hash and public key. If it is, 1 is returned, 0 otherwise.</span></td>
+</tr>
+</table>
+<p><span>B 给 A 提供了一个锁定脚本模板：</span><code>OP_DUP OP_HASH160 &lt;pubKeyHash&gt; OP_EQUALVERIFY OP_CHECKSIG</code><span>，告诉了 A 他的收款地址（等效于其中的公钥 hash），当 A 需要使用这笔钱的时候，在本地计算出相应的签名再附上公钥即可：</span></p>
+<p><strong><strong><span>解锁脚本</span></strong></strong><span>：</span><code>&lt;sig&gt; &lt;pubKey&gt;</code><span> +</span></p>
+<p><strong><strong><span>锁定脚本</span></strong></strong><span>：</span><code>OP_DUP OP_HASH160 &lt;pubKeyHash&gt; OP_EQUALVERIFY OP_CHECKSIG</code></p>
+<p><span>看一下执行过程 PPT:</span></p>
+
+<figure>
+
+<img alt="bitcoin-sig-scrpit" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/bitcoin-sig-script.gif">
+</figure>
+<p><span>注： 关于为什么使用公钥 hash,可以参考下面第一篇拓展阅读，介绍了“付款到公钥” 和 “付款到公钥哈希”的问题</span></p>
+</section>
+</section>
+<section id="s-8">
+
+    <h4>
+    <a href="#s-8"><span>比特币相关知识拓展阅读</span> </a>
+    </h4>
+<ul>
+<li>
+<a href="https://aaron67.cc/2018/12/28/bitcoin-transaction-p2pk-p2pkh/"><span>比特币公钥哈希</span></a>
+</li>
+<li>
+<a href="https://aaron67.cc/2018/12/23/bitcoin-keys/"><span>比特币公钥私钥</span></a>
+</li>
+<li>
+<a href="https://aaron67.cc/2019/01/04/bitcoin-address/"><span>比特币的地址</span></a>
+</li>
+<li>
+<a href="https://aaron67.cc/2019/01/22/bitcoin-wallet/"><span>比特币钱包</span></a>
+</li>
+<li>
+<a href="https://gist.github.com/gavinandresen/3966071"><span>比特币2-of-3多签</span></a>
+</li>
+</ul>
+</section>
+<section id="s-9">
+
+    <h4>
+    <a href="#s-9"><span>比特币的智能合约</span> </a>
+    </h4>
+<p><span>比特币也是支持有限的智能合约的，再</span><a href="https://github.com/bitcoin/bips/blob/master/bip-0011.mediawiki"><span>BIP-11</span></a><span>提出 M-of-N 多签交易后，也增加了 </span><code>OP_CHECKMULTISIG</code><span> 指令，也可以一定程度上实现多签功能，用在托管资产、多签钱包等场景。</span></p>
+</section>
+</section>
+<section id="s-10">
+
+    <h3>
+    <a href="#s-10"><span>以太坊虚拟机</span> </a>
+    </h3>
+<section id="s-11">
+
+    <h4>
+    <a href="#s-11"><span>账户模型</span> </a>
+    </h4>
+
+<figure>
+
+<img alt="eth-account-1" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/eth_account_1.png">
+</figure>
+<p><span>整个以太坊会保存所有账户的状态：</span></p>
+
+<figure>
+
+<img alt="eth-global-state" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/eth_global_state.jfif">
+</figure>
+</section>
+<section id="s-12">
+
+    <h4>
+    <a href="#s-12"><span>以太坊状态机</span> </a>
+    </h4>
+<p><code>(nonce, from, to, value, input)</code><span> 是一个 </span><code>Transaction</code><span> 包含的最重要的几个字段，通过 </span><code>nonce</code><span> 防止重放攻击， </span><code>from</code><span> 和 </span><code>to</code><span> 分别表示了当前交易的发出者和接受者， </span><code>value</code><span> 是当前交易包含的 </span><code>Ether</code><span> ， </span><code>input</code><span> 中包含了合约调用相关的二进制信息。</span></p>
+
+<figure>
+
+<img alt="eth-state-machine" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/eth_state_machine.png">
+</figure>
+<p><span>每当一个 </span><code>Transaction</code><span> 被 </span><code>Ethereum</code><span> 主网挖到后， </span><code>from</code><span> 和 </span><code>to</code><span> 账户的 </span><code>Ether</code><span> 余额就会变动， </span><code>Ethereum</code><span> 就像一个状态机，它接受一个又一个的 </span><code>Transaction</code><span> 并不停改变自己的状态。</span></p>
+</section>
+<section id="EVM">
+
+    <h4>
+    <a href="#EVM"><span>以太坊虚拟机 EVM</span> </a>
+    </h4>
+<p><span>EVM 准确来说是一个准图灵机，文法上它能够执行任意操作，但为了防止网络滥用、以及避免由于图灵完整性带来的安全问题，以太坊中所有操作都进行了经济学上的限制，也就是 gas 机制</span></p>
+<p><span>EVM 执行的过程：</span></p>
+<ul>
+<li>
+<span>从 </span><code>EVM code</code><span> 中取指令，所有的操作在 </span><code>Stack</code><span> 上进行，</span>
+</li>
+<li>
+<code>Memory</code><span> 作为临时的变量存储， </span><code>storage</code><span> 是账户状态。</span>
+</li>
+<li>
+<span>执行受到 </span><code>gas avail</code><span> 限制。</span>
+</li>
+</ul>
+
+<figure>
+
+<img alt="evm" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/evm1.jfif">
+</figure>
+<p><span>执行过程中的消息调用（CALL）：合约之间的调用，参数和返回值在 memory 中传递</span>
+<img alt="evm" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/evm2.jfif"></p>
+</section>
+</section>
+</section>
+<section id="s-13">
+
+    <h2>
+    <a href="#s-13"><span>如何写一个简单堆栈虚拟机</span> </a>
+    </h2>
+<p><a href="https://github.com/CharlesLiu-TOPNetwork/ssvm/tree/demo/literal_instruction"><span>ssvm</span></a></p>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">Api Design Practices</title>
+<link href="https://eluvk.github.io/2022/12/14/api-design-practices.html" rel="alternate" type="text/html" title="Api Design Practices" />
+<published>2022-12-14T00:00:00+00:00</published>
+<updated>2022-12-14T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2022/12/14/api-design-practices</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[工作内容里，签名验签模块在重构后出现了一个偶现 bug，个别账号签名的数据验签失败。]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2022/12/14/api-design-practices.html"><![CDATA[
+    <h1>
+    <a href="#Api-Design-Practices"><span>Api Design Practices</span> <time datetime="2022-12-14">Dec 14, 2022</time></a>
+    </h1>
+<section id="0x00">
+
+    <h2>
+    <a href="#0x00"><span>0x00</span> </a>
+    </h2>
+<p><span>工作内容里，签名验签模块在重构后出现了一个偶现 bug，个别账号签名的数据验签失败。</span></p>
+<p><span>重构的时候单元测试覆盖过功能测试（私钥-公钥-签名-验签）是可以的，修改测试循环大量次数跑后，发现生成1万次随机私钥，会有60-80次会出现验签失败的问题。</span></p>
+<p><span>打印出来后出错的 case 后，发现共有的特点是，32 bytes 的私钥里，出错的都是第一个 byte 为 0 (hex: 0x00) 的私钥。一个随机账号出错的概率大概就是 </span><span class="math inline">\(\frac{1}{256}\)</span><span> 。</span></p>
+<p><span>所以原因大概率就是前置0 在存储使用的过程中丢失了的原因。进一步定位代码找到了出错的地方。</span></p>
+<p><span>先描述一下相关接口方法的使用。</span></p>
+</section>
+<section id="0x01">
+
+    <h2>
+    <a href="#0x01"><span>0x01</span> </a>
+    </h2>
+<p><span>签名验签使用的是 </span><code>openssl</code><span> 的库来实现其数学计算过程，其中私钥 32 bytes = 256 bit 是通过 </span><code>BigNumber</code><span> (简写为 </span><code>BN</code><span> ) 来保存的。在 </span><code>BN</code><span> 对象和其可读形式（无论是 hex 编码还是 base64编码）的转换过程中，第一步都要把 </span><code>BN</code><span> 转换成对应的 bytes 数据。</span></p>
+<p><span>openssl 在 </span><code>BN</code><span> 相关的接口里也提供了对应的转换方式：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">size_t</span> <span class="hl-title">BN_bn2bin</span><span class="hl-params">(<span class="hl-type">const</span> BIGNUM * in, <span class="hl-type">uint8_t</span> * out)</span></span>;</span></code></pre>
+
+</figure>
+<p><span>方法传入两个参数，第一个是入参 </span><code>BN *</code><span>，第二个是出参 </span><code>u8 *</code><span>，返回值表示转换的长度。</span></p>
+<p><span>非常的 C 风格，经验丰富的 coder 也会马上注意到，出参 to 指针指向的结果对象，其内存是由调用者来管理的，也就是说在调用之前我就需要明确申请好足够的空间来存放结果。但是我怎么知道 </span><code>BN * in</code><span> 会转换出多少 bytes 呢？</span></p>
+<p><span>对此 openssl 还提供了另外一个方法：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">size_t</span> <span class="hl-title">BN_num_bytes</span><span class="hl-params">(<span class="hl-type">const</span> BIGNUM *bn)</span></span></span>
+<span class="line"><span class="hl-function"></span></span></code></pre>
+
+</figure>
+<p><span>传入 </span><code>BN *</code><span>, 返回其对应的 bytes 长度。</span></p>
+</section>
+<section id="0x02">
+
+    <h2>
+    <a href="#0x02"><span>0x02</span> </a>
+    </h2>
+<p><span>所以使用方法大致如下：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-type">size_t</span> len = <span class="hl-built_in">BN_num_bytes</span>(bn);</span>
+<span class="line"></span>
+<span class="line"><span class="hl-type">uint8_t</span> * binary_result = (<span class="hl-type">uint8_t</span> *)<span class="hl-built_in">malloc</span>(len * <span class="hl-built_in">sizeof</span>(<span class="hl-type">uint8_t</span>)) <span class="hl-comment">// C malloc</span></span>
+<span class="line"><span class="hl-comment">// uint8_t * binary_result = new uint8_t[len] // or use C++ new</span></span>
+<span class="line"><span class="hl-built_in">memset</span>(binary_result, <span class="hl-number">0</span>, len * <span class="hl-built_in">sizeof</span>(<span class="hl-type">uint8_t</span>))</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">if</span> (<span class="hl-built_in">BN_bn2bin</span>(bn, binary_result) != len) {</span>
+<span class="line">    <span class="hl-comment">// TODO what?</span></span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// ...</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-built_in">free</span>(binary_result);</span>
+<span class="line"><span class="hl-comment">// delete[] binary_result // or use C++ delete</span></span></code></pre>
+
+</figure>
+<p><span>过程应该很简单清晰，获取长度 - 申请内存 - 调用转换方法。</span></p>
+<p><span>但是应该怎么处理 </span><code>BN_bn2bin</code><span> 方法的返回值呢？</span></p>
+</section>
+<section id="0x03">
+
+    <h2>
+    <a href="#0x03"><span>0x03</span> </a>
+    </h2>
+<p><span>这个返回的整数值，在某些类似场合下（比如读写文件）其含义或许是：实际写入的字节数。但是在这里，它一定是 </span><code>BN</code><span> 的实际 bytes 长度。其实现也就是如此：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">size_t</span> <span class="hl-title">BN_bn2bin</span><span class="hl-params">(<span class="hl-type">const</span> BIGNUM * in, <span class="hl-type">uint8_t</span> * out)</span> </span>{</span>
+<span class="line">  <span class="hl-type">size_t</span> n = <span class="hl-built_in">BN_num_bytes</span>(in);</span>
+<span class="line">  <span class="hl-built_in">bn_words_to_big_endian</span>(out, n, in-&gt;d, in-&gt;width);</span>
+<span class="line">  <span class="hl-keyword">return</span> n;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>返回值 </span><code>n</code><span> 也和我们调用 </span><code>BN_num_bytes</code><span> 获取长度得到的结果必定是一样的。那我们判断返回值 </span><code>if (BN_bn2bin(bn, binary_result) != len)</code><span> 的意义是什么？</span></p>
+<p><span>想要调用 </span><code>BN_bn2bin</code><span>，必定要先调用 </span><code>BN_num_bytes</code><span>，那 </span><code>BN_bn2bin</code><span> 的返回值我在使用前已经知道了。</span></p>
+<p><span>所以实践上可能还仅剩的意义大概是：在 debug 里多判断一次断言，release 下可以直接放过这个返回值了：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-type">size_t</span> len = <span class="hl-built_in">BN_num_bytes</span>(bn);</span>
+<span class="line"></span>
+<span class="line"><span class="hl-type">uint8_t</span> * binary_result = <span class="hl-keyword">new</span> <span class="hl-type">uint8_t</span>[len]</span>
+<span class="line"></span>
+<span class="line"><span class="hl-built_in">memset</span>(binary_result, <span class="hl-number">0</span>, len * <span class="hl-built_in">sizeof</span>(<span class="hl-type">uint8_t</span>))</span>
+<span class="line"></span>
+<span class="line">[[maybe_unused]] <span class="hl-type">size_t</span> ret = <span class="hl-built_in">BN_bn2bin</span>(bn, binary_result);</span>
+<span class="line"></span>
+<span class="line"><span class="hl-built_in">assert</span>(ret == len);</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// ... </span></span></code></pre>
+
+</figure>
+</section>
+<section id="0x04">
+
+    <h2>
+    <a href="#0x04"><span>0x04</span> </a>
+    </h2>
+<p><span>上面解释后也可以看出 </span><code>BN_bn2bin</code><span> 设计初衷就是一个通用的转换方式，所以按照上述的封装方式一定会得到一个通用的序列化方法。</span></p>
+<p><span>而对于私钥这种定长(32 bytes)的大整数，不可避免地出现有前置0的情况，比如 值为 </span><code>0x00ff..ffff</code><span>，经过上面的操作后得到的 </span><code>binary_result</code><span> 的长度是 31，如果在存储的时候没有考虑到这种情况，复制的时候就可能整体左移了一 bytes，变成了 </span><code>0xffff..ff00</code><span> 私钥的数值放大了256倍，都不是同一把私钥，自然无法验签了。这也就是最初遇到的 bug 的原因了。</span></p>
+<p><span>所以最好是把通用序列化和定长序列化区分开来。额外封装出能够自动补齐0的接口来。这里就不再展开了。</span></p>
+</section>
+<section id="0x05">
+
+    <h2>
+    <a href="#0x05"><span>0x05</span> </a>
+    </h2>
+<p><span>允许对内存的精确掌控也必然要求使用者足够仔细和周全。对于开发一个提供给他人使用的库来说，或许可以做的更好。例如这个例子里，通用的序列化方法和定长的序列化方式都可以提供出来，意义很弱的长度返回值也可以用现代语言里的容器取代。</span></p>
+<p><span>接口层面可能如下（随手写的举个例子，返回值 </span><code>Vec&lt;u8&gt;</code><span> 仅做表示意义）：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">pub</span> <span class="hl-keyword">enum</span> <span class="hl-title class_">PaddingScheme</span> {</span>
+<span class="line">    BigEndian,</span>
+<span class="line">    LittleEndian,</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">BigNum</span> {</span>
+<span class="line">    <span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">bn_to_bin</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;<span class="hl-type">Vec</span>&lt;<span class="hl-type">u8</span>&gt;, BnError&gt;;</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">bn_to_fixed_bin</span>(&amp;<span class="hl-keyword">self</span>, len: <span class="hl-type">usize</span>, padding: PaddingScheme) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;<span class="hl-type">Vec</span>&lt;<span class="hl-type">u8</span>&gt;, BnError&gt;;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="0x06">
+
+    <h2>
+    <a href="#0x06"><span>0x06</span> </a>
+    </h2>
+<p><span>原因相关但是跑题的感想：💩⛰ 代码重构起来，要么彻底了解前后背景设计原因，要么做好准备定位分析奇奇怪怪的问题。</span></p>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">RSA 加密算法原理</title>
+<link href="https://eluvk.github.io/2022/11/15/rsa.html" rel="alternate" type="text/html" title="RSA 加密算法原理" />
+<published>2022-11-15T00:00:00+00:00</published>
+<updated>2022-11-15T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2022/11/15/rsa</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[两个正整数，除了1之外没有公共因子，那么就称这两个数互为质数。互质关系]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2022/11/15/rsa.html"><![CDATA[
+    <h1>
+    <a href="#RSA"><span>RSA 加密算法原理</span> <time datetime="2022-11-15">Nov 15, 2022</time></a>
+    </h1>
+<section id="s-1">
+
+    <h2>
+    <a href="#s-1"><span>前置知识</span> </a>
+    </h2>
+<section id="s-2">
+
+    <h3>
+    <a href="#s-2"><span>互质</span> </a>
+    </h3>
+<p><span>两个正整数，除了1之外没有公共因子，那么就称这两个数互为质数。</span><a href="https://en.wikipedia.org/wiki/Coprime_integers"><span>互质关系</span></a></p>
+</section>
+<section id="s-3">
+
+    <h3>
+    <a href="#s-3"><span>欧拉函数</span> </a>
+    </h3>
+<p><span>对于正整数 </span><span class="math inline">\(n\)</span><span>, </span><span class="math inline">\(n\)</span><span> 的欧拉函数表示小于等于 </span><span class="math inline">\(n\)</span><span> 的正整数里，和 </span><span class="math inline">\(n\)</span><span> 互质的数的个数，用 </span><span class="math inline">\(\phi(n)\)</span><span> 表示。</span><a href="https://en.wikipedia.org/wiki/Euler%27s_totient_function"><span>欧拉函数</span></a></p>
+<p><span>比如 </span><span class="math inline">\(\phi(8) = 4\)</span><span>，因为符合条件的有 </span><span class="math inline">\(1,3,5,7\)</span></p>
+<p><span>欧拉函数的一些特性：</span></p>
+<ol>
+<li>
+<span class="math inline">\(n = 1\)</span><span> 时，</span><span class="math inline">\(\phi(1) = 1\)</span>
+</li>
+<li>
+<span class="math inline">\(n\)</span><span> 为质数时，</span><span class="math inline">\(\phi(n) = n-1\)</span>
+</li>
+<li>
+<span class="math inline">\(n\)</span><span> 为质数的幂时，比如 </span><span class="math inline">\(n = p^k (p 为质数)\)</span><span> 时有 </span><span class="math inline">\(\phi(p^k) = p^k - p^{k-1} = p^k(1 - \frac{1}{p})\)</span><span> 这是因为当前仅当此数不包含质数 </span><span class="math inline">\(p\)</span><span> 时，才互质，总数 </span><span class="math inline">\(p^k\)</span><span> 减包含质数的个数 </span><span class="math inline">\(p^{k-1}\)</span>
+</li>
+<li>
+<span>如果 </span><span class="math inline">\(n\)</span><span> 可以被分解为两个</span><strong><strong><span>互质</span></strong></strong><span>数 </span><span class="math inline">\(p_1,p_2\)</span><span> 的积，那么 </span><span class="math inline">\(\phi(n) = \phi(p_1) \cdot \phi(p_2)\)</span><span>，证明见 </span><a href="https://en.wikipedia.org/wiki/Chinese_remainder_theorem"><span>中国剩余定理</span></a>
+</li>
+</ol>
+</section>
+<section id="s-4">
+
+    <h3>
+    <a href="#s-4"><span>欧拉定理</span> </a>
+    </h3>
+<section id="s-5">
+
+    <h4>
+    <a href="#s-5"><span>欧拉函数计算通式</span> </a>
+    </h4>
+<p><span>因为任意一个正整数都可以写成一系列质数的积，所以对于</span></p>
+<p><span class="math display">\[n = p_1^{k1}  p_2^{k2}  p_3^{k3} ... p_r^{kr}\]</span></p>
+<p><span>根据特性4有</span></p>
+<p><span class="math display">\[\phi(n) = \phi(p_1^{k1})  \phi(p_2^{k2})  ...  \phi(p_r^{kr})\]</span></p>
+<p><span>使用上面的特性3，进一步等于</span></p>
+<p><span class="math display">\[\phi(n) = p_1^{k1}p_2^{k2}...p_r^{kr}(1 - \frac{1}{p_1})(1 - \frac{1}{p_2})...(1 - \frac{1}{p_r})\]</span></p>
+<p><span>也就是</span></p>
+<p><span class="math display">\[\phi(n) =  n \cdot (1 - \frac{1}{p_1})(1 - \frac{1}{p_2})...(1 - \frac{1}{p_r})\]</span></p>
+<p><span>这个就是计算欧拉函数的通用公式。比如</span></p>
+<p><span class="math display">\[\phi(200) = \phi(2^3 \cdot 5^2) = 200 \cdot (1 - \frac{1}{2})(1 - \frac{1}{5}) = 80\]</span></p>
+</section>
+</section>
+<section id="s-6">
+
+    <h3>
+    <a href="#s-6"><span>欧拉定理和应用</span> </a>
+    </h3>
+<p><a href="https://en.wikipedia.org/wiki/Euler%27s_theorem"><span>欧拉定理</span></a></p>
+<p><span>如果两个正整数 </span><span class="math inline">\(a\)</span><span> 和 </span><span class="math inline">\(n\)</span><span> 互质，那么有等式成立：</span></p>
+<p><span class="math display">\[a^{\phi(n)} \equiv 1 \pmod{n}\]</span></p>
+<p><span>即 </span><span class="math inline">\(a^{\phi(n)}\)</span><span> 被 </span><span class="math inline">\(n\)</span><span> 除的余数为 1， 或者 </span><span class="math inline">\(a^{\phi(n)} = 1+ kn\)</span></p>
+<p><span>证明比较复杂略过，应用上，欧拉定理可以简化一些特定的运算，比如求解 </span><span class="math inline">\(7^{222}\)</span><span> 的末位数：</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>因为 </span><span class="math inline">\(7\)</span><span> 和 </span><span class="math inline">\(10\)</span><span> 互质，所以有 </span><span class="math inline">\(7^\phi(10) \equiv 1 \pmod{10}\)</span><span>，</span>
+<span>而 </span><span class="math inline">\(\phi(10) = 4\)</span>
+<span>所以 </span><span class="math inline">\(7^{4k} \equiv 1 \pmod{10}\)</span><span>，</span></p>
+</blockquote>
+
+</figure>
+<p><span>特殊的，当欧拉定理里的 </span><span class="math inline">\(n\)</span><span> 是质数 </span><span class="math inline">\(p\)</span><span> 时，因为 </span><span class="math inline">\(\phi(p) = p-1\)</span><span>，所以有 </span><span class="math inline">\(a^{p-1} \equiv 1 \pmod{n}\)</span><span> , 这也是著名的 </span><a href="https://en.wikipedia.org/wiki/Fermat%27s_little_theorem"><span>费马小定理</span></a></p>
+</section>
+<section id="s-7">
+
+    <h3>
+    <a href="#s-7"><span>模反元素(模逆元)</span> </a>
+    </h3>
+<p><span>如果两个正整数 </span><span class="math inline">\(a\)</span><span> 和 </span><span class="math inline">\(n\)</span><span> 互质，那么一定可以找到整数 </span><span class="math inline">\(b\)</span><span>，使得 </span><span class="math inline">\(ab - 1\)</span><span> 被 </span><span class="math inline">\(n\)</span><span> 整除，即：</span></p>
+<p><span class="math display">\[ab \equiv 1 \pmod{n}\]</span></p>
+<p><span>or：</span></p>
+<p><span class="math display">\[ab \bmod{n} = 1\]</span></p>
+<p><span>此时就称 </span><span class="math inline">\(b\)</span><span> 为 </span><span class="math inline">\(a\)</span><span> 的</span><a href="https://en.wikipedia.org/wiki/Modular_multiplicative_inverse"><span>模反元素</span></a></p>
+<hr>
+<p><span>至此，所有需要了解的数学知识都在上面了，后面正式进入 RSA 算法的原理</span></p>
+</section>
+</section>
+<section id="s-8">
+
+    <h2>
+    <a href="#s-8"><span>公私钥生成过程</span> </a>
+    </h2>
+<section id="1-p-q">
+
+    <h3>
+    <a href="#1-p-q"><span>1. 随机生成两个质数 </span><span class="math inline">\(p\)</span><span> 和 </span><span class="math inline">\(q\)</span> </a>
+    </h3>
+<p><span>实际应用中，这两个质数是写成十进制都有几十位的非常大的质数，这里为了简单说明算法，我们挑选质数</span></p>
+<p><span class="math display">\[p = 37, q = 41\]</span></p>
+</section>
+<section id="2-p-q-n">
+
+    <h3>
+    <a href="#2-p-q-n"><span>2. 计算 </span><span class="math inline">\(p\)</span><span> 和 </span><span class="math inline">\(q\)</span><span> 的乘积 </span><span class="math inline">\(n\)</span> </a>
+    </h3>
+<p><span class="math display">\[n = pq = 1517\]</span></p>
+</section>
+<section id="3-e">
+
+    <h3>
+    <a href="#3-e"><span>3. 满足一定条件挑选一个随机整数 </span><span class="math inline">\(e\)</span> </a>
+    </h3>
+<p><span>需要有 </span><span class="math inline">\(1 &lt; e &lt; \phi(n)\)</span><span> 且 e 与 </span><span class="math inline">\(\phi(n)\)</span><span> 互质</span></p>
+<p><span>首先计算一下</span></p>
+<p><span class="math display">\[\phi(n) = \phi(1517) = \phi(37)\phi(41) = 36 \cdot 40 = 1440\]</span></p>
+<p><span>挑选了 </span><span class="math inline">\(e = 13 \)</span><span> （ </span><span class="math inline">\(13\)</span><span> 和 </span><span class="math inline">\(1440\)</span><span> 互质没问题）</span></p>
+</section>
+<section id="4-e-phi-n-d">
+
+    <h3>
+    <a href="#4-e-phi-n-d"><span>4. 计算 </span><span class="math inline">\(e\)</span><span> 对 </span><span class="math inline">\(\phi(n)\)</span><span> 的模反元素 </span><span class="math inline">\(d\)</span> </a>
+    </h3>
+<p><span>即满足</span></p>
+<p><span class="math display">\[ed \equiv 1 \pmod{\phi(n)}\]</span></p>
+<p><span>等价于 </span><span class="math inline">\(ed + k\phi(n) = 1\)</span><span> 的整数解，其中已知 </span><span class="math inline">\(e = 13，\phi(n) = 1440\)</span></p>
+<p><span>也就是二元一次方程 </span><span class="math inline">\(13d + 1440k = 1\)</span><span> 的整数解，这里</span><a href="https://de.wikipedia.org/wiki/Erweiterter_euklidischer_Algorithmus"><span>扩展欧几里得算法</span></a><span>可以证明一定存在整数解，省略过程我们算出了一组解 </span><span class="math inline">\(d = 997, k = -9\)</span><span> ，也就得到了模反元素 </span><span class="math inline">\(d = 997\)</span></p>
+</section>
+<section id="5">
+
+    <h3>
+    <a href="#5"><span>5. 封装公私钥</span> </a>
+    </h3>
+<p><span class="math inline">\(n = 1517, e = 13\)</span><span> 封装成公钥</span></p>
+<p><span class="math inline">\(n = 1517, d = 997\)</span><span> 封装成私钥</span></p>
+<p><span>实际情况中，公私钥的内容会按照 </span><a href="https://en.wikipedia.org/wiki/ASN.1"><span>ASN.1</span></a><span> 规范来编码。</span></p>
+</section>
+</section>
+<section id="s-9">
+
+    <h2>
+    <a href="#s-9"><span>公私钥安全证明</span> </a>
+    </h2>
+<p><span>上面的例子里一共出现了6个数字：</span></p>
+<ul>
+<li>
+<span class="math inline">\( p = 37, q = 41 \)</span>
+</li>
+<li>
+<span class="math inline">\( n = 1517 \)</span>
+</li>
+<li>
+<span class="math inline">\( \phi(n) = 1440 \)</span>
+</li>
+<li>
+<span class="math inline">\( e = 13, d = 997 \)</span>
+</li>
+</ul>
+<p><span>有无可能在知道公钥 </span><span class="math inline">\(n, e\)</span><span> 的情况下，推导出 </span><span class="math inline">\(d\)</span><span> ?</span></p>
+<p><span>因为 </span><span class="math inline">\(ed \equiv 1 \pmod{\phi(n)}\)</span><span> , 所以要知道 </span><span class="math inline">\(d\)</span><span> 需要先知道 </span><span class="math inline">\(\phi(n)\)</span></p>
+<p><span>而 想要算出欧拉函数 </span><span class="math inline">\(\phi(n)\)</span><span> 需要分解质因数 </span><span class="math inline">\(n = pq\)</span><span> 才能用 </span><span class="math inline">\(\phi(n) = (p-1)(q-1)\)</span><span> 计算出来。</span></p>
+<p><span>也就是说，能分解因数 </span><span class="math inline">\(n\)</span><span>，就可以破解私钥。</span></p>
+<p><span>这里举的简单例子里，</span><span class="math inline">\(n = 1517\)</span><span>，写成二进制是 10111101101 ，也就是11位的私钥，实际应用中，RSA密钥一般是1024位，甚至2048位以上，这时候想要分解质因数，目前可以认为是不可能的。</span></p>
+</section>
+<section id="s-10">
+
+    <h2>
+    <a href="#s-10"><span>加密解密举例</span> </a>
+    </h2>
+<section id="s-11">
+
+    <h3>
+    <a href="#s-11"><span>公钥加密</span> </a>
+    </h3>
+<p><span>假设有信息</span><span class="math inline">\(m\)</span><span>，需要用上面的公钥 </span><span class="math inline">\(n,e\)</span><span> 进行加密，这里对信息</span><span class="math inline">\(m\)</span><span>有两点限制：</span></p>
+<ol>
+<li>
+<span>必须是整数，字符串可以取 ascii 值等方法转换出数字表达</span>
+</li>
+<li>
+<span>值必须小于</span><span class="math inline">\(n\)</span><span>，虽然正式场合下的</span><span class="math inline">\(n\)</span><span>确实很大，但还是限制了加密的内容长度不能太长。</span>
+</li>
+</ol>
+<p><span>加密，实际上就是计算出满足下面式子的 </span><span class="math inline">\(c\)</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span class="math inline">\(m^e \equiv c \pmod{n}\)</span></p>
+</blockquote>
+
+</figure>
+<p><span>带入我们上面的例子：公钥</span><span class="math inline">\(n = 1517, e = 13\)</span><span>，假设我们要加密 </span><span class="math inline">\(m = 12\)</span><span>:</span></p>
+<p><span>也就是 </span><span class="math inline">\(12^{13} \equiv c \pmod{1517}\)</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-meta">&gt;&gt;&gt; </span><span class="hl-number">12</span>**<span class="hl-number">13</span> % <span class="hl-number">1517</span></span>
+<span class="line"><span class="hl-number">423</span></span></code></pre>
+
+</figure>
+<p><span>这里直接用 python 算出来 </span><span class="math inline">\(c = 423\)</span></p>
+</section>
+<section id="s-12">
+
+    <h3>
+    <a href="#s-12"><span>私钥解密</span> </a>
+    </h3>
+<p><span>加密使用私钥 </span><span class="math inline">\(n,d\)</span><span> 加上需要解密的密文 </span><span class="math inline">\(c\)</span><span>， 计算满足下式的 </span><span class="math inline">\(m\)</span><span> 就是原文</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span class="math inline">\(c^d \equiv m \pmod{n}\)</span></p>
+</blockquote>
+
+</figure>
+<p><span>带入上面例子里的：私钥 </span><span class="math inline">\(n = 1517, d = 997\)</span><span>，密文 </span><span class="math inline">\(c = 423\)</span><span>:</span></p>
+<p><span>也就是 </span><span class="math inline">\(423^{997} \equiv m \pmod{1517}\)</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-meta">&gt;&gt;&gt; </span><span class="hl-number">423</span>**<span class="hl-number">997</span>%<span class="hl-number">1517</span></span>
+<span class="line"><span class="hl-number">12L</span></span></code></pre>
+
+</figure>
+<p><span>解除原文 </span><span class="math inline">\(m = 12\)</span></p>
+<p><span>可以看出想要解密就需要知道 </span><span class="math inline">\(d\)</span><span> ，也就是上面说的大质数分解保护的安全性。</span></p>
+</section>
+<section id="s-13">
+
+    <h3>
+    <a href="#s-13"><span>实际应用：</span> </a>
+    </h3>
+<p><span>实际情况中因为只能加密小于 </span><span class="math inline">\(n\)</span><span> 的整数 </span><span class="math inline">\(m\)</span><span>，对加密数据的长度提出了限制。所以可以</span></p>
+<ol>
+<li>
+<span>把待加密消息分成若干段分别加密发送。</span>
+</li>
+<li>
+<span>或者使用对称加密（比如</span><a href="https://en.wikipedia.org/wiki/Advanced_Encryption_Standard"><span>AES</span></a><span>）来加密原消息，使用 RSA 来加密 对称加密 的密钥</span>
+</li>
+</ol>
+</section>
+</section>
+<section id="s-14">
+
+    <h2>
+    <a href="#s-14"><span>解密证明</span> </a>
+    </h2>
+<p><span>上面的信息汇总：</span></p>
+<ul>
+<li>
+<span>公钥: </span><span class="math inline">\(n, e\)</span>
+</li>
+<li>
+<span>私钥: </span><span class="math inline">\(n, d\)</span>
+</li>
+<li>
+<span>加密 </span><span class="math inline">\(m\)</span><span> 得到 </span><span class="math inline">\(c\)</span><span> ：</span><span class="math inline">\(m^e \equiv c \pmod{n}\)</span>
+</li>
+<li>
+<span>解密 </span><span class="math inline">\(c\)</span><span> 得到 </span><span class="math inline">\(m\)</span><span> ：</span><span class="math inline">\(c^d \equiv m \pmod{n}\)</span>
+</li>
+</ul>
+<p><span>来证明一下为什么解密公式 </span><span class="math inline">\(c^d \equiv m \pmod{n}\)</span><span> 可以得到正确的 </span><span class="math inline">\(m\)</span></p>
+<section id="s-15">
+
+    <h3>
+    <a href="#s-15"><span>证明过程</span> </a>
+    </h3>
+<p><span>证明：</span></p>
+<p><span class="math display">\[c^d \equiv m \pmod{n}\]</span></p>
+<hr>
+<p><span class="math display">\[\because m^e \equiv c \pmod{n}\]</span></p>
+<p><span class="math display">\[\Rightarrow c = m^e - kn\]</span></p>
+<p><span>带入证明式子</span></p>
+<p><span class="math display">\[\Leftarrow ((m^e - kn)^d \equiv m \pmod{n})\]</span>
+<span class="math display">\[\Leftarrow m^{ed} \equiv m \pmod{n}\]</span></p>
+<p><span>分类讨论:</span></p>
+<p><span>① 当 </span><span class="math inline">\(m\)</span><span> 和 </span><span class="math inline">\(n\)</span><span> 互质时，</span>
+<span class="math display">\[\because ed \equiv 1 \pmod{\phi(n)}\]</span>
+<span class="math display">\[\therefore ed = h\phi(n) + 1 \]</span></p>
+<p><span>带入上述待证明式：</span>
+<span class="math display">\[\Leftarrow m^{ed} \equiv m \pmod{n}\]</span>
+<span class="math display">\[\Leftarrow m^{h\phi(n) + 1} \equiv m \pmod{n}\]</span></p>
+<p><span class="math inline">\(\because m,n\)</span><span> 互质，根据欧拉定理有：</span>
+<span class="math display">\[\Rightarrow m^{\phi(n)} \equiv 1 \pmod{n} \]</span>
+<span class="math display">\[\Rightarrow (m^{\phi(n)})^h \cdot m \equiv m \pmod{n}\]</span>
+<span class="math display">\[\Rightarrow m^{h\phi(n)+1} \equiv m \pmod{n}\]</span>
+<span>原式得证。</span></p>
+<p><span>② 当 </span><span class="math inline">\(m\)</span><span> 和 </span><span class="math inline">\(n\)</span><span> 不互质时，</span>
+<span class="math display">\[\because n = pq , m &lt; n \]</span>
+<span class="math display">\[\therefore m = kp \]</span><span> 或者 </span><span class="math inline">\(m = kq\)</span></p>
+<p><span>以 </span><span class="math inline">\(m = kp\)</span><span> 为例，此时 </span><span class="math inline">\(kp,q\)</span><span> 必互质</span></p>
+<p><span>根据欧拉定理有 </span><span class="math inline">\((kp)^{\phi(q)} \equiv 1 \pmod{q}\)</span>
+<span class="math display">\[\Rightarrow (kp)^{q-1} \equiv 1 \pmod{q}\]</span>
+<span class="math display">\[\Rightarrow [(kp)^{q-1}]^{h(p-1)} \cdot kp \equiv kp \pmod{q}\]</span>
+<span class="math display">\[\Rightarrow (kp)^{h(p-1)(q-1)+1} \equiv kp \pmod{q}\]</span>
+<span class="math display">\[\Rightarrow (kp)^{ed} \equiv kp \pmod{q}\]</span>
+<span class="math display">\[\Rightarrow (kp)^{ed} = tq + kp \]</span></p>
+<p><span class="math inline">\(\because p,q 、 k,q\)</span><span> 互质，</span>
+<span class="math inline">\(\therefore\)</span><span> </span><span class="math inline">\(t\)</span><span> 必能被 </span><span class="math inline">\(p\)</span><span> 整除，</span>
+<span class="math display">\[\Rightarrow (kp)^{ed} = t'pq + kq\]</span></p>
+<p><span>带入 </span><span class="math inline">\(m = kp, n = pq\)</span>
+<span class="math display">\[\Rightarrow m^{ed} = t'n + m\]</span>
+<span class="math display">\[\Rightarrow m^{ed} \equiv m \pmod{n}\]</span></p>
+<p><span>原式得证。</span></p>
+</section>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">[Extract] Symbol Hiding and Dependency Management</title>
+<link href="https://eluvk.github.io/2022/09/20/e-symbol-hiding-and-dependency-management-in-c.html" rel="alternate" type="text/html" title="[Extract] Symbol Hiding and Dependency Management" />
+<published>2022-09-20T00:00:00+00:00</published>
+<updated>2022-09-20T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2022/09/20/e-symbol-hiding-and-dependency-management-in-c</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[原文来自简书作者 MagicBowen ， 原文地址 ，著作权归作者所有。侵权请联系我删除。]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2022/09/20/e-symbol-hiding-and-dependency-management-in-c.html"><![CDATA[
+    <h1>
+    <a href="#Extract-Symbol-Hiding-and-Dependency-Management"><span>[Extract] Symbol Hiding and Dependency Management</span> <time datetime="2022-09-20">Sep 20, 2022</time></a>
+    </h1>
+<p><span>原文来自简书作者 MagicBowen ， </span><a href="https://www.jianshu.com/p/5904507ef750"><span>原文地址</span></a><span> ，著作权归作者所有。侵权请联系我删除。</span></p>
+<p><span>EluvK：最近在公司项目里遇到了几个编译依赖和符号泄漏的问题，基本都解决了以后总结的时候才搜到这篇文章，感觉写的很好，其中很多点都和遇到的问题的原因一致，属于是最开始不注意埋得雷。摘录下来学习一下。</span></p>
+<p><span>以下为原文</span></p>
+<hr>
+<section id="s-1">
+
+    <h2>
+    <a href="#s-1"><span>序</span> </a>
+    </h2>
+<p><span>众所周知，解决代码耦合问题的核心原则之一是信息隐藏。即把所有客户不需要关心的信息尽力隐藏起来，只暴露出仅需要被依赖的东西。这样做不仅可以控制变化的波及范围，降低测试成本，提高安全性，同时还能方便各种代码分析工具和重构工具对代码进行更精准的引用分析。</span></p>
+<p><span>在信息隐藏的基础上，我们还需要做好不同软件模块之间的依赖管理。依赖管理包含了如何控制最小化依赖，如何发布自己的 API，如何获取别人的 API，以及如何对依赖关系进行追溯和控制，包括解决冲突。</span></p>
+<p><span>信息隐藏和依赖管理影响着软件能否高效的独立开发、构建和测试，关乎着开发团队的协作效率以及软件的独立发布粒度。基于此，现代编程语言大都提供了丰富的信息隐藏手段和依赖管理工具，包括不同级别的代码符号可见性控制、显示的 API 导入与导出能力，以及模块化构建和包管理的工具链等等。</span></p>
+<p><span>然而我们知道，C 和 C++语言由于出现年代早、历史包袱重，对符号隐藏以及依赖管理的特性和工具的支持演进较慢。尤其是 C 语言，相比其它语言更是捉襟见肘。在我咨询的大多 C 或 C++项目中，最容易被问及的问题中就包含“我要如何管理这乱麻般的项目头文件”，并且但凡和代码有关的工作（无论重构、构建、测试）大多都得先从梳理混乱的头文件包含关系开始。</span></p>
+<p><span>事实上，C 和 C++语言在实践中是有发展出自己的一套信息隐藏和依赖管理机制的，这些做法已经被许多优秀的 C/C++项目广泛使用着。下面通过几篇文章分别给大家介绍下这些 C/C++信息隐藏与依赖管理的优秀实践，虽然和别的语言相比仍旧有不完美的地方，但对于绝大多数项目来说已经完全够用了。</span></p>
+</section>
+<section id="1">
+
+    <h2>
+    <a href="#1"><span>1. 代码符号隐藏</span> </a>
+    </h2>
+<p><span>C 语言中全局变量和函数的符号是默认外部可访问的。</span></p>
+<p><span>只要我们知道一个全局变量或者函数的声明，我们就可以在当前的编译单元中直接使用它，即使它定义在另一个编译单元中，甚至是定义在另一个软件库中。由于符号全局可访问，链接器会在链接期帮我们跨编译单元找到对应的符号并进行链接。</span></p>
+<p><span>C 语言这种默认的全局可访问性看起来使用简单，但却在实践中引起了很多麻烦。</span></p>
+<p><span>首先，全局可访问性增加了代码符号的冲突几率。为了避免符号冲突，在大的 C 项目中我们必须为所有全局变量和函数起很长的名字，一般需要加上“子系统名”或者“模块名”之类的前缀。这样导致代码不够简洁，而且生成的二进制还会占用更多的空间。</span></p>
+<p><span>其次，全局可访问性让使用 </span><code>extern</code><span> 的成本很低。</span><code>extern</code><span> 为使用外部符号提供了一种直通车机制，这种做法绕过了别人提供的头文件，可以直接引用对方本不想不暴露的符号。这不仅造成一种间接的隐式依赖，而且还导致了潜在的安全风险。</span></p>
+<p><span>对 </span><code>extern</code><span> 不加控制的项目，其依赖关系最终肯定会变成一团乱麻。更进一步，</span><code>extern</code><span> 会造成全局变量和函数原型的重复声明，这不仅破坏了 </span><code>DRY（Don't Repeat Yourself）</code><span> 原则，还为代码埋下了潜在的安全问题。</span></p>
+<p><span>我已经不止一次在非常关注可靠性的项目中目睹过全局变量的维护者修改了变量类型，如将 </span><code>U32 g_ports[MAX_NUM]</code><span> 修改为 </span><code>U16 g_ports[MAX_NUM]</code><span> ，但是不小心遗漏了某处 </span><code>extern U32 g_ports[MAX_NUM]</code><span> ，然后引起了各种难以定位的内存和复位问题。</span></p>
+<p><span>所以，我们需要遵守的第一条重要的原则是：</span><strong><strong><span>尽量避免使用 </span><code>extern</code><span> 关键字</span></strong></strong><span>。</span></p>
+<p><code>extern</code><span> 只在很少几种情况下是有用的，例如明确要链接某些第三方的没有头文件的二进制库，或者调用汇编编写的函数以及访问编译器/链接器自动生成的符号等。</span></p>
+<p><span>尽力消灭代码中的 </span><code>extern</code><span> 绝对会改善你的设计，但是这并没有改变 C 语言会将符号置为全局可见的事实。这时我们需要另一个非常重要的关键字 </span><code>static</code><span> 来帮忙。</span></p>
+<p><code>static</code><span> 是 C 语言中仅有的用于隐藏符号的手段，因此用好它的意义十分重要。</span></p>
+<p><code>static</code><span> 在 C 语言中主要有两种作用。1）对于函数内的局部变量，它指示该变量的内存不在栈上，而在全局静态区。2）对于全局变量和函数来说，它指示对应的符号可见性被约束在本编译单元内，不会暴露出去。</span></p>
+<p><span>对于符号隐藏，我们主要使用 </span><code>static</code><span> 的第二个用途。由于使用 </span><code>static</code><span> 修饰的全局变量和函数的符号不会被导出，所以我们可以给这些变量和函数起更精炼的名字，同时编译器也会帮我们做更好的优化，生成更小的二进制。</span></p>
+<p><span>更重要的是，尽量多的使用 </span><code>static</code><span> 会让我们改善设计，进而得到符合 </span><code>Modular C 风格</code><span> 的设计。</span></p>
+<p><code>Modular C 风格</code><span> 的设计最基本的就是将状态（全局变量）和无需暴露的函数通过 </span><code>static</code><span> 隐藏到编译单元内部，只将真正的 API 接口声明到头文件中。由于使用 </span><code>static</code><span> 修饰的符号是没法 </span><code>extern</code><span> 的，结合上一条建议，强制使用方只能显示的通过包含对应的头文件来调用开放的 API，这样代码自然变得更加的模块化。</span></p>
+<p><span>所以，我们给出 C 语言符号隐藏另一个原则：</span><strong><strong><span>尽可能多的使用 </span><code>static</code><span> 关键字来封装细节，让代码遵从 </span><code>Modular C</code><span> 的设计风格</span></strong></strong><span>。</span></p>
+<p><span>现在我们转向 C++。得益于 C++的面向对象特性，我们有了类以及对应的访问性控制关键字 </span><code>private</code><span> 、 </span><code>protected</code><span> 和 </span><code>public</code><span> 。</span></p>
+<p><span>这些关键字可以修饰类的成员以及类的继承关系，从而对内和对外呈现出不同级别的可访问性。这些关键字的用法在各种教科书中都有，本文不做更多介绍。 推荐大家熟练掌握这些关键字的用法，记得千万不要把类中的一切都公开出去（虽然我见过很多人确实这么做的）。</span></p>
+<p><span>记住一个原则，那就是</span><strong><strong><span>尽可能多的使用 </span><code>private</code><span> 关键字</span></strong></strong><span>。</span></p>
+<p><span>除了类，C++语言还有一个用于隐藏信息极好的特性，那就是命名空间 </span><code>namespace</code><span> 。</span><code>namespace</code><span> 让我们能够对符号分类，将其控制在独立的命名空间中，而不用像 C 语言中那样靠增加名字前缀来避免符号冲突。</span></p>
+<p><span>遗憾的是 C++中命名空间是没有可访问性控制的，也就是说命名空间中的符号全部是公开的，外部通过命名空间路径都是可以访问到的。</span></p>
+<p><span>不过 C++语言提供了匿名命名空间的特性，凡是在匿名命名空间中的符号都是不导出的。也就是说匿名命名空间中的符号只在本编译单元内部可见，外部是不能使用的。其作用类似于 C 语言中的 </span><code>static</code><span> ，但是写起来更加简洁。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// example.cpp</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">namespace</span> {</span>
+<span class="line">    <span class="hl-keyword">struct</span> <span class="hl-title class_">Port</span> {</span>
+<span class="line">        <span class="hl-comment">// ...</span></span>
+<span class="line">    };</span>
+<span class="line"></span>
+<span class="line">    Port ports[MAX_NUM];</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-function"><span class="hl-type">unsigned</span> <span class="hl-type">int</span> <span class="hl-title">getRateOf</span><span class="hl-params">(<span class="hl-type">const</span> Port&amp; port)</span> </span>{</span>
+<span class="line">        <span class="hl-comment">// ...</span></span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-function"><span class="hl-type">unsigned</span> <span class="hl-type">int</span> <span class="hl-title">getPortRate</span><span class="hl-params">(<span class="hl-type">unsigned</span> <span class="hl-type">int</span> portId)</span> </span>{</span>
+<span class="line">    <span class="hl-comment">// ...</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>如上面例子中： </span><code>Port</code><span> 、 </span><code>ports</code><span> 和 </span><code>getRateOf</code><span> 只能在</span>&ldquo;<span>example.cpp</span>&rdquo;<span>中访问，而 </span><code>getPortRate</code><span> 则在该编译单元外也可以使用。</span></p>
+<p><span>因此对于 C++语言，我们推荐：</span><strong><strong><span>尽可能使用命名空间来管理符号，尤其是使用匿名命名空间来隐藏符号</span></strong></strong><span>。</span></p>
+<p><span>C++语言为了兼容 C，仍旧使用头文件机制发布 API。为了在 C++的头文件中更好的隐藏符号，我们在这里先来区分两个概念：“可见性”与“可访问性”。</span></p>
+<p><span>以下面这个 Storage 类定义的头文件“Storage.h”为例：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// Storage.h</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">include</span> <span class="hl-string">&quot;StorageType.h&quot;</span></span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">class</span> <span class="hl-title class_">Storage</span> {</span>
+<span class="line"><span class="hl-keyword">public</span>:</span>
+<span class="line">    <span class="hl-built_in">Storage</span>();</span>
+<span class="line">    <span class="hl-function"><span class="hl-type">unsigned</span> <span class="hl-type">int</span> <span class="hl-title">getCharge</span><span class="hl-params">()</span> <span class="hl-type">const</span></span>;</span>
+<span class="line"><span class="hl-keyword">private</span>:</span>
+<span class="line">    <span class="hl-function"><span class="hl-type">bool</span> <span class="hl-title">isValid</span><span class="hl-params">()</span> <span class="hl-type">const</span></span>;</span>
+<span class="line"><span class="hl-keyword">private</span>:</span>
+<span class="line">    StorageType type;</span>
+<span class="line">    <span class="hl-type">unsigned</span> <span class="hl-type">int</span> capacity; </span>
+<span class="line">    <span class="hl-type">static</span> <span class="hl-type">unsigned</span> <span class="hl-type">int</span> totalCapacity;</span>
+<span class="line">};</span></code></pre>
+
+</figure>
+<p><span>用户只要包含这个头文件，就可以看到 </span><code>Storage</code><span> 类中的所有的方法声明以及成员变量定义。因此从可见性上来说，这个类的所有函数声明和成员变量的定义都是外部可见的。然而从可访问性上来说，我们只能访问这个类的公开的构造函数 </span><code>Storage()</code><span> 和 </span><code>getCharge()</code><span> 接口。</span></p>
+<p><span>从上面的例子中可以看到，C++头文件中类定义对外的可见性和可访问性是不一致的。</span></p>
+<p><span>当可见性大于可访问性的时候，带来的问题是：当我们修改了类的私有函数或者成员变量定义（用户可见但是不可访问的符号）时，事实上并不会影响用户对该类的使用方式，然而所有使用该类的用户却被迫要承担重新编译的负担。</span></p>
+<p><span>为了避免上面的问题，降低客户重新编译的负担，我们需要在头文件中尽量少的暴露信息。对类来说需要尽量让其外部可见性和可访问性在头文件中趋于一致。</span></p>
+<ul>
+<li>
+<span>可以将类的静态私有（static private）成员直接转移到类实现文件中的匿名命名空间中定义；</span>
+</li>
+</ul>
+<p><span>如上例中的 </span><code>static unsigned int totalCapacity</code><span> 是不需要定义到类的头文件中的，可以直接定义到该类实现文件的匿名命名空间中。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// Storage.cpp</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">include</span> <span class="hl-string">&quot;Storage.h&quot;</span></span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">namespace</span></span>
+<span class="line">{</span>
+<span class="line">    <span class="hl-comment">// remove &quot;static unsigned int totalCapacity&quot; in Storage.h, and define it here</span></span>
+<span class="line">    <span class="hl-type">unsigned</span> <span class="hl-type">int</span> totalCapacity = <span class="hl-number">0</span>;</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line">Storage::<span class="hl-built_in">Storage</span>() {</span>
+<span class="line">    <span class="hl-comment">// ...</span></span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-function"><span class="hl-type">bool</span> <span class="hl-title">Storage::isValid</span><span class="hl-params">()</span> <span class="hl-type">const</span> </span>{</span>
+<span class="line">    <span class="hl-keyword">if</span> (<span class="hl-keyword">this</span>-&gt;capacity &gt; totalCapacity) {</span>
+<span class="line">        <span class="hl-comment">// ...</span></span>
+<span class="line">    }</span>
+<span class="line">    <span class="hl-comment">// ...</span></span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-function"><span class="hl-type">unsigned</span> Storage::<span class="hl-type">int</span> <span class="hl-title">getCharge</span><span class="hl-params">()</span> <span class="hl-type">const</span> </span>{</span>
+<span class="line">    <span class="hl-keyword">if</span>(<span class="hl-keyword">this</span>-&gt;<span class="hl-built_in">isValid</span>(<span class="hl-keyword">this</span>-&gt;capacity)) {</span>
+<span class="line">        <span class="hl-comment">// ...</span></span>
+<span class="line">    }</span>
+<span class="line">    <span class="hl-comment">// ...</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<ul>
+<li>
+<span>对于类的普通私有成员方法，可以将它依赖的成员变量当做参数传给它，这样它就可以变成类的静态私有函数。然后就可以依照前面的方法将其移到类实现文件中的匿名命名空间中；</span>
+</li>
+</ul>
+<p><span>如上例中类的 </span><code>bool isValid() const</code><span> 私有成员方法的实现中访问了类的成员变量 </span><code>this-&gt;capacity</code><span>。我们修改 </span><code>isValid</code><span> 方法的实现，将 </span><code>capacity</code><span> 作为参数传递给它，这样 </span><code>isValid</code><span> 在类中的声明就可以变为 </span><code>static bool isValid(unsigned int capacity)</code><span> ，实现变为：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// Storage.cpp</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-function"><span class="hl-type">bool</span> <span class="hl-title">Storage::isValid</span><span class="hl-params">(<span class="hl-type">unsigned</span> <span class="hl-type">int</span> capacity)</span> </span>{</span>
+<span class="line">    <span class="hl-keyword">if</span> (capacity &gt; totalCapacity) {</span>
+<span class="line">        <span class="hl-comment">// ...</span></span>
+<span class="line">    }</span>
+<span class="line">    <span class="hl-comment">// ...</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>现在我们就已经可以参照前面的原则，将类的私有静态成员搬移到实现文件的匿名命名空间中，将其在头文件中的声明删除。</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>EluvK: 这一点我倒是觉得不太必要，有一点点为了说明这种优化方式而使用，实际情况下应该判断这个方法是不是不该放在接口类的定义里，放在子类实现的定义里更合适。</span></p>
+</blockquote>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// Storage.h</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">include</span> <span class="hl-string">&quot;StorageType.h&quot;</span></span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">class</span> <span class="hl-title class_">Storage</span> {</span>
+<span class="line"><span class="hl-keyword">public</span>:</span>
+<span class="line">    <span class="hl-built_in">Storage</span>();</span>
+<span class="line">    <span class="hl-function"><span class="hl-type">unsigned</span> <span class="hl-type">int</span> <span class="hl-title">getCharge</span><span class="hl-params">()</span> <span class="hl-type">const</span></span>;</span>
+<span class="line"><span class="hl-keyword">private</span>:</span>
+<span class="line">    StorageType type;</span>
+<span class="line">    <span class="hl-type">unsigned</span> <span class="hl-type">int</span> capacity; </span>
+<span class="line">};</span></code></pre>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// Storage.cpp</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">include</span> <span class="hl-string">&quot;Storage.h&quot;</span></span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">namespace</span></span>
+<span class="line">{</span>
+<span class="line">    <span class="hl-type">unsigned</span> <span class="hl-type">int</span> totalCapacity = <span class="hl-number">0</span>;</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-function"><span class="hl-type">bool</span> <span class="hl-title">isValid</span><span class="hl-params">(<span class="hl-type">unsigned</span> <span class="hl-type">int</span> capacity)</span> </span>{</span>
+<span class="line">        <span class="hl-keyword">if</span> (capacity &gt; totalCapacity) {</span>
+<span class="line">            <span class="hl-comment">// ...</span></span>
+<span class="line">        }</span>
+<span class="line">        <span class="hl-comment">// ...</span></span>
+<span class="line">    }    </span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line">Storage::<span class="hl-built_in">Storage</span>() {</span>
+<span class="line">    <span class="hl-comment">// ...</span></span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-function"><span class="hl-type">unsigned</span> Storage::<span class="hl-type">int</span> <span class="hl-title">getCharge</span><span class="hl-params">()</span> <span class="hl-type">const</span> </span>{</span>
+<span class="line">    <span class="hl-keyword">if</span>(<span class="hl-built_in">isValid</span>(<span class="hl-keyword">this</span>-&gt;capacity)) {</span>
+<span class="line">        <span class="hl-comment">// ...</span></span>
+<span class="line">    }</span>
+<span class="line">    <span class="hl-comment">// ...</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>经过上面的操作，类中的私有方法和静态私有成员都从头文件移到了实现文件的匿名命名空间中了。那么最后剩下的类的非静态私有成员变量能否也隐藏起来呢？</span></p>
+<p><span>方法是有的，就是使用 </span><a href="https://en.cppreference.com/w/cpp/language/pimpl"><span>PIMPL（pointer to implementation）</span></a><span> 方法。</span></p>
+<ul>
+<li>
+<span>可以使用 </span><code>PIMPL</code><span> 方法隐藏类的私有成员。</span>
+</li>
+</ul>
+<p><span>对于上例，使用 </span><code>PIMPL</code><span> 后实现如下：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// storage.h</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">class</span> <span class="hl-title class_">Storage</span> {</span>
+<span class="line"><span class="hl-keyword">public</span>:</span>
+<span class="line">    <span class="hl-built_in">Storage</span>();</span>
+<span class="line">    <span class="hl-function"><span class="hl-type">unsigned</span> <span class="hl-type">int</span> <span class="hl-title">getCharge</span><span class="hl-params">()</span> <span class="hl-type">const</span></span>;</span>
+<span class="line">    ~<span class="hl-built_in">Storage</span>();</span>
+<span class="line"><span class="hl-keyword">private</span>:</span>
+<span class="line">    <span class="hl-keyword">class</span> <span class="hl-title class_">Impl</span>;</span>
+<span class="line">    Impl* p_impl{<span class="hl-literal">nullptr</span>}; </span>
+<span class="line">};</span></code></pre>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// Storage.cpp</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">include</span> <span class="hl-string">&quot;Storage.h&quot;</span></span></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">include</span> <span class="hl-string">&quot;StorageType.h&quot;</span></span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">namespace</span></span>
+<span class="line">{</span>
+<span class="line">    <span class="hl-type">unsigned</span> <span class="hl-type">int</span> totalCapacity = <span class="hl-number">0</span>;</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-function"><span class="hl-type">bool</span> <span class="hl-title">isValid</span><span class="hl-params">(<span class="hl-type">unsigned</span> <span class="hl-type">int</span> capacity)</span> </span>{</span>
+<span class="line">        <span class="hl-keyword">if</span> (capacity &gt; <span class="hl-number">0</span>) {</span>
+<span class="line">            <span class="hl-comment">// ...</span></span>
+<span class="line">        }</span>
+<span class="line">        <span class="hl-comment">// ...</span></span>
+<span class="line">    } </span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">class</span> <span class="hl-title class_">Storage</span>::Impl {</span>
+<span class="line"><span class="hl-keyword">public</span>:</span>
+<span class="line">    <span class="hl-built_in">Impl</span>() {</span>
+<span class="line">        <span class="hl-comment">// original implmentation of Storage::Storage()</span></span>
+<span class="line">    }</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-function"><span class="hl-type">unsigned</span> <span class="hl-type">int</span> <span class="hl-title">getCharge</span><span class="hl-params">()</span> <span class="hl-type">const</span> </span>{</span>
+<span class="line">        <span class="hl-comment">// original implmentation of Storage::getCharge()</span></span>
+<span class="line">    }</span>
+<span class="line"><span class="hl-keyword">private</span>:</span>
+<span class="line">    StorageType type;</span>
+<span class="line">    <span class="hl-type">unsigned</span> <span class="hl-type">int</span> capacity;     </span>
+<span class="line">};</span>
+<span class="line"></span>
+<span class="line">Storage::<span class="hl-built_in">Storage</span>() : <span class="hl-built_in">p_impl</span>(<span class="hl-keyword">new</span> <span class="hl-built_in">Impl</span>()){</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line">Storage::~<span class="hl-built_in">Storage</span>(){</span>
+<span class="line">    <span class="hl-keyword">if</span>(p_impl) <span class="hl-keyword">delete</span> p_impl;</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-function"><span class="hl-type">unsigned</span> <span class="hl-type">int</span> <span class="hl-title">Storage::getCharge</span><span class="hl-params">()</span> <span class="hl-type">const</span> </span>{</span>
+<span class="line">    <span class="hl-keyword">return</span> p_impl-&gt;<span class="hl-built_in">getCharge</span>();</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>可以看到，使用 </span><code>PIMPL</code><span> 方法就是把所有的调用都委托到一个内部类（本例中的 </span><code>Impl</code><span> ）的指针上。</span></p>
+<p><span>由于指针的类型只用做前置声明，所以使用 </span><code>PIMPL</code><span> 手法的类的私有成员只用包含一个内部类的前置声明和一个成员指针即可。而 </span><code>Impl</code><span> 类则包含了原来类的所有真正的成员和函数实现。因为 </span><code>Impl</code><span> 类可以实现在 cpp 文件中，所以达到了进一步隐藏信息的效果。</span></p>
+<p><span>从上例我们看到，由于 </span><code>Storage</code><span> 类的所有私有成员都转移到了内部的 </span><code>Impl</code><span> 类中，所以 </span><code>Storage</code><span> 类的头文件中不再需要包含</span>&ldquo;<span>StorageType.h</span>&rdquo;<span>，只用在实现文件中包含即可。因此使用 </span><code>PIMPL</code><span> 手法，可以解决头文件耦合与物理依赖传递的问题。</span></p>
+<p><span>不过，通过代码示例也可以看到使用 </span><code>PIMPL</code><span> 方法是有成本的，它增加了间接函数调用和动态内存分配的开销。而且由于代码多了一层封装，导致整体复杂度上升了。因此除非解决某些严重的物理依赖问题，一般不会大面积使用该手法。</span></p>
+<p><span>最后，一个完备的 </span><code>PIMPL</code><span> 实现会借助 </span><code>unique_ptr</code><span> 类型的智能指针。本例为了简化示例所以采用了裸指针实现，更完整和通用的 </span><code>PIMPL</code><span> 实现可以参见 </span><a href="https://en.cppreference.com/w/cpp/language/pimpl"><span>cppreference-pimpl</span></a></p>
+<p><span>到此，我们总结一下 C/C++语言自身有关符号可见性控制的原则和方法：</span></p>
+<ol>
+<li>
+<span>尽量避免使用 </span><code>extern</code><span> 关键字；</span>
+</li>
+<li>
+<span>对于 C 语言，尽可能多的使用 </span><code>static</code><span> 关键字来封装细节，让代码遵从 </span><code>Modular C</code><span> 的设计风格；</span>
+</li>
+<li>
+<span>对于 C++，尽可能多的使用 </span><code>private</code><span> 关键字；</span>
+</li>
+<li>
+<span>对于 C++，尽可能使用命名空间来管理符号，尤其是使用匿名命名空间来隐藏符号；</span>
+</li>
+<li>
+<span>头文件尽量隐藏信息，缩小头文件内的符号可见性。可以采取的手段有：</span>
+<ul>
+<li>
+<span>将类的静态私有成员转移到实现文件的匿名命名空间中；</span>
+</li>
+<li>
+<span>在某些情况下，可以将类的私有方法重构成类的静态私有方法，然后移入到实现文件的匿名命名空间中；</span>
+</li>
+<li>
+<span>对于某些严重的头文件耦合问题，可以选择使用 </span><code>PIMPL</code><span> 方法，隐藏类的所有非公开成员及其依赖的头文件；</span>
+</li>
+</ul>
+</li>
+</ol>
+</section>
+<section id="2">
+
+    <h2>
+    <a href="#2"><span>2. 库的符号隐藏</span> </a>
+    </h2>
+<p><span>当程序规模变大之后，人们会对软件进行模块划分，以便分而治之。有了模块之后，就可以将其构建成库（静态库或者动态库）发布给别人使用。</span></p>
+<p><span>前文所述的符号隐藏手段对于模块内代码的信息隐藏是够的，但是对于库来说是不够的。</span></p>
+<p><span>当程序规模变大后，我们不可能把所有代码都写到同一个 C 文件或者 CPP 文件中。当代码被拆分到多个实现文件中，它们之间需要互相访问就必须通过头文件暴露自己的可访问 API 给别人。但是当所有文件都被打包在一起编译成库再提供给第三方的时候，这些内部开放的接口却未必都需要被作为库接口暴露出去。</span></p>
+<p><span>常见的一种做法是将库的内部头文件和外部的头文件分开，对外不发布内部头文件。这是 C/C++常用的一种库级别的头文件管理手段，后面我们会专门介绍。遗憾的是，仅通过不发布私有头文件，并没有解决所有问题。</span></p>
+<p><span>即便不发布内部头文件，内部跨编译单元可被访问的符号默认情况下仍旧会被库全部导出。这样不仅浪费了二进制的空间，增加了库之间符号冲突的概率，而且还让软件包承担了不必要的安全风险。导出的内部符号仍旧可以被外部强制 extern，或者是被拿来做一些 hack 的事情。</span></p>
+<p><span>现代编程语言会引入 module 机制来管理软件模块或者库的外部可见性问题，让开发者在发布软件的时候显示的指定需要导出给外部的 API，其它的符号都只能被内部访问。但是 C 和 C++语言由于历史包袱重（新的特性需要尽量兼容已经编译过的既有代码），C++语言直到20版本才将 module 特性标准化，而 C 语言的 module 特性至今仍不见踪影。（事实上 Java 的 module 特性从2011年提出直到2017年才通过 Java9发布，也历时七年之久）。</span></p>
+<p><span>由于 C++20标准刚刚出来不久，编译器对 module 机制的支持还很不完善，所以该特性离进入实用还有不少距离。感兴趣的同学可以看看我的朋友张超写的这篇文章</span><a href="https://www.jianshu.com/p/6ddd5dc909db"><span>《C++ Modules 初窥》</span></a><span>。</span></p>
+<p><span>回到现实中，在没有语言直接支持的情况下，我们如何隐藏库的内部符号，显示的指定需要导出的 API 呢？</span></p>
+<p><span>方法是有的，那就是借助编译器扩展。</span></p>
+<p><span>GCC4之后支持使用 </span><code>-fvisibility=hidden</code><span> 编译选项，将库的所有符号默认设置为对外不可见。这样编译出的二进制就不会导出可供外部链接的符号。</span></p>
+<p><span>然后再结合 GCC 的 </span><code>__attribute__ ((visibility ("default")))</code><span> 属性，在代码中明确指定可以暴露给外部的 API，于是我们就可以显示的控制库的对外 API 的可见性。</span></p>
+<p><span>如下代码示例：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// entry.h</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-function"><span class="hl-type">void</span> <span class="hl-title">function1</span><span class="hl-params">()</span></span>;</span>
+<span class="line">__attribute__ ((<span class="hl-built_in">visibility</span> (<span class="hl-string">&quot;default&quot;</span>))) <span class="hl-function"><span class="hl-type">void</span> <span class="hl-title">entry_point</span><span class="hl-params">()</span></span>;</span></code></pre>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// entry.cpp</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">include</span> <span class="hl-string">&quot;entry.h&quot;</span></span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-function"><span class="hl-type">void</span> <span class="hl-title">function1</span><span class="hl-params">()</span> </span>{</span>
+<span class="line">    <span class="hl-comment">// ...</span></span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-function"><span class="hl-type">void</span> <span class="hl-title">entry_point</span><span class="hl-params">()</span> </span>{</span>
+<span class="line">    <span class="hl-built_in">function1</span>();</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>当我们采用 </span><code>-fvisibility=hidden</code><span> 将 entry.cpp 编译成静态库或者动态库后，无论用户是静态链接还是使用 </span><code>dlopen</code><span> 动态库的方式，都只能访问到 </span><code>void entry_point()</code><span> 函数，而不能访问到 </span><code>void funcion1()</code><span> 。</span></p>
+<p><span>通过该方法，我们不仅能显示控制库的导出 API，还可以帮助编译器和链接器优化出更好的二进制，并且缩短动态库的加载时间。</span></p>
+<p><span>Windows 下也有类似的机制 </span><code>__declspec(dllexport)</code><span> ，它和 gcc 下的 </span><code>__attribute__ ((visibility ("default")))</code><span> 作用类似。稍微不同的是 Windows 下还存在 </span><code>__declspec(dllimport)</code><span> 用于 API 的使用方显示导入外部 API，以便编译器对代码进行优化，但 gcc 下没有对应的扩展。</span></p>
+<p><span>为了让使用上述编译器扩展的代码能够跨平台，使用该特性的时候可以封装一个宏，根据代码所在的平台和编译器版本，自动转化成不同的实现。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// keywords.h</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">if</span> defined _WIN32 || defined __CYGWIN__</span></span>
+<span class="line">  <span class="hl-meta">#<span class="hl-keyword">ifdef</span> BUILDING_MOD</span></span>
+<span class="line">    <span class="hl-meta">#<span class="hl-keyword">ifdef</span> __GNUC__</span></span>
+<span class="line">      <span class="hl-meta">#<span class="hl-keyword">define</span> MOD_PUBLIC __attribute__ ((dllexport))</span></span>
+<span class="line">    <span class="hl-meta">#<span class="hl-keyword">else</span></span></span>
+<span class="line">      <span class="hl-meta">#<span class="hl-keyword">define</span> MOD_PUBLIC __declspec(dllexport) <span class="hl-comment">// Note: actually gcc seems to also supports this syntax.</span></span></span>
+<span class="line">    <span class="hl-meta">#<span class="hl-keyword">endif</span></span></span>
+<span class="line">  <span class="hl-meta">#<span class="hl-keyword">else</span></span></span>
+<span class="line">    <span class="hl-meta">#<span class="hl-keyword">ifdef</span> __GNUC__</span></span>
+<span class="line">      <span class="hl-meta">#<span class="hl-keyword">define</span> MOD_PUBLIC __attribute__ ((dllimport))</span></span>
+<span class="line">    <span class="hl-meta">#<span class="hl-keyword">else</span></span></span>
+<span class="line">      <span class="hl-meta">#<span class="hl-keyword">define</span> MOD_PUBLIC __declspec(dllimport) <span class="hl-comment">// Note: actually gcc seems to also supports this syntax.</span></span></span>
+<span class="line">    <span class="hl-meta">#<span class="hl-keyword">endif</span></span></span>
+<span class="line">  <span class="hl-meta">#<span class="hl-keyword">endif</span></span></span>
+<span class="line">  <span class="hl-meta">#<span class="hl-keyword">define</span> MOD_LOCAL</span></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">else</span></span></span>
+<span class="line">  <span class="hl-meta">#<span class="hl-keyword">if</span> __GNUC__ &gt;= 4</span></span>
+<span class="line">    <span class="hl-meta">#<span class="hl-keyword">define</span> MOD_PUBLIC __attribute__ ((visibility (<span class="hl-string">&quot;default&quot;</span>)))</span></span>
+<span class="line">    <span class="hl-meta">#<span class="hl-keyword">define</span> MOD_LOCAL  __attribute__ ((visibility (<span class="hl-string">&quot;hidden&quot;</span>)))</span></span>
+<span class="line">  <span class="hl-meta">#<span class="hl-keyword">else</span></span></span>
+<span class="line">    <span class="hl-meta">#<span class="hl-keyword">define</span> MOD_PUBLIC</span></span>
+<span class="line">    <span class="hl-meta">#<span class="hl-keyword">define</span> MOD_LOCAL</span></span>
+<span class="line">  <span class="hl-meta">#<span class="hl-keyword">endif</span></span></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">endif</span></span></span></code></pre>
+
+</figure>
+<p><span>如上参考了 </span><a href="https://gcc.gnu.org/wiki/Visibility"><span>Visibility</span></a><span> 中给出的宏定义。它根据不同的平台和编译器版本，定义了 </span><code>MOD_PUBLIC</code><span> 和 </span><code>MOD_LOCAL</code><span> 的不同实现。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-meta">#<span class="hl-keyword">include</span> <span class="hl-string">&quot;keywords.h&quot;</span></span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-function">MOD_PUBLIC <span class="hl-type">void</span> <span class="hl-title">function</span><span class="hl-params">(<span class="hl-type">int</span> a)</span></span>;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">class</span> <span class="hl-title class_">MOD_PUBLIC</span> SomeClass</span>
+<span class="line">{</span>
+<span class="line">   <span class="hl-type">int</span> c;</span>
+<span class="line">   <span class="hl-comment">// Only for use within this DSO(Dynamic Shared Object)</span></span>
+<span class="line">   <span class="hl-function">MOD_LOCAL <span class="hl-type">void</span> <span class="hl-title">privateMethod</span><span class="hl-params">()</span></span>;</span>
+<span class="line"><span class="hl-keyword">public</span>:</span>
+<span class="line">   <span class="hl-built_in">Person</span>(<span class="hl-type">int</span> _c) : <span class="hl-built_in">c</span>(_c) { }</span>
+<span class="line">   <span class="hl-function"><span class="hl-type">static</span> <span class="hl-type">void</span> <span class="hl-title">foo</span><span class="hl-params">(<span class="hl-type">int</span> a)</span></span>;</span>
+<span class="line">};</span></code></pre>
+
+</figure>
+<p><span>如上的例子中， </span><code>void function(int a)</code><span> 和 </span><code>class SomeClass</code><span> 在库的内部和外部都可访问，但是类的 </span><code>void privateMethod()</code><span> 接口只能在库的内部使用，外部是无法使用的。</span></p>
+<p><span>至此，我们给出当前现状下 C/C++库级别 API 的管理建议：</span><strong><strong><span>可以使用编译选项默认隐藏库的符号，然后使用编译器属性显示指定库需要导出的 API</span></strong></strong><span>。</span></p>
+<p><span>最后我们补充一点对动态库的要求。</span></p>
+<p><span>不同平台对于静态库和动态库的使用大部分时候是相似的，但在某些细节上仍然会有区别。</span></p>
+<p><span>所有平台下的静态库(.a 或者.lib)都是可以缺符号的，即在生成时可以存在待链接的外部符号。然而对于动态库，OSX 下要求不能缺符号（OSX 下动态库是 dylib 格式，生成时是需要链接成功的，如果缺符号链接器会报错）。而在 Linux 系统下动态库(.so)生成的时候却是可以缺符号的。</span></p>
+<p><span>在 Linux 下，如果是在链接期使用缺符号的 so，需要构建目标通过指定其它的动态库或者静态库为缺失符号的 so 把符号补全，否则就会链接失败。而如果是采用 </span><code>dlopen</code><span> 的方式打开 so 的话，那么该 so 必须自身符号是完备的，否则在动态加载的时候会出错。</span></p>
+<p><span>因此，这里我们给出另一个 C/C++库符号管理的建议：</span><strong><strong><span>保证动态库不要缺符号，是自满足的</span></strong></strong><span>。如果违反了这条原则，那么这个动态库就无法用于动态加载；即使只是链接期使用，因为把符号缺失的细节泄露给了使用者，造成使用方的麻烦，所以也是不推荐的。</span></p>
+<p><span>动态库可以和静态库进行链接，以获取自己需要的符号。但是有些时候我们只想要和静态库进行链接，却不想在动态库中将静态库中的符号间接暴露出去。这时可以采用 </span><code>-fvisibility=hidden</code><span> 选项重新编译该静态库。但遗憾的是我们不总是能够控制第三方静态库的编译过程，这时可以借助链接器提供的显示指定符号表的方法。该方法需要按照链接器的规范写一个导出符号表，在链接期通过参数传递给链接器，这样就可以精细的控制动态库需要暴露的符号了。该方法并不常用，因此我们不多做介绍，具体用法可以参考 </span><a href="https://www.gnu.org/software/gnulib/manual/html_node/LD-Version-Scripts.html"><span>link</span></a><span>。</span></p>
+<p><span>而动态库和动态库的链接，其实并不需要把对方的二进制真实链接进来。目标的动态库会记住它所依赖的动态库（通过目标动态库中的 rpath）。这种情况下也算该动态库是自满足的，因为用户在使用该动态库的时候，并不需要再为其寻找依赖。</span></p>
+<p><span>最后我们总结一下对于库符号管理的一些建议：</span></p>
+<ol>
+<li>
+<span>推荐使用编译选项默认隐藏库的所有符号，然后使用编译器属性显示指定库需要导出的 API；（建议对该方法进行封装，以保证代码兼容各种平台和编译器版本）</span>
+</li>
+<li>
+<span>保证动态库不要缺符号，是自满足的；</span>
+</li>
+</ol>
+</section>
+<section id="3">
+
+    <h2>
+    <a href="#3"><span>3. 头文件管理</span> </a>
+    </h2>
+<p><span>前文谈了代码和库的符号隐藏手段。在 C/C++中，无论我们如何对符号进行隐藏，最后该暴露给客户的 API 还是要声明到头文件中发布给别人使用。如何设计和管理好头文件，决定了我们更大范围内的依赖治理水平。</span></p>
+<p><span>首先谈谈头文件设计。这里一个重要前提是要理解：</span><strong><strong><span>头文件首先是提供给别人使用的</span></strong></strong><span>。</span></p>
+<p><span>很多 C/C++程序员习惯了一个实现文件对应一个头文件，因此总下意识的觉得头文件先是给自己用的，所以无论什么声明（宏、常量、类型、函数）都一股脑先声明到自己的头文件中。</span></p>
+<p><span>这是个很糟糕的做法！因为客户使用你 API 的标准做法就是包含你的头文件，上述做法的头文件会将大量实现细节暴露给所有客户，增加了彼此的耦合，造成无谓的依赖和构建负担。</span></p>
+<p><span>所以，首先要明白头文件是提供给别人使用的，否则把所有符号都声明在自己的实现文件里岂不是更简单。因此，头文件设计要站在客户的角度去思考：1）怎么让别人用着方便？即遵循自满足原则；2）怎么减少别人不必要的依赖？即遵循最小公开原则。</span></p>
+<p><span>下面我们看看一个具体的 C 的头文件 executor_api.h：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// executor_api.h</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">ifndef</span> H867A653E_0C66_4A68_80C4_B0F253647F7F</span></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">define</span> H867A653E_0C66_4A68_80C4_B0F253647F7F</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">include</span> <span class="hl-string">&quot;executor/keywords.h&quot;</span></span></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">include</span> <span class="hl-string">&quot;executor/command_type.h&quot;</span></span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">ifdef</span> __cplusplus</span></span>
+<span class="line"><span class="hl-keyword">extern</span> <span class="hl-string">&quot;C&quot;</span> {</span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">endif</span></span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Executor</span>;</span>
+<span class="line"></span>
+<span class="line">MOD_PUBLIC <span class="hl-keyword">struct</span> <span class="hl-title class_">Executor</span>* <span class="hl-built_in">executor_clone</span>(<span class="hl-type">const</span> <span class="hl-keyword">struct</span> Executor* e);</span>
+<span class="line"><span class="hl-function">MOD_PUBLIC <span class="hl-type">void</span> <span class="hl-title">executor_exec</span><span class="hl-params">(<span class="hl-keyword">struct</span> Executor* e, CommandType cmd)</span></span>;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">ifdef</span> __cplusplus</span></span>
+<span class="line">}</span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">endif</span></span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">endif</span></span></span></code></pre>
+
+</figure>
+<p><span>上面是一个标准的 C 的头文件。首先为了保证每个头文件在同一个编译单元中只展开一次，头文件的内容必须处于 Include Guard 中，也即熟悉的 </span><code>#ifndef ... #define ... #endif</code><span> 中。</span></p>
+<p><span>Include Guard 中的宏需要全局唯一，一般使用路径名和文件名的大写加下划线。但这种做法有个问题是，当文件重命名后经常忘记改对应的宏，久而久之就会不小心出现冲突。</span></p>
+<p><span>在有的地方你会看到使用 </span><code>#pragma once</code><span> 来作为 Include Guard，不过这不是标准，存在兼容性问题。</span></p>
+<p><span>在本例中我们仍旧是采用 Include Guard 的标准做法，只是宏采用 IDE 自动生成的 UUID，这样既能保证全局唯一，也不会和文件名产生重复。没必要纠结这个宏的可读性，因为它只是给编译器看的，不是给程序员看的。</span></p>
+<p><span>接下来为了自满足性，executor</span><em><span>api.h 头文件中 include 了它依赖的其它头文件。本例中是</span>&ldquo;<span>keywords.h</span>&rdquo;<span>和 </span>&ldquo;<span>command</span></em><span>type.h</span>&ldquo;<span>，它们分别定义了后面会用到的宏 </span><code>MOD_PUBLIC</code><span> 和枚举 </span><code>CommandType</code><span> 。</span></p>
+<p><span>再往下是如下语句块：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-meta">#<span class="hl-keyword">ifdef</span> __cplusplus</span></span>
+<span class="line"><span class="hl-keyword">extern</span> <span class="hl-string">&quot;C&quot;</span> {</span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">endif</span></span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">//...</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">ifdef</span> __cplusplus</span></span>
+<span class="line">}</span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">endif</span></span></span></code></pre>
+
+</figure>
+<p><span>这个语句块表达了：如果该头文件被 C++的程序所使用的话，就将中间的所有符号声明和定义包含在 </span><code>extern "C" { }</code><span> 语句块中间（因为 C++的编译器中有__cplusplus 的定义，而 C 编译器下没有）。</span></p>
+<p><code>extern "C" { }</code><span> 指示大括号中的所有函数符号不要经过 C++名称粉碎(name mangling)过程，全部按照 C 语言的标准进行符号链接。这样就可以保证 C++程序能正确链接到 C 语言的函数实现。</span></p>
+<p><span>注意这里对 </span><code>extern "C" { }</code><span> 用途的解释，它和 extern 的含义是完全不同的。 </span><code>extern "C" { }</code><span> 完全是为了让 C 语言的 API 也能被 C++程序所使用，扩大 C 语言库可被复用的范围。</span></p>
+<p><span>另外注意仔细看上例， </span><code>extern "C" { }</code><span> 是放在所有的#include 语句下面的，也就是说：  </span><strong><strong><code>extern "C" { }</code><span> 中间不要包含 </span><code>#include</code><span> 语句</span></strong></strong><span>。我们希望每个头文件自己声明自己需要放置在 </span><code>extern "C" { }</code><span> 中的符号，不要为别的头文件代劳，否则可能出现某些匪夷所思的编译或链接错误（原因解释起来稍微有些复杂，记住这个原则就好了）。</span></p>
+<p><span>如果可以保证 C 程序永远不会被 C++程序调动，C 的头文件中也可以不用加这个语句块。遗憾的是这个保证经常被打破，比如当前主流的 C 程序的单元测试框架大多是 C++写的，因此当你要对所写的 C 程序做单元测试的时候，就必须把头文件交给 C++程序使用。所以，如果没有特殊的原因，建议对所有的 C 语言头文件加上上述语句块，以保证其能在更大范围内使用。</span></p>
+<p><span>我们继续看上例中的头文件，接下来的是一句前置声明 </span><code>struct Executor</code><span> 。</span></p>
+<p><span>前置声明是解除头文件依赖的好方法，一般函数的参数、返回值、以及结构体中的指针和引用类型等都只用前置声明即可，无需包含头文件。而枚举、宏以及需要知道内存布局或大小的类型定义，则需要显示包含头文件。</span></p>
+<p><span>在上例中， </span><code>CommandType</code><span> 由于是枚举所以必须包含头文件</span>&ldquo;<span>command_type.h</span>&rdquo;<span>，而 </span><code>struct Executor</code><span> 在后面的函数声明中仅当做参数和返回值，而且都是使用其指针类型，因此只用前置声明而无需包含定义其结构体的头文件。</span></p>
+<p><span>示例的头文件的最后是对外 API </span><code>executor_clone</code><span> 和 </span><code>executor_exec</code><span> 的函数的声明，这里还进一步使用了我们之前介绍过的 </span><code>MOD_PUBLIC</code><span> 进行 API 的显示导出。</span></p>
+<p><span>上述这些基本是一个标准的 C 语言头文件的全貌。</span></p>
+<p><span>前面我们说了，头文件首先是给别人用的，但是为了避免重复声明，自己也可以包含自己对外发布的头文件。</span></p>
+<p><span>如本例，为了避免 </span><code>Executor</code><span> 的实现文件重复声明</span></p>
+<p><code>MOD_PUBLIC struct Executor* executor_clone(const struct Executor* e)</code><span> 和</span></p>
+<p><code>MOD_PUBLIC void executor_exec(struct Executor* e, CommandType cmd)</code></p>
+<p><span>所以 executor.c 也包含了 executor_api.h。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// executor.c</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">include</span> <span class="hl-string">&quot;executor/executor_api.h&quot;</span></span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Executor</span> {</span>
+<span class="line">    <span class="hl-comment">// ...</span></span>
+<span class="line">};</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Executor</span>* <span class="hl-built_in">executor_clone</span>(<span class="hl-type">const</span> <span class="hl-keyword">struct</span> Executor* e) {</span>
+<span class="line">    <span class="hl-comment">// ...</span></span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-function"><span class="hl-type">void</span> <span class="hl-title">executor_exec</span><span class="hl-params">(<span class="hl-keyword">struct</span> Executor* e, CommandType cmd)</span> </span>{</span>
+<span class="line">    <span class="hl-comment">// ...</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>如果需要把某些符号通过头文件共享给内部其它实现文件，但是又不需要把这类头文件公布出去。这时建议把头文件分开，明确分成对外头文件和私有头文件。自己可以同时包含对外的和私有的头文件，但对外只发布公开头文件。</span></p>
+<p><span>假设本例中， </span><code>Executor</code><span> 的结构体定义需要向内部公开，但是外部并不需要看到。这时可以新创一个内部头文件 executor.h 包含 </span><code>struct Executor</code><span> 的定义，但对外仍然只发布 executor</span><em><span>api.h。这时 executor.c 可以同时包含 executor</span></em><span>api.h 和 executor.h，而外部客户只能包含 executor_api.h，无法访问到 executor.h。</span></p>
+<p><span>除了按内外部用途将头文件分开，有的时候当满足 1）库的使用方明确且有限；2）库的使用方对库头文件中符号依赖存在明显差异；这时为了避免库的不同用户因为依赖相同的头文件而互相影响（例如库按照一个使用方的要求修改了头文件中的某个函数声明，却导致并不依赖该函数的其它使用方都要重新编译），这时可以按照“接口隔离原则”，把对外头文件按照不同用户进一步分开。一般集中式的大项目中划分的内部模块会容易满足上述条件，而开源代码由于并不能假设自己的用户所以一般不这么做。</span></p>
+<p><span>OK，接下来我们遇到的问题是，当按照内外部用途拆分开的头文件越来越多，在目录结构上要如何进行有效的规划和管理呢？</span></p>
+<p><span>继续用上面的例子示例，当前社区对于单个库目录的主流布局如下：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">executor</span>
+<span class="line">│</span>
+<span class="line">│   README.md</span>
+<span class="line">│   CMakeLists.txt    </span>
+<span class="line">│   ...</span>
+<span class="line">│</span>
+<span class="line">└───include</span>
+<span class="line">│   │</span>
+<span class="line">│   └───executor</span>
+<span class="line">│       │   keywords.h</span>
+<span class="line">│       │   command_type.h</span>
+<span class="line">│       │   executor_api.h</span>
+<span class="line">│       │   ...</span>
+<span class="line">│   </span>
+<span class="line">└───src</span>
+<span class="line">│   │   executor.h</span>
+<span class="line">│   │   executor.c</span>
+<span class="line">│   │   ...    </span>
+<span class="line">│   │   CMakeLists.txt</span>
+<span class="line">│   </span>
+<span class="line">└───tests</span>
+<span class="line">│   │   executor_stub.h</span>
+<span class="line">│   │   executor_stub.cpp</span>
+<span class="line">│   │   executor_test.cpp</span>
+<span class="line">│   │   ...    </span>
+<span class="line">│   │   CMakeLists.txt</span>
+<span class="line">│   </span>
+<span class="line">└───benchmarks</span>
+<span class="line">│   │   performance_test.cpp</span>
+<span class="line">│   │   ...    </span>
+<span class="line">│   │   CMakeLists.txt</span>
+<span class="line">│   </span>
+<span class="line">└───examples</span>
+<span class="line">│   │   example.cpp</span>
+<span class="line">│   │   ...    </span>
+<span class="line">│   │   CMakeLists.txt</span>
+<span class="line">│   </span>
+<span class="line">└───docs</span>
+<span class="line">│   │   quickstart.md</span>
+<span class="line">│   │   apis.md</span>
+<span class="line">│   │   ...</span></code></pre>
+
+</figure>
+<p><span>在这个目录布局中，首先会将所有对外发布的头文件都放在</span>&ldquo;<span>include/&lt;module_name&gt;</span>&rdquo;<span>目录下，这样方便发布的时候直接把 include 下的所有头文件一次导出。</span></p>
+<p><span>这里在 include 目录和实际的头文件中间增加一层以模块名命名的目录（如 include/executor），是为了无论自己还是发布后给别人用，都希望对外头文件的包含路径能明确的从模块名开始（make 中-I 统一指定到每个模块的 include 目录），这样方便一眼看出头文件是哪个模块的 API。</span></p>
+<p><span>例如上例中无论是内部还是外部使用 executor_api.h，都希望写作 </span><code>#include "executor/executor_api.h"</code><span> ，这样一眼看去便知当前依赖的是 executor 模块的 API。</span></p>
+<p><span>在上面的目录布局中，所有的实现文件都放在 src 目录下，内部头文件也放在 src 目录下，和自己的实现文件放在一起。</span></p>
+<p><span>其它常见的顶级目录还有：</span></p>
+<ul>
+<li>
+<span>tests 目录下是库的功能测试用例以及供测试代码使用的桩文件，还有测试单独使用的头文件；</span>
+</li>
+<li>
+<span>benchmarks 目录下是性能测试用例，或者其它非功能性测试用例；</span>
+</li>
+<li>
+<span>examples 目录下是库的示例代码，用于帮助客户理解库的功能以及 API 的常见用法；另外这里的代码示例也用于文档中的代码引用；</span>
+</li>
+<li>
+<span>docs 目录下是库的使用手册或者 API 接口文档等；</span>
+</li>
+</ul>
+<p><span>无论是 include/executor 目录，还是 src、tests、benchmarks、examples 目录，需要的时候都可以在内部继续划分子目录。</span></p>
+<p><span>再稍微看看构建。库顶层的 CMake 文件用于对构建做整体控制，指定构建 src 目录，以及选择是否构建 tests、benchmarks 和 examples。</span></p>
+<p><span>src、tests、benchmarks 和 examples 下有自己更具体的 CMake 文件用于控制内部的构建细节。由于对外头文件和内部头文件的分离，所以构建脚本的编写也变得容易。关于构建的话题，我们后面会详细的讲述，这里先略过。</span></p>
+<p><span>上述目录结构是 C/C++社区主流的一种布局规范。社区中还有其它的一些布局格式，但是经过对比并不比这个布局清晰及使用范围大。另外这个布局与其它和 C/C++语言相似的现代化语言的标准布局是趋于一致的（如 RUST）。</span></p>
+<p><span>我们推荐在实践中尽量遵循上述目录布局规范。即使在一个集中式的大项目中，也请保持其中每个模块的目录布局符合上述规范，即内外部头文件分离，同时每个模块自己维护和管理自己的头文件。</span></p>
+<p><span>切忌不要把所有模块的对外头文件都集中放到一个大目录下，这样会让每个模块的头文件和实现离得过远，还容易导致把所有模块的公开头文件一下子全部暴露给每个模块从而引起各种依赖混乱问题。这个话题我们在后面谈依赖管理时还会再聊。</span></p>
+<p><span>至此，我们总结下对头文件设计和管理的一些建议：</span></p>
+<ol>
+<li>
+<span>明白头文件首先是提供给别人使用的，头文件设计要遵循自满足原则和最小公开原则；</span>
+</li>
+<li>
+<span>遵循头文件的设计规范，本文提到了 Include Guard，</span><code>extern "C"</code><span> 和前置声明等使用时的一些最佳实践；</span>
+</li>
+<li>
+<span>将对外头文件和对内头文件分开；在满足一定条件（库的使用方明确、有限，且对库接口的依赖存在明显差异）时，可以进一步按照接口隔离原则将对外头文件对不同用户分开；</span>
+</li>
+<li>
+<span>对头文件的目录管理尽量遵循主流的社区规范；避免将所有模块或者库的对外头文件集中放置到一起然后暴露给所有用户；</span>
+</li>
+</ol>
+</section>
+<section id="4">
+
+    <h2>
+    <a href="#4"><span>4. 依赖管理</span> </a>
+    </h2>
+<p><span>一个项目中，除了非常底层的软件模块外，大多数模块都需要其它的模块的协助才能完成功能，这需要借助模块之间的依赖管理能力。</span></p>
+<p><span>依赖管理包含如何控制模块间的最小化依赖，如何发布自己的 API，如何获取别人的 API，以及如何对依赖关系进行追溯和控制，包括解决冲突。</span></p>
+<p><span>依赖管理不仅决定了模块间的协作方式，还决定了单一模块能否高效的独立开发、构建和测试，以及能否独立的进行发布。</span></p>
+<p><span>前文我们总结了每个模块如何做好自己的符号隐藏与头文件设计，那么模块之间的依赖又要如何管理和维护呢？</span></p>
+<p><span>为了回答这个问题，我们先来审视下不同开发阶段对于所依赖的其它模块到底需要哪些东西。</span></p>
+<p><span>在写代码或者阅读代码的时候，我们需要看到当前模块所依赖的其它模块的外部头文件。只有这样代码才能不缺失符号声明，IDE 才能正常解析、跳转和提醒，我们才能正确调用所依赖的接口完成自己的代码开发。</span></p>
+<p><span>所以在模块的独立开发过程中，能看到所依赖模块的公开头文件是至关重要的，而对其它模块的内部细节（内部头文件、实现文件、构建脚本等）都是不需要的。</span></p>
+<p><span>当然开发过程中还要能对所开发的模块执行独立的构建，以便能快速验证当前的代码能否被正确编译和链接。这时有可能需要依赖的其它模块的二进制，这取决于当前模块是要构建成静态库、动态库还是可执行程序。</span></p>
+<p><span>如果当前模块是构建成静态库，那么它的构建活动主要是编译和打包，所以从严格意义上说是不需要依赖方的二进制的。</span></p>
+<p><span>如果当前开发的模块是要构建成一个动态库或者可执行程序，那么如我们前文所述它必须要能完整链接，这时就必须能获得它所依赖的其它模块的二进制。</span></p>
+<p><span>所以从独立构建的角度来说，我们最多还需要所依赖的其它模块的二进制。</span></p>
+<p><span>但是如果正在开发的模块有基于代码的测试工程，无论是单元测试工程还是针对整个模块的功能测试工程，就可以通过运行测试工程的构建来触发模块源码的构建。这时缺失的外部符号可以用桩来填补，因此可以降低对外部的二进制依赖。</span></p>
+<p><span>为了提高测试工程对构建的验证有效性，我们需要遵循一些原则：1）测试的构建环境和生产构建环境尽可能保持一致；2）测试工程尽量复用被测模块的生产环境构建脚本；3）测试构建产生的模块二进制库最好和生产环境保持一致。</span></p>
+<p><span>在满足上述条件后，我们可以在开发阶段大胆的使用测试构建代替真实构建，以降低我们对其它模块的二进制依赖，提高我们的开发效率。</span></p>
+<p><span>不过对于动态库和可执行程序，不要忘了在最终发布的时候，仍然是需要和真正的依赖方的二进制进行链接的。所以从完整意义上来说，对于动态库和可执行程序，在构建阶段仍是需要能够获取到依赖方的二进制的。</span></p>
+<p><span>通过上面的分析我们看到，想要独立开发、构建和测试，最重要的是能够获取依赖方的公开头文件，而在一些场合下还需要依赖方的二进制。有上述这些就够了。</span></p>
+<p><span>那么回到依赖管理上，</span><strong><strong><span>好的依赖管理技术就是要保证我们在不同阶段所依赖的东西可以低成本的精准获得，同时又不会过度获得</span></strong></strong><span>。</span></p>
+<p><span>我们来看看当前 C/C++常见的依赖管理手段。</span></p>
+<p><span>首先是基于源码的依赖管理。常见的做法是将所有代码都在一个代码仓中，模块之间通过目录进行隔离。这种情况下，我们只要 clone 下代码，就可以看到其它所有模块的代码，无论是头文件还是实现代码。</span></p>
+<p><span>这种依赖管理方式简单、低成本，但却不是“精准”的。模块之间太容易“过度”看到对方的细节，因此容易导致从源码到构建上不必要的耦合。</span></p>
+<p><span>这种方式下经常遇到的第一个问题就是模块间的头文件耦合。由于源码都在一起，所以很容易要求所有模块的公开头文件全部集中放置在一个目录下，每个模块都可以 include 这个目录。</span></p>
+<p><span>这种方式下每个模块依赖其它模块的公开头文件成本很低，但也正是因为成本低所以很容易随意包含。最终导致大家都互相交织在了一起而难以独立发布。</span></p>
+<p><span>上述集中式头文件管理存在两个常见的变种：</span></p>
+<ul>
+<li>
+<span>一种做法是在构建开始阶段先把所有模块的公共头文件拷贝到一起然后执行构建；</span>
+</li>
+<li>
+<span>另一种做法是在构建准备阶段用一个构建变量将所有模块的公开头文件路径串在一起，然后逐一传递给每个待构建模块的构建脚本。</span>
+</li>
+</ul>
+<p><span>上述两种做法和前面头文件集中管理的问题是一样的，每个模块仍旧可以看到并随意包含其它所有模块的头文件。</span></p>
+<p><span>更糟的是，这两个变种做法还进一步带来了构建上的依赖：每个模块的构建都必须先从根构建开始执行（因为根构建可以跨模块完成构建前的文件拷贝或者构建变量拼接行为），这会导致内部所有模块丧失独立构建的能力。</span></p>
+<p><span>这就是我们容易在基于源码的依赖管理方式下遇到的第二个问题：构建的耦合。</span></p>
+<p><span>在基于全量源码可见的情况下，构建往往喜欢采用自顶向下设计：即整个项目需要从根构建开始执行，先准备环境，初始化各种构建变量，然后按照依赖顺序逐一执行每个模块的构建，最后再链接和打包。</span></p>
+<p><span>这种构建设计方式虽然整体看起来简单高效，但是却造成了了每个内部模块之间以及与全局之间的构建耦合。每个内部模块的构建都必须从根构建开始执行，不仅构建速度慢，而且丧失了模块的独立构建的能力。</span></p>
+<p><span>说了这么多，那么在基于全量源码的依赖管理方式下，是否就不能做到内部模块的独立的开发、构建、测试与发布呢？答案是可以做到。</span></p>
+<p><span>看看以下做法：</span></p>
+<ul>
+<li>
+<span>每个模块在自己的目录下自行维护自己的公开头文件（还记得前文中推荐过的模块目录布局吗）；</span>
+</li>
+<li>
+<span>每个模块有自己</span><strong><strong><span>内置</span></strong></strong><span>的独立构建脚本和启动入口，并且有</span><strong><strong><span>一致</span></strong></strong><span>的模块级构建和模块级测试的触发命令；</span>
+</li>
+<li>
+<span>每个模块可以通过构建入口参数或者环境变量获得 </span><code>PROJECT_ROOT</code><span> ，作为整个项目源码的根目录；</span>
+</li>
+<li>
+<span>所有模块基于 </span><code>PROJECT_ROOT</code><span> 的相对路径遵循一套统一的约定，包括二进制的发布路径（可以是在每个模块内部的临时目录，也可以是在 </span><code>PROJECT_ROOT</code><span> 下的某个集中目录）；</span>
+</li>
+<li>
+<span>每个模块根据自己的对外依赖，在自己的构建脚本里面描述所依赖的其它模块的头文件路径（可以按照约定用 </span><code>PROJECT_ROOT</code><span> 和模块名计算出来）。如果构建需要其它模块的二进制，就在约定的二进制目录下获得，如果找不到就调用统一的模块构建命令触发依赖模块进行构建；</span>
+</li>
+<li>
+<span>构建成功后，将生成的二进制发布到约定二进制目录中；</span>
+</li>
+<li>
+<span>如果模块要独立发布给第三方，需要模块里有内置的打包脚本（可以写到构建脚本里面），在构建成功后将自己的头文件和二进制（如果是动态库或者可执行程序，则还要包含所依赖的二进制）按照打包格式进行打包，并发布到对应的仓库中；</span>
+</li>
+</ul>
+<p><span>上面的这套做法，有点类似早期 golang 语言的依赖管理方式。没错，golang 在没有引入 module 机制之前采用的就是基于 </span><code>GOPATH</code><span> 的单一代码库管理方式，它是 Google 的单一代码库实践在 golang 语言中的应用。</span></p>
+<p><span>Google 在单一代码库中能做到内部软件模块的独立开发、构建、测试与发布，是由良好的设计规划能力，工程工具能力，以及以团队自治为基础但又不缺乏整体协作纪律的组织方式和文化做基础的。</span></p>
+<p><span>上述这套做法，解决了前面说的在全量源码管理方式下的模块与全量头文件耦合以及模块与外部构建之间的耦合问题，最终让每个模块可以做到独立开发、构建、测试和发布。</span></p>
+<p><span>这里的核心是每个模块相当于是一个闭包，它自行管理自己的头文件和完整的构建以及命令入口。这套做法遵循约定优于配置的原则，制定了一套需要共同严格遵守的约定，每个模块的独立构建和发布过程都基于这套约定之上。</span></p>
+<p><span>采用上述这种做法，对构建工具和构建设计会有一些更高的要求。</span></p>
+<p><span>首先，构建设计需要解决每个模块的构建代码中共享的构建配置、构建参数和工具脚本的重复问题。</span></p>
+<p><span>由于现在每个模块是一个自治的构建单元，拥有自己独立的构建脚本和内置的构建启动入口。这样所有模块的构建都需要干更多重复的事情，比如配置一样的构建环境、选择相同的体系架构和编译链接参数等等。</span></p>
+<p><span>可以采取的解决方案是这些公共活动和代码通过设计进行提炼，然后将其作为共享的构建库，让每个模块在构建时自行依赖和调用（而非像之前只能由触发根构建开始统一为所有模块准备好）。最后如果模块采用源码发包的话，这些共享的构建代码库还需要作为包的构建时依赖一起发布，以便客户在构建时也能获得。</span></p>
+<p><span>而对构建工具更高的要求，主要是需要构建工具能按照构建目标控制构建变量的作用域和传递性。</span></p>
+<p><span>软件模块在构建的时候可能创建了某些构建变量，用于保存编译参数、预编译宏或者所有依赖的头文件路径等，这些构建变量我们希望它们的作用域和传递性是可以控制的。</span></p>
+<p><span>比如我们不希望在构建执行过程中触发了依赖模块的构建后，当前模块的这些构建变量被默认继承了过去，也不希望依赖模块构建结束后修改了当前模块的构建变量的值。因此我们希望构建工具能支持更好的模块化构建，即按照不同的构建目标控制构建变量的作用域和传递性。</span></p>
+<p><span>幸运的是 CMake 从3.0版本开始支持模块化构建，它引入了 target 的概念，以及基于 target 建立起了构建上下文的可见性和传播控制机制，可以满足我们的上述需求。</span></p>
+<p><span>关于 CMake 的这些用法和实践方式，建议看看我的朋友尉刚强的这篇文章：</span><a href="https://www.jianshu.com/p/8abf754654c4"><span>《Modern CMake 最佳实践》</span></a><span>。强烈建议那些在用 CMake，但仍旧以老的 directory 为中心的方式在用的项目，能够切换成以 target 为中心的使用方式，不要浪费了 Modern CMake 的这个核心特性的价值。</span></p>
+<p><span>还剩下一个问题是：采用上面这种方式，整个项目完整的构建和发布怎么做呢？</span></p>
+<p><span>可以把项目的完整构建和发布也当做一个内部模块，它可以没有任何业务代码(或者只有 main 函数的实现)，但是拥有自己独立的构建脚本。和其它普通的模块一样，它通过自己的构建脚本描述自己的依赖。先在约定的二进制目录中寻找它所依赖的模块的二进制，如果找不到就触发对应模块的构建和发布，最后再完成整体的打包和发布。</span></p>
+<p><span>可见这种方式下，我们根本不需要之前的自顶向下的构建过程，每个模块的构建都是平等且独立的。另外，由于构建的闭包化，还更加容易的进行并行构建。</span></p>
+<p><span>如果是一个集中式的项目，上述方式就已经能够满足依赖管理的需要了。上述方式可以帮每个模块“轻易而精准”的获取依赖，虽然仍旧有些“过度”（毕竟还是能够看到别人的源码），但是通过工具以及纪律约束，也可以保证不会有副作用。</span></p>
+<p><span>然而上述方式对于社区化开发是完全不够的。</span></p>
+<p><span>社区化开发很难将所有依赖的源码都放在一起，也很难控制其它依赖的变更时机及其兼容性，这时就需要更强大的依赖管理手段了。这个手段就是我们都知道的“包管理”。</span></p>
+<p><span>包管理最大的价值在于制定了一套管理软件包的统一标准，其中包含了包的版本标准、打包发布标准、全链条的依赖追踪与冲突解决标准，以及基于这套标准之上的工具链。</span></p>
+<p><span>包管理可以满足我们对依赖管理的完整定义：即可以保证我们在不同阶段的依赖都能够低成本的精准获得，同时又不会过度获得。因此，大多数编程语言都把包管理作为语言的工程核心对待。遗憾的是由于 C/C++包管理的不成熟，所以对包管理的使用并不如其它语言那么普遍。</span></p>
+<p><span>关于 C/C++包管理的最新进展以及使用建议，可以看看我的这篇文章</span><a href="https://www.jianshu.com/p/5de358c1c007"><span>C/C++代码复用与包管理</span></a><span>，这里就不再赘述了。</span></p>
+<p><span>最后总结一下关于依赖管理的话题:</span></p>
+<ol>
+<li>
+<span>依赖管理技术要保证在不同阶段所依赖的东西可以低成本的精准获得，同时又不会过度获得;</span>
+</li>
+<li>
+<span>依赖管理关乎软件模块能否独立的开发、构建、测试与发布。做好依赖管理需要好的设计规划能力，工程工具能力以及纪律约束；</span>
+</li>
+<li>
+<span>对 C/C++来说，构建工具和构建设计是依赖管理中非常重要的一环；</span>
+</li>
+<li>
+<span>根据自己的项目特点，选择在合适的时机使用包管理器，对依赖进行更好的管理；</span>
+</li>
+</ol>
+</section>
+<section id="5">
+
+    <h2>
+    <a href="#5"><span>5. 代码库推荐</span> </a>
+    </h2>
+<p><span>符号隐藏与依赖管理是软件工程中关乎效率的关键能力。它的核心是</span><strong><strong><span>每个软件模块如何在隐藏好自己的同时，还能低成本的精准获取依赖</span></strong></strong><span>。做好了这件事，每个软件模块的变化传播范围可以控制到最小，又能恰如其分的和外部依赖进行协同。这样软件模块不仅容易做到独立的开发、构建、测试与发布，最后又能协同起来完成整体的业务目标。</span></p>
+<p><span>正如前一篇中所说，做好符号隐藏和依赖管理，需要基于软件团队的设计规划能力、工程工具能力以及团队纪律。虽然这几点在文章中都有涉及，但是这次还是更多的侧重于工程工具方面。而设计方面希望未来可以通过别的文章再来展开。</span></p>
+<p><span>在撰写这些文章的过程中，一直想用一些做得好的优秀代码库作为示例，所以又翻看了很多优秀的 C 和 C++开源库。</span></p>
+<p><span>其中 C 语言的有:</span></p>
+<ul>
+<li>
+<a href="https://github.com/DaveGamble/cJSON"><span>cJSON</span></a>
+</li>
+<li>
+<a href="https://github.com/jemalloc/jemalloc"><span>jemalloc</span></a>
+</li>
+<li>
+<a href="https://github.com/libuv/libuv"><span>libuv</span></a>
+</li>
+<li>
+<a href="https://github.com/antirez/redis"><span>redis</span></a>
+</li>
+<li>
+<a href="https://repo.or.cz/sqlite.git"><span>sqlite</span></a>
+</li>
+</ul>
+<p><span>C++的有:</span></p>
+<ul>
+<li>
+<a href="https://github.com/actor-framework/actor-framework"><span>CAF</span></a>
+</li>
+<li>
+<a href="https://github.com/schlangster/cpp.react"><span>cpp-react</span></a>
+</li>
+<li>
+<a href="https://github.com/facebook/folly"><span>folly</span></a>
+</li>
+<li>
+<a href="https://github.com/chenshuo/muduo"><span>muduo</span></a>
+</li>
+</ul>
+<p><span>其中推荐大家有精力的话可以看看著名的</span><a href="https://github.com/libuv/libuv"><span>libuv</span></a><span>。libuv 是一个跨平台的异步 IO 库，被用在著名的 nodejs 里作为事件驱动的引擎。它综合使用了我们前面说到的各种实践：从目录布局，到库的 API 符号隐藏，到构建设计，当然它的源码设计也是很不错的。</span></p>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">[Translation] Almost Rules</title>
+<link href="https://eluvk.github.io/2022/09/05/t-almost-rules.html" rel="alternate" type="text/html" title="[Translation] Almost Rules" />
+<published>2022-09-05T00:00:00+00:00</published>
+<updated>2022-09-05T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2022/09/05/t-almost-rules</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[看到的一篇博客，翻译学习记录一下。]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2022/09/05/t-almost-rules.html"><![CDATA[
+    <h1>
+    <a href="#Translation-Almost-Rules"><span>[Translation] Almost Rules</span> <time datetime="2022-09-05">Sep 5, 2022</time></a>
+    </h1>
+<section id="s-1">
+
+    <h2>
+    <a href="#s-1"><span>零</span> </a>
+    </h2>
+<p><span>看到的一篇博客，翻译学习记录一下。</span></p>
+<p><span>原文地址 : </span><a href="https://matklad.github.io/2022/07/10/almost-rules.html"><span>Almost Rules</span></a><span> by matklad</span></p>
+</section>
+<section id="s-2">
+
+    <h2>
+    <a href="#s-2"><span>序</span> </a>
+    </h2>
+<p><span>对软件来说最重要的边界就是对外接口。对外接口是用户直接交互的部分，因此你必须保证其向后兼容。</span></p>
+<p><span>对于 web 服务，这个边界是 URL 的格式(scheme)和 JSON 请求和返回的字段格式；对于命令行应用，这个边界是所有命令行参数的集合和含义；对于系统内核，这个边界是系统调用的集合(Linux)或者 用户库 </span><code>user-space libraries</code><span> (Mac)。而对于一个编程语言，这个边界是其语言本身的定义：语法和语义。</span></p>
+<p><span>有时候，作为宏观层面上的模式，人工的安插一些内部的边界是有好处的。边界会有很高的成本，但是它可以预防变化。巧妙地设置内部边界，甚至使边界变成外部接口是有用的。</span></p>
+<p><span>边界把系统一分为二，并且如果边界本身的大小和整个系统的大小相比很小的话（类似于沙漏形状），那么就很容易通过边界来理解整个系统。</span></p>
+<p><strong><span>仅仅</span></strong><span>理解边界就可以让你想象出在其下的子系统应该是怎么实现的。大多数适合，你想象的版本和实际情况会很接近，而且这张虚拟的思维导图会帮助你剥离胶水代码层，理解其中真正的核心逻辑。</span></p>
+<p><span>不同于外部边界，一个内部的边界，即使一开始被设置在很好的地方，也有很高的风险被破坏。因为内部边界本质上不那么实体。大多数情况下可能就是一条不正式的规则，“比如模块 A 不应该包含模块 B” 。而有时候就很难注意到这些边界被破坏。这也是我为什么认为大公司能够从微服务架构中获益，虽然理论上如果我们协调好人员协助的问题，一个单体架构也能非常清晰甚至提供更好的性能。但是实践中，跨团队维护一个好的架构是很困难的，而如果把这些内部边界具化(reified)为流程，事情就变得简单些。</span></p>
+<p><span>不仅很难去保证一个内部边界不被破坏，更大的问题是内部边界的存在本身，阻止了用户可见的系统特性。而为了保护内部边界的不被破坏，需要花费大量的权限保护，还导致了不能交付一些功能。</span></p>
+<p><span>下面是我在 Rust 语言的发展过程中见到的，关于内部边界随着时间逐渐被侵蚀的案例。</span></p>
+</section>
+<section id="Namespaces">
+
+    <h2>
+    <a href="#Namespaces"><span>Namespaces</span> </a>
+    </h2>
+<p><span>这可能是 Rust 命名解析里一个晦涩的特性：Rust 里各种类、模块、Trait、变量，都会被纳入三种命名空间里：类型(type)、值(value)和宏(macro)。这允许了同时存在同名的事物而不冲突：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">x</span> {}</span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">x</span>() {}</span></code></pre>
+
+</figure>
+<p><span>这个是合法的 Rust 代码，因为 </span><code>struct x</code><span> 是在类型命名空间里，而 </span><code>function x</code><span> 在值命名空间里。从语法上也能区分出来： </span><code>.</code><span> 用来遍历值命名空间， </span><code>::</code><span> 用来遍历类型命名空间。</span></p>
+<p><span>虽然这几乎是一个规则了，但是还是出现了编译器放弃了这种清晰的语法下的命名空间规则、临时消除歧义(ah-hoc disambiguation)的例子。</span></p>
+<p><span>比如这段代码：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">use</span> std::<span class="hl-type">str</span>; <span class="hl-comment">// module `str`</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">s</span>: &amp;<span class="hl-type">str</span> = <span class="hl-type">str</span>::<span class="hl-title function_ invoke__">from_utf8</span>(<span class="hl-string">b&quot;hello&quot;</span>).<span class="hl-title function_ invoke__">unwrap</span>(); <span class="hl-comment">// s is type `str`</span></span>
+<span class="line">    <span class="hl-type">str</span>::<span class="hl-title function_ invoke__">len</span>(s);</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>一共出现了4个 </span><code>str</code><span>, 前两个如同注释，理解起来很容易。后面两个：</span><code>str::from_utf8</code><span> 里，</span><code>str</code><span> 表示的是 module </span><code>str</code><span>，但是 </span><code>str::len(s)</code><span> 里 </span><code>str</code><span> 是 </span><strong><strong><span>type</span></strong></strong><span> </span><code>str</code><span>。</span></p>
+<p><span>只要看一眼标准库的实现就会发现，大致结构如下：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">/// ....core/src/str/mod.rs</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">pub</span> <span class="hl-keyword">const</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">from_utf8</span>(v: &amp;[<span class="hl-type">u8</span>]) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;&amp;<span class="hl-type">str</span>, Utf8Error&gt; {</span>
+<span class="line">    <span class="hl-comment">// implement!()</span></span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">str</span> {</span>
+<span class="line">    <span class="hl-keyword">pub</span> <span class="hl-keyword">const</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">len</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">usize</span> {</span>
+<span class="line">        <span class="hl-keyword">self</span>.<span class="hl-title function_ invoke__">as_bytes</span>().<span class="hl-title function_ invoke__">len</span>()</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><code>str::from_utf8</code><span> 是个独立的函数，所以使用 module </span><code>str</code><span>，而 module 继承自 类型命名空间，所以使用 </span><code>::</code><span> 十分合理。</span>
+<span>而 </span><code>str::len</code><span> 是类型 </span><code>str</code><span> 的一个方法。而这里并没有显示的声明使用类型 </span><code>str</code><span>，所以正常来说，上面的 </span><code>str::len(s)</code><span> 的代码应该编译报错。但是编译器，还有 RA 都把这些基本类型的场景 hack 了。</span></p>
+<p><span>自己写了一个同样的例子：非常正常的就报错了：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">mod</span> mystr{</span>
+<span class="line">    <span class="hl-keyword">pub</span> <span class="hl-keyword">struct</span> <span class="hl-title class_">mystr</span>;</span>
+<span class="line">    <span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">from_utf8</span>() <span class="hl-punctuation">-&gt;</span> mystr{</span>
+<span class="line">        mystr{}</span>
+<span class="line">    }</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">impl</span> <span class="hl-title class_">mystr</span> {</span>
+<span class="line">        <span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">len</span>(&amp;<span class="hl-keyword">self</span>){}</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">test</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">s</span> = mystr::<span class="hl-title function_ invoke__">from_utf8</span>();</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">_</span> = s.<span class="hl-title function_ invoke__">len</span>(); <span class="hl-comment">// ok</span></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">_</span> = mystr::mystr::<span class="hl-title function_ invoke__">len</span>(&amp;s); <span class="hl-comment">// ok</span></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">_</span> = mystr::<span class="hl-title function_ invoke__">len</span>(s); <span class="hl-comment">// *compile error: cannot find function `len` in module `mystr`.*</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="Patterns-And-Expressions">
+
+    <h2>
+    <a href="#Patterns-And-Expressions"><span>Patterns And Expressions</span> </a>
+    </h2>
+<p><span>Rust 过去对模式(patterns)和表达式(expressions)用不同的语法类别作区分，任何语句，根据其上下文语义，都可以被准确的定义为是表达式或者模式。但是出现了一个小例外：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">f</span>(value: <span class="hl-type">Option</span>&lt;<span class="hl-type">i32</span>&gt;) {</span>
+<span class="line">  <span class="hl-keyword">match</span> value {</span>
+<span class="line">    <span class="hl-literal">None</span> =&gt; (),</span>
+<span class="line">    none =&gt; (),</span>
+<span class="line">  }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>语法上， </span><code>None</code><span> 和 </span><code>none</code><span> 是无法区分的。实际扮演着不同的角色： </span><code>None</code><span> 指代 </span><code>Option::None</code><span> 这个常量，而 </span><code>none</code><span> 是引入的新的绑定。 Swift 通过强制要求对枚举的变量前加上一个 </span><code>.</code><span> ，优雅的消除了这种歧义。而 Rust 是直接在命名解析层面 hack 了这种情况：除非匹配到了范围内的常量，否则默认引入新绑定。</span></p>
+<p><span>最近被 hack 的情况进一步放大：随着</span><a href="https://rust-lang.github.io/rfcs/2909-destructuring-assignment.html"><span>析构赋值</span></a><span>的实现，一个表达式可以直接被重定义为一个模式：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">let</span> (<span class="hl-keyword">mut</span> a, <span class="hl-keyword">mut</span> b) = (<span class="hl-number">0</span>, <span class="hl-number">1</span>)</span>
+<span class="line">(a, b) = (b, a)</span></code></pre>
+
+</figure>
+<p><span>语法上， </span><code>=</code><span> 是二元表达式，所以其左端和右端应该都是表达式。但是现在左端 </span><code>(a, b)</code><span> 被重新定义为了模式。</span></p>
+<p><span>也许，模式和表达式之间所谓的语法边界本身就是假的。应该从始至终就使用统一的表达式语法。</span></p>
+<section id="s-3">
+
+    <h3>
+    <a href="#s-3"><code>::&lt;&gt;</code> </a>
+    </h3>
+<p><span>语法分类是仍然完好的边界，Rust 仍然是 </span><code>LL(k)</code><span> 语言: 可以通过一个单遍(</span><a href="https://en.wikipedia.org/wiki/One-pass_algorithm"><span>single-pass</span></a><span>)无须回溯的算法进行处理。代价就是我们不得不敲 </span><code>.collect::&lt;Vec&lt;_&gt;&gt;()</code><span> 而不是 </span><code>.collect&lt;Vec&lt;_&gt;&gt;()</code><span> （至今我也是仅仅敲 </span><code>.collect()</code><span> 然后通过自动补全来完成这个 </span><code>turbofish</code><span> 的语法。</span></p>
+</section>
+<section id="0-0">
+
+    <h3>
+    <a href="#0-0"><code>().0.0</code> </a>
+    </h3>
+<p><span>另外一个近期的变化是在此法分析器和解析器之间的边界的被破坏。</span></p>
+<p><span>Rust 有元组类型 </span><code>tuple</code><span> ，并且使用 </span><code>.0</code><span> 这种可爱的语法来访问其有序的值域。这对于多层次的元组类型就是个问题。它们会出现类似于 </span><code>foo.1.2</code><span> 这样的语法。对于词法分析器来说，这个语法看起来就是 </span><code>foo</code><span> , </span><code>.</code><span> , </span><code>1.2</code><span> ，没错，</span><code>1.2</code><span> 是浮点数字。所以之前不得不把用一个额外的空格把表达式写成 </span><code>foo.1 .2</code></p>
+<p><span>如今，这个特点被解析器 hack 住，从词法分析器里获取 </span><code>1.2</code><span> 这么个 </span><code>token</code><span>，分析其文本然后拆成 </span><code>1</code><span> 和 </span><code>.2</code><span> 两个 </span><code>token</code></p>
+</section>
+<section id="macros">
+
+    <h3>
+    <a href="#macros"><span>macros</span> </a>
+    </h3>
+<p><span>Rust 不同于许多编程语言，其词法分析器和解析器并不是模糊的内部边界，而是外部有服务保护的 API 的一部分。</span><code>tokens</code><span> 被塞进宏语句里，所以宏语句的效果取决于传入的 </span><code>tokens</code><span> 到底是如何拆分的。</span></p>
+<p><span>虽然理论上，</span><code>tokens</code><span> 被宏获取的仅仅是其文字信息，但是在工程上，为了实现宏捕获字段（比如 </span><code>$x:expr</code><span>），一个 token 也可以是在编译器 AST 数据结构中的一个有完善结构的数据片段。</span></p>
+<p><span>译注：这一段涉及编译原理，并没有看太懂..原文如下：</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>The last example is quite interesting: in Rust, unlike many programming languages, the separation between the lexer and the parser is not an arbitrary internal boundary, but is actually a part of an external, semver protected API. Tokens are the input to macros, so macro behavior depends on how exactly the input text is split into tokens.</span></p>
+<p><span>And there’s a second boundary violation here: in theory, “token” as seen by a macro is just its text plus hygiene info. In practice though, to implement captures in macro by example ($x:expr things), a token could also be a fully-formed fragment of internal compiler’s AST data structure.</span></p>
+<p><span>The API is carefully future proofed such that, as soon as the macro looks at such a magic token, it gets decomposed into underlying true tokens, but there are some examples where the internal details leak via changes in observable behavior.</span></p>
+</blockquote>
+
+</figure>
+</section>
+</section>
+<section id="Lifetime-Parametricity">
+
+    <h2>
+    <a href="#Lifetime-Parametricity"><span>Lifetime Parametricity</span> </a>
+    </h2>
+<p><span>生命周期的参数化。</span></p>
+<p><span>用一个正向一点的例子来结束这篇，在 Rust 里生命周期标注不会影响代码生成。实际上生命周期完全被从传递给 </span><code>codegen</code><span> 的数据里清理掉了。 尽管推断生命周期是不透明切难以弄清原因的，但是你可以确定值被 </span><code>dropped</code><span> 的确切位置和借用检查器的奇思妙想无关。</span></p>
+</section>
+<section id="Conclusion">
+
+    <h2>
+    <a href="#Conclusion"><span>Conclusion</span> </a>
+    </h2>
+<p><span>看起来我们通常都会对内部边界过于乐观，它们会在功能需求的压力下崩溃，除非有问题的边界被物理实体化。</span></p>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">Eth Keystore</title>
+<link href="https://eluvk.github.io/2022/07/12/eth-keystore.html" rel="alternate" type="text/html" title="Eth Keystore" />
+<published>2022-07-12T00:00:00+00:00</published>
+<updated>2022-07-12T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2022/07/12/eth-keystore</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[这是一个以太坊 keystore 文件的内容，我刚刚拿工具生成的：]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2022/07/12/eth-keystore.html"><![CDATA[
+    <h1>
+    <a href="#Eth-Keystore"><span>Eth Keystore</span> <time datetime="2022-07-12">Jul 12, 2022</time></a>
+    </h1>
+<section id="Overview">
+
+    <h2>
+    <a href="#Overview"><span>Overview</span> </a>
+    </h2>
+<p><span>这是一个以太坊 keystore 文件的内容，我刚刚拿工具生成的：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-punctuation">{</span></span>
+<span class="line">    <span class="hl-attr">&quot;address&quot;</span><span class="hl-punctuation">:</span> <span class="hl-string">&quot;0x7579e895f588d668c181710d74cc4c0ed4c8871b&quot;</span><span class="hl-punctuation">,</span></span>
+<span class="line">    <span class="hl-attr">&quot;crypto&quot;</span><span class="hl-punctuation">:</span> <span class="hl-punctuation">{</span></span>
+<span class="line">        <span class="hl-attr">&quot;cipher&quot;</span><span class="hl-punctuation">:</span> <span class="hl-string">&quot;aes-128-ctr&quot;</span><span class="hl-punctuation">,</span></span>
+<span class="line">        <span class="hl-attr">&quot;ciphertext&quot;</span><span class="hl-punctuation">:</span> <span class="hl-string">&quot;d7e10d319e6a03bd6d4461da69c818418fc25f138bf98b854baf6fdd6feeeea5&quot;</span><span class="hl-punctuation">,</span></span>
+<span class="line">        <span class="hl-attr">&quot;cipherparams&quot;</span><span class="hl-punctuation">:</span> <span class="hl-punctuation">{</span></span>
+<span class="line">            <span class="hl-attr">&quot;iv&quot;</span><span class="hl-punctuation">:</span> <span class="hl-string">&quot;deb0e25a32ad2c8f28fa3d83c90c6a37&quot;</span></span>
+<span class="line">        <span class="hl-punctuation">}</span><span class="hl-punctuation">,</span></span>
+<span class="line">        <span class="hl-attr">&quot;kdf&quot;</span><span class="hl-punctuation">:</span> <span class="hl-string">&quot;scrypt&quot;</span><span class="hl-punctuation">,</span></span>
+<span class="line">        <span class="hl-attr">&quot;kdfparams&quot;</span><span class="hl-punctuation">:</span> <span class="hl-punctuation">{</span></span>
+<span class="line">            <span class="hl-attr">&quot;dklen&quot;</span><span class="hl-punctuation">:</span> <span class="hl-number">32</span><span class="hl-punctuation">,</span></span>
+<span class="line">            <span class="hl-attr">&quot;n&quot;</span><span class="hl-punctuation">:</span> <span class="hl-number">262144</span><span class="hl-punctuation">,</span></span>
+<span class="line">            <span class="hl-attr">&quot;p&quot;</span><span class="hl-punctuation">:</span> <span class="hl-number">1</span><span class="hl-punctuation">,</span></span>
+<span class="line">            <span class="hl-attr">&quot;r&quot;</span><span class="hl-punctuation">:</span> <span class="hl-number">8</span><span class="hl-punctuation">,</span></span>
+<span class="line">            <span class="hl-attr">&quot;salt&quot;</span><span class="hl-punctuation">:</span> <span class="hl-string">&quot;4595597c7002cfc47db91cbd1bf6faa9d9d4b45a205563537eb4e8bc33b0720b&quot;</span></span>
+<span class="line">        <span class="hl-punctuation">}</span><span class="hl-punctuation">,</span></span>
+<span class="line">        <span class="hl-attr">&quot;mac&quot;</span><span class="hl-punctuation">:</span> <span class="hl-string">&quot;2968ba58ac928feb6f95564e0083f186c4a605edfdffbbe35a7d47e0f32ed03c&quot;</span></span>
+<span class="line">    <span class="hl-punctuation">}</span><span class="hl-punctuation">,</span></span>
+<span class="line">    <span class="hl-attr">&quot;id&quot;</span><span class="hl-punctuation">:</span> <span class="hl-string">&quot;48258957-776e-40b7-9ebd-068dd8f1156a&quot;</span><span class="hl-punctuation">,</span></span>
+<span class="line">    <span class="hl-attr">&quot;version&quot;</span><span class="hl-punctuation">:</span> <span class="hl-number">3</span></span>
+<span class="line"><span class="hl-punctuation">}</span></span></code></pre>
+
+</figure>
+<p><span>在了解每个字段含义之前，后面不会再解释的基础名词如下：</span></p>
+<ul>
+<li>
+<span>私钥(private key): 长度为 </span><code>256 bit = 32 bytes</code><span> 的随机的密钥，一切加密的源头</span>
+</li>
+<li>
+<span>公钥(public key): 和私钥对应的公钥， 长度为 </span><code>512 bit = 64 bytes</code><span> ， 由 私钥 + 椭圆曲线加密 计算出来。可以由私钥推出公钥，无法从公钥推出私钥。具体的椭圆曲线算法参数 </span><a href="https://en.bitcoin.it/wiki/Secp256k1"><code>secp256k1</code></a><span> 和比特币一样。</span>
+</li>
+<li>
+<span>账户地址(address): 由公钥进行 </span><code>keccak256</code><span> hash 运算后取后20个字节，以太坊给账号作标记的地址。</span>
+</li>
+<li>
+<span>密码(password): 用于加密 </span><code>keystore</code><span> 文件的密码，可以是任意长度的字符串。保护 keystore 文件不那么容易被破解。</span>
+</li>
+</ul>
+<hr>
+<p><span>再来解释上面 JSON 文件里每个字段的含义：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-punctuation">{</span></span>
+<span class="line">    <span class="hl-attr">&quot;address&quot;</span><span class="hl-punctuation">:</span> <span class="hl-string">&quot;地址&quot;</span><span class="hl-punctuation">,</span></span>
+<span class="line">    <span class="hl-attr">&quot;crypto&quot;</span><span class="hl-punctuation">:</span> <span class="hl-punctuation">{</span></span>
+<span class="line">        <span class="hl-attr">&quot;cipher&quot;</span><span class="hl-punctuation">:</span> <span class="hl-string">&quot;使用的(对称加密的)加密方法名，默认使用对称 [AES 加密] 中的某一种&quot;</span><span class="hl-punctuation">,</span></span>
+<span class="line">        <span class="hl-attr">&quot;ciphertext&quot;</span><span class="hl-punctuation">:</span> <span class="hl-string">&quot;私钥 + 密码 被该 cipher 加密方式加密后的结果&quot;</span><span class="hl-punctuation">,</span></span>
+<span class="line">        <span class="hl-attr">&quot;cipherparams&quot;</span><span class="hl-punctuation">:</span> <span class="hl-punctuation">{</span></span>
+<span class="line">            <span class="hl-attr">&quot;iv&quot;</span><span class="hl-punctuation">:</span> <span class="hl-string">&quot;该 cipher 加密方式需要的参数 (随机初始向量) `initialisation vector` &quot;</span></span>
+<span class="line">        <span class="hl-punctuation">}</span><span class="hl-punctuation">,</span></span>
+<span class="line">        <span class="hl-attr">&quot;kdf&quot;</span><span class="hl-punctuation">:</span> <span class="hl-string">&quot;使用的(基于密码的)加密方法名，`Key-derivation function` 一般用 [Scrypt] 也支持 [PBKDF2]&quot;</span><span class="hl-punctuation">,</span></span>
+<span class="line">        <span class="hl-attr">&quot;kdfparams&quot;</span><span class="hl-punctuation">:</span> <span class="hl-punctuation">{</span> <span class="hl-comment">// 该 kdf 加密方式需要的参数，除了盐值是随机生成的，其他参数推荐使用默认。</span></span>
+<span class="line">            <span class="hl-attr">&quot;dklen&quot;</span><span class="hl-punctuation">:</span> <span class="hl-number">32</span><span class="hl-punctuation">,</span> <span class="hl-comment">// 生成的 key 的 bytes 长度</span></span>
+<span class="line">            <span class="hl-attr">&quot;n&quot;</span><span class="hl-punctuation">:</span> <span class="hl-number">262144</span><span class="hl-punctuation">,</span> <span class="hl-comment">// 迭代次数，线性影响计算难度和内存占用</span></span>
+<span class="line">            <span class="hl-attr">&quot;p&quot;</span><span class="hl-punctuation">:</span> <span class="hl-number">1</span><span class="hl-punctuation">,</span> <span class="hl-comment">// 并行计算数</span></span>
+<span class="line">            <span class="hl-attr">&quot;r&quot;</span><span class="hl-punctuation">:</span> <span class="hl-number">8</span><span class="hl-punctuation">,</span> <span class="hl-comment">// 块大小，和 n 一起线性影响计算难度和内存占用</span></span>
+<span class="line">            <span class="hl-attr">&quot;salt&quot;</span><span class="hl-punctuation">:</span> <span class="hl-string">&quot;盐值，随机生成的混淆参数&quot;</span></span>
+<span class="line">        <span class="hl-punctuation">}</span><span class="hl-punctuation">,</span></span>
+<span class="line">        <span class="hl-attr">&quot;mac&quot;</span><span class="hl-punctuation">:</span> <span class="hl-string">&quot;message authentication code 消息验证码，用于校验 password 是否正确&quot;</span></span>
+<span class="line">    <span class="hl-punctuation">}</span><span class="hl-punctuation">,</span></span>
+<span class="line">    <span class="hl-attr">&quot;id&quot;</span><span class="hl-punctuation">:</span> <span class="hl-string">&quot;随机生成的 UUID，和 keystore 加密本身关系不大&quot;</span><span class="hl-punctuation">,</span></span>
+<span class="line">    <span class="hl-attr">&quot;version&quot;</span><span class="hl-punctuation">:</span> <span class="hl-number">3</span> <span class="hl-comment">// 版本号</span></span>
+<span class="line"><span class="hl-punctuation">}</span></span></code></pre>
+
+</figure>
+<p><span>整个 keystore 的加密，通过两类加密模式(cipher + kdf)来加密密码和私钥。从而达到的效果是：只有知道密码的用户才能利用 keystore 文件解出私钥，而想要暴力破解 keystore 也比较困难。</span></p>
+<p><span>其中涉及到的加密算法 WIKI 链接：也许未来会进一步学习下啊巴啊巴</span>&hellip;</p>
+<ul>
+<li>
+<a href="https://en.wikipedia.org/wiki/Advanced_Encryption_Standard"><span>AES 加密(Advanced</span><em><span>Encryption</span></em><span>Standard)</span></a>
+</li>
+<li>
+<a href="https://en.wikipedia.org/wiki/Scrypt"><span>Scrypt</span></a>
+</li>
+<li>
+<a href="https://en.wikipedia.org/wiki/PBKDF2"><span>PBKDF2</span></a>
+</li>
+<li>
+<a href="https://en.wikipedia.org/wiki/SHA-3"><span>keccak256</span></a>
+</li>
+</ul>
+<section id="Generate-Keystore">
+
+    <h3>
+    <a href="#Generate-Keystore"><span>Generate Keystore</span> </a>
+    </h3>
+<p><span>来看看生成 keystore 的流程，目标是一个 keystore 文件和我们心中的密码，比如</span><code>"some_password"</code><span>，它蕴含了一个32字节的私钥。私钥是生成 keystore 的数据源头，所以是整个算法过程中的参数。</span></p>
+<p><span>除此之外，加上上面 JSON 文件里的众多参数里，可以分为三类：</span></p>
+<p><span>随机的输入参数，由随机器/用户定义生成的内容</span></p>
+<ul>
+<li>
+<span>用户定义，不在文件里的私钥</span>
+</li>
+<li>
+<span>用户定义，不在文件里的密码</span>
+</li>
+<li>
+<span>随机生成： </span><code>cipherparams.iv</code><span> cipher 初始向量</span>
+</li>
+<li>
+<span>随机生成： </span><code>kdfparams.salt</code><span> kdf 盐值</span>
+</li>
+</ul>
+<p><span>算法需要的参数或固定参数，控制了加密的强度或者其他标记</span></p>
+<ul>
+<li>
+<span>kdfparams.dklen/n/p/r</span>
+</li>
+<li>
+<span>version</span>
+</li>
+<li>
+<span>id</span>
+</li>
+</ul>
+<p><span>算法的计算结果，由上面两类数据生成，写入文件为了校验/使用</span></p>
+<ul>
+<li>
+<span>address： 对应了公钥</span>
+</li>
+<li>
+<span>ciphertext: 私钥加密结果</span>
+</li>
+<li>
+<span>mac： 验证码，用于在解密时验证密码是否正确</span>
+</li>
+</ul>
+<p><span>除掉相对固定的参数，整个方法可以认为是 </span><span class="math inline">\(F(prikey, password, iv, salt) \rightarrow mac, ciphertext\)</span></p>
+<p><span>另外有 </span><span class="math inline">\(G(prikey) \rightarrow pubkey, address\)</span><span> ，单独就可以生成。</span></p>
+<section id="Generate">
+
+    <h4>
+    <a href="#Generate"><span>Generate 算法步骤</span> </a>
+    </h4>
+<p><span>私钥推出公钥和地址</span></p>
+<p><span class="math display">\[G(prikey) \rightarrow pubkey, address\]</span></p>
+<p><code>password + salt</code><span> 经过 </span><code>kdf 算法(Scrypt)</code><span> 得到中间计算结果 </span><code>key (256bits 32bytes)</code></p>
+<p><span class="math display">\[Scrypt(password, salt, kdfparams) \rightarrow key\]</span></p>
+<p><code>prikey</code><span> 作为初始数据，经过对称加密 </span><code>cipher 算法(AES128)</code><span> ，应用数据：</span><code>key</code><span> 的前16字节，</span><code>iv</code><span> 的前16字节，得到加密后的 </span><code>ciphertext</code></p>
+<p><span class="math display">\[AES128(prikey, key[0..16], iv[0..16]) \rightarrow ciphertext\]</span></p>
+<p><code>key[16..32] + ciphertext</code><span> 合起来，经过 </span><code>keccak256算法</code><span> 作 hash256，得到结果 </span><code>mac</code></p>
+<p><span class="math display">\[keccak256(key[16..32] + ciphertext) \rightarrow mac\]</span></p>
+<p><span>经过这四步，即把私钥和密码加密出来，计算出了校验用的 </span><code>ciphertext</code><span> 和 </span><code>mac</code></p>
+</section>
+</section>
+<section id="Decrypt-Keystore">
+
+    <h3>
+    <a href="#Decrypt-Keystore"><span>Decrypt Keystore</span> </a>
+    </h3>
+<p><span>解码 Keystore 需要 keystore 文件和密码，密码正确的结果是解出来的密钥，密码错误会出错。</span></p>
+<section id="Decrypt">
+
+    <h4>
+    <a href="#Decrypt"><span>Decrypt 算法步骤</span> </a>
+    </h4>
+<p><span>根据输入的 </span><code>password'</code><span> 计算 </span><code>key'</code><span> ，此步骤算法同上面的 #2，因为输入和中间结果 </span><code>key</code><span> 不一定正确，后面加了一个 </span><code>'</code><span> 做区分</span></p>
+<p><span class="math display">\[Scrypt(password', salt, kdfparams) \rightarrow key'\]</span></p>
+<p><code>key'[16..32] + ciphertext</code><span> 合起来，经过 </span><code>keccak256算法</code><span> 作 hash256，得到结果 </span><code>mac'</code><span>, 和上面的步骤4一样，计算出 </span><code>mac'</code><span> 校验密码是否正确。</span></p>
+<p><span class="math display">\[keccak256(key'[16..32] + ciphertext) \rightarrow mac'\]</span></p>
+<p><span>验证 </span><code>mac'</code><span> 是否等于 </span><code>mac</code></p>
+<p><span class="math display">\[(mac'==mac)?continue:exit\]</span></p>
+<p><code>ciphertext</code><span> 作为初始数据，经过对称加密 </span><code>cipher 算法(AES128)</code><span> ，应用数据：</span><code>key'</code><span> 的前16字节，</span><code>iv</code><span> 的前16字节，恢复出私钥</span></p>
+<p><span class="math display">\[AES128(ciphertext, key'[0..16], iv[0..16]) \rightarrow prikey\]</span></p>
+</section>
+</section>
+<section id="s-1">
+
+    <h3>
+    <a href="#s-1"><span>实现</span> </a>
+    </h3>
+<p><span>加密和解密的方法，拿 </span><code>Rust</code><span> 实现了一下： </span><a href="https://github.com/CharlesLiu-TOPNetwork/keystore-rs"><span>仓库链接</span></a></p>
+</section>
+<section id="s-2">
+
+    <h3>
+    <a href="#s-2"><span>总结</span> </a>
+    </h3>
+<p><span>完整的思维导图</span></p>
+
+<figure>
+
+<img alt="2022-07/keystore.png" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2022-07/keystore.png">
+</figure>
+<p><span>推荐拓展阅读:</span></p>
+<ul>
+<li>
+<span>https://julien-maffre.medium.com/what-is-an-ethereum-keystore-file-86c8c5917b97</span>
+</li>
+<li>
+<span>https://betterprogramming.pub/understanding-ethereum-cryptography-3ef7429eddce</span>
+</li>
+<li>
+<span>https://cryptobook.nakov.com/symmetric-key-ciphers/</span>
+</li>
+</ul>
+</section>
+</section>
+]]></content>
+</entry>
+
+</feed>
