@@ -168,7 +168,7 @@ Action:
     - $ref: '#/components/schemas/Heal'
 ```
 
-但是实际情况下其它检查工具的支持不完善、语言代码生成工具不支持等问题，会导致不得不使用退化成 object 的方式来表达：
+但是这个 `oneOf` 没有 tag name，且现时情况下还有检查工具支持不完善、语言代码生成工具不识别等问题，会导致不得不使用退化成 object 的方式来表达：
 
 ```yaml
 Action:
