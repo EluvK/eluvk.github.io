@@ -7,6 +7,7 @@ TLDR: fpath 更新导致 zsh 会重做 compinit 的缓存，从而拖慢启动�
 因为一些原因，最近在频繁修改一些环境变量，每次在文件里修改完我习惯是在当前终端执行 `source ~/.zshrc` 来加载最新的配置而不是重新打开一个终端。然鹅这个过程会再次加载 zsh 的所有插件到 fpath 变量中，导致 fpath 里出现了重复的路径。而每次 fpath 变化，zsh 都会认为需要重新生成 compinit 的缓存文件，而你下一次打开一个新的终端时，fpath又恢复正常（也变化了），zsh 就又会重新执行 compinit 的过程。
 
 quote from Mr.GPT
+
 > 🚨 你的 fpath 被重复注入了同样的目录 4 次以上 ...
 
 解决方法也很简单，就是在加载插件前，先用 `typeset -U fpath` 来去重 fpath 变量即可。
@@ -35,4 +36,4 @@ source $ZSH/oh-my-zsh.sh
 
 ```
 
-compinit 缓存文件在 `~/.zcompdump*`，可以手动删除它来强制 zsh 重新生成缓存文件。
+注：compinit 缓存文件在 `~/.zcompdump*`，可以手动删除它来强制 zsh 重新生成缓存文件。
