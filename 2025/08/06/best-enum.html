@@ -1,0 +1,370 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Best Enum</title>
+  <meta name="description" content="在 Rust 吸引人的诸多优点中，Enum 肯定十分值得一提。对于从 C/C++ 转过来的开发者来说，看到这种自带 namespace 的枚举，不仅可以在一个枚举值里存储其他类型的值，甚至每个枚举值都可以有不同类型的值，实在令人耳目一新。">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2025/08/06/best-enum.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#Best-Enum"><span>Best Enum</span> <time datetime="2025-08-06">Aug 6, 2025</time></a>
+    </h1>
+<p><span>在 Rust 吸引人的诸多优点中，Enum 肯定十分值得一提。对于从 C/C++ 转过来的开发者来说，看到这种自带 namespace 的枚举，不仅可以在一个枚举值里存储其他类型的值，甚至每个枚举值都可以有不同类型的值，实在令人耳目一新。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">Message</span> {</span>
+<span class="line">    Join { id: <span class="hl-type">u32</span>, name: <span class="hl-type">String</span> },</span>
+<span class="line">    <span class="hl-title function_ invoke__">Move</span>(Point),</span>
+<span class="line">    Quit,</span>
+<span class="line">}</span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    x: <span class="hl-type">i32</span>,</span>
+<span class="line">    y: <span class="hl-type">i32</span>,</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>作为 Rust 的一等公民，也是完全融入到语言的类型系统里，最最基础的 </span><code>Option</code><span> 和 </span><code>Result</code><span> 类型都基于 Enum 实现：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">Option</span>&lt;T&gt; {</span>
+<span class="line">    <span class="hl-literal">None</span>,</span>
+<span class="line">    <span class="hl-title function_ invoke__">Some</span>(T),</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>诸如模式匹配、穷尽性检查等特性都能用上，写出的代码的抽象层度高、可读性和简洁性都很不错。</span></p>
+<section id="Algebraic-data-type-ADT">
+
+    <h2>
+    <a href="#Algebraic-data-type-ADT"><span>代数数据类型（Algebraic data type，缩写：ADT）</span> </a>
+    </h2>
+<p><span>包括 </span><strong><strong><span>和类型</span></strong></strong><span> 和 </span><strong><strong><span>积类型</span></strong></strong><span>两种。</span></p>
+<ul>
+<li>
+<span>积类型（Product Type）：表示由多种类型组合而成，总可能数等于包含的每种类型的每种可能数的乘积。</span>
+</li>
+<li>
+<span>和类型（Sum Type）：表示可以是多种类型中的一种，总可能数等于包含的每种类型的可能数之和。</span>
+</li>
+</ul>
+<p><span>如果一个语言的设计里提到了 ADT，那么通常它都会包含能覆盖这两种类型的实现。</span></p>
+<p><span>能看出 Rust 的 Enum 是和类型的，Tuple/Struct 是积类型的。</span></p>
+<section id="Product-Type-And">
+
+    <h3>
+    <a href="#Product-Type-And"><span>Product Type | And | </span><code>+</code> </a>
+    </h3>
+<p><span>比如一个 </span><code>Point</code><span> 结构体，它由两个 i32 组成，我们可以说这个 Point 包含一个 i32 </span><strong><span>和(And)</span></strong><span> 另一个 i32</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    x: <span class="hl-type">i32</span>,</span>
+<span class="line">    y: <span class="hl-type">i32</span>,</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>所有 Point 的集合会包含所有可能的 (x, y) 对。</span></p>
+</section>
+<section id="Sum-Type-Or">
+
+    <h3>
+    <a href="#Sum-Type-Or"><span>Sum Type | Or | </span><code>*</code> </a>
+    </h3>
+<p><span>比如 </span><code>Option&lt;T&gt;</code><span> 可以是 </span><code>None</code><span> </span><strong><span>或者(Or)</span></strong><span> </span><code>Some(T)</code><span>，总可能数为 1 + N（其中 N 为 </span><code>T</code><span> 的可能数）。</span></p>
+<p><span>因此通常会说 Enum 是 Sum Type 在 Rust 中的实现方式，也可以称 Enum 为 </span><a href="https://en.wikipedia.org/wiki/Tagged_union"><span>Tagged Union</span></a></p>
+<ul>
+<li>
+<span>tag (Discriminant) 表明这是哪一类枚举成员，编译器会最小化其大小，甚至一些情况下可以做到 0 大小。（niche optimization， e.g. </span><code>Option&lt;&amp;T&gt;</code><span> ）</span>
+</li>
+<li>
+<span>union (Payload) 保存枚举值的实例, 根据 tag 的不同而解释不同</span>
+</li>
+</ul>
+<p><span>Tagged Union 有很多类似含义的术语 variant/discriminated union/disjoint union/sum type/coproduct 等。</span></p>
+<p><span>这在函数式编程语言里很常见，Rust 也是从 Haskell 等语言中借鉴了这个思想。</span></p>
+</section>
+<section id="Exponential-Type-Function">
+
+    <h3>
+    <a href="#Exponential-Type-Function"><span>Exponential Type | Function | </span><code>^</code> </a>
+    </h3>
+<p><span>我们其实可以用代数的方式来表示这些类型，这里的 </span><code>×</code><span> 表示积，</span><code>+</code><span> 表示和，所有类型都可以类比成一个多项式：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">type</span> <span class="hl-title class_">Point</span> = <span class="hl-type">i32</span> * <span class="hl-type">i32</span>;</span>
+<span class="line"><span class="hl-keyword">type</span> <span class="hl-title class_">OptionT</span> = <span class="hl-number">1</span> + T;</span></code></pre>
+
+</figure>
+<p><span>实际上还有 Exponential Type（指数类型），</span><span class="math inline">\(A^B\)</span><span> 表示从 </span><span class="math inline">\(B\)</span><span> 到 </span><span class="math inline">\(A\)</span><span> 的函数类型。其可能的数为 </span><span class="math inline">\(A^{B}\)</span><span>，即 </span><span class="math inline">\(A\)</span><span> 的可能数的 </span><span class="math inline">\(B\)</span><span> 次方。那么自然我们可以把一个从 </span><span class="math inline">\(B\)</span><span> 到 </span><span class="math inline">\(A\)</span><span> 的函数认为是一个 Exponential Type。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">func</span>(b: B) <span class="hl-punctuation">-&gt;</span> A;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// 如果我们认为 func 是一个类型，那么它的类型可以表示为如下：</span></span>
+<span class="line"><span class="hl-comment">// 其包含 B 的所有可能值的个数个成员，每个成员对应一个 A 的可能值的结果</span></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">func</span> {</span>
+<span class="line">    b1: A,</span>
+<span class="line">    b2: A,</span>
+<span class="line">    <span class="hl-comment">// ...</span></span>
+<span class="line">    bn: A,</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>自然这个类型 </span><code>func</code><span> 的可能数就是 </span><span class="math inline">\(A^{B}\)</span><span>。</span></p>
+</section>
+</section>
+<section id="More-in-Enum">
+
+    <h2>
+    <a href="#More-in-Enum"><span>More in Enum</span> </a>
+    </h2>
+<section id="FixPoint">
+
+    <h3>
+    <a href="#FixPoint"><span>FixPoint</span> </a>
+    </h3>
+<p><span>如果尝试写过 Rust 里的链表，一定会对这个递归结构很熟悉：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">List</span>&lt;T&gt; {</span>
+<span class="line">    <span class="hl-title function_ invoke__">Nil</span>(),</span>
+<span class="line">    <span class="hl-title function_ invoke__">Cons</span>(T, <span class="hl-type">Box</span>&lt;List&lt;T&gt;&gt;),</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>仅作类型分析，我们稍作简化，去掉因为递归无限大小引入的 </span><code>Box</code><span>，同时假定类型 </span><code>T</code><span> 是 </span><code>i32</code><span>，那么这个链表的类型可以写成：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">IntList</span> {</span>
+<span class="line">    <span class="hl-title function_ invoke__">Nil</span>(),</span>
+<span class="line">    <span class="hl-title function_ invoke__">Cons</span>(<span class="hl-type">i32</span>, IntList), <span class="hl-comment">// missing Box, won&#x27;t compile</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><code>IntList</code><span> 类型就可以代数地表示为：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">type</span> <span class="hl-title class_">IntList</span> = <span class="hl-number">1</span> + (<span class="hl-type">i32</span> * IntList)</span></code></pre>
+
+</figure>
+<p><code>IntList</code><span> 在等式左右两边都出现了，所以这里其实是一个递归定义，实际上 </span><code>IntList</code><span> 刚好是</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">type</span> <span class="hl-title class_">IntListF</span>&lt;X&gt; = <span class="hl-number">1</span> + (<span class="hl-type">i32</span> * X)</span></code></pre>
+
+</figure>
+<p><span>的不动点，即 </span><code>IntList = IntListF(IntList)</code><span>。</span></p>
+</section>
+<section id="s-1">
+
+    <h3>
+    <a href="#s-1"><span>递归表达集合</span> </a>
+    </h3>
+<p><span>上面的递归定义，也可以让一个 Enum 表达出某个集合的所有可能值。比如所有的自然数的集合就可以用下面这个枚举来表达：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">Nat</span> {</span>
+<span class="line">    Zero,</span>
+<span class="line">    <span class="hl-title function_ invoke__">Succ</span>(<span class="hl-type">Box</span>&lt;Nat&gt;),</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><code>Nat</code><span> 的可能值就可以是所有的自然数：0, 1, 2, 3, </span>&hellip;</p>
+<p><span>如果在 </span><code>Succ</code><span> 里增加一些内容，就会演变成链表。所以可以把链表看成是自然数的一个泛化。</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>lists are natural numbers which carry content.</span></p>
+</blockquote>
+
+</figure>
+</section>
+</section>
+<section id="Enum-in-API">
+
+    <h2>
+    <a href="#Enum-in-API"><span>Enum in API</span> </a>
+    </h2>
+<p><span>其实写这篇 blog 的最最出发点是实践里多次遇到了一个问题，然后在查找相关资料时发现了一些有趣的思想记录在上面。</span></p>
+<p><span>遇到的问题就是，当我们以这种 和类型 的思想来设计了一个 API 的 schema 后，如何能让它更好用。</span></p>
+<p><span>举个例子你有一个 API </span><code>POST /action</code><span> 需要在 reqbody 里填入 </span><code>Action</code><span>，它可以是 </span><code>Move</code><span>, </span><code>Attack</code><span>, </span><code>Heal</code><span> 等等，且不同的 </span><code>Action</code><span> 会有不同的参数。那么很自然可以用类似这样的 Enum 来表达：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">Action</span> {</span>
+<span class="line">    <span class="hl-title function_ invoke__">Move</span>(Direction),</span>
+<span class="line">    <span class="hl-title function_ invoke__">Attack</span>(Target),</span>
+<span class="line">    <span class="hl-title function_ invoke__">Heal</span>(Amount),</span>
+<span class="line">}</span>
+<span class="line"><span class="hl-comment">// ... Direction, Target, Amount 等类型定义</span></span></code></pre>
+
+</figure>
+<p><span>尽管 OpenAPI 3.0 支持 </span><a href="https://swagger.io/docs/specification/v3_0/data-models/oneof-anyof-allof-not/"><code>oneOf</code><span> 语法</span></a><span>，可以写出这样的 schema：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-attr">Action:</span></span>
+<span class="line">  <span class="hl-attr">oneOf:</span></span>
+<span class="line">    <span class="hl-bullet">-</span> <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Move&#x27;</span></span>
+<span class="line">    <span class="hl-bullet">-</span> <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Attack&#x27;</span></span>
+<span class="line">    <span class="hl-bullet">-</span> <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Heal&#x27;</span></span></code></pre>
+
+</figure>
+<p><span>但是这个 </span><code>oneOf</code><span> 没有 tag name，且现时情况下还有检查工具支持不完善、语言代码生成工具不识别等问题，会导致不得不使用退化成 object 的方式来表达：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-attr">Action:</span></span>
+<span class="line">  <span class="hl-attr">type:</span> <span class="hl-string">object</span></span>
+<span class="line">  <span class="hl-attr">properties:</span></span>
+<span class="line">    <span class="hl-attr">move:</span></span>
+<span class="line">      <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Move&#x27;</span></span>
+<span class="line">    <span class="hl-attr">attack:</span></span>
+<span class="line">      <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Attack&#x27;</span></span>
+<span class="line">    <span class="hl-attr">heal:</span></span>
+<span class="line">      <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Heal&#x27;</span></span></code></pre>
+
+</figure>
+<p><span>这种方式虽然可以表达出 Action 的所有可能值，但是却失去了 Enum 的语义。所以成员都只能定义成可选的，但业务又要求</span><strong><strong><span>有且仅有一个</span></strong></strong><span>成员存在。于是就会出现许多小问题：</span></p>
+<ul>
+<li>
+<span>在接收到请求的时候不得不额外的做唯一性检查，这本该是生成工具自动完成的内容，不应该混杂在业务逻辑里</span>
+</li>
+<li>
+<span>不同语言的 SDK 代码、前端调用时都需要理解这个约束。因为它们不一定有 sum type 的概念</span>
+</li>
+</ul>
+<p><span>Not a perfect world.</span></p>
+</section>
+<section id="References-Further-Reading">
+
+    <h2>
+    <a href="#References-Further-Reading"><span>References &amp;&amp; Further Reading</span> </a>
+    </h2>
+<p><a href="https://manishearth.github.io/blog/2017/03/04/what-are-sum-product-and-pi-types/"><span>What Are Sum, Product, and Pi Types?</span></a></p>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2025-08-06-best-enum.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>
