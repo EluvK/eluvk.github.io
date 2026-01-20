@@ -1,0 +1,42 @@
+# git 拆分文件到新仓库并保留文件历史修改记录
+
+假设你需要对现存的大仓库 A 进行功能拆分，把其中的某一个模块代码完全迁移出来单独维护，但是同时你又想要保留这些文件的历史修改记录：操作方式如下：
+
+比如需要从 A 仓库里抽出 sub 模块的所有代码单独用新仓库维护：
+
+1.首先进入到 A 仓库，通过这个 subtree 命令把 src/sub 目录下的代码提取出来，生成一个新的分支 drain_sub：
+
+`git subtree split --prefix=src/sub -b drain_sub`
+
+这个过程会比较慢，因为需要遍历整个提交历史，1000+的commit，把和 src/sub 目录相关的提交都提取出来，建立了一个新的子树分支，里面只包含 src/sub 目录下的代码和相关的提交记录。
+
+耗时7min运行完成后，可以通过以下命令看出来这个分支有200多个提交
+
+`git log drain_sub --oneline | wc -l`
+
+2.切换目录去在新仓库里：
+
+把这个抽出来的分支当作一个远程分支拉取进来，因为没有任何共同历史，所以需要加上 `--allow-unrelated-histories` 参数：
+
+`git pull ../A drain_sub --allow-unrelated-histories`
+
+你就得到了一个包含所有提交历史的sub merge结果分支。
+
+3.但是这些文件大概率还不在你需要它们在的位置上，需要把它们移动到 sub/src 目录下，用 git mv 移动一下单独再提交一个提交来尽可能让git维持文件历史：
+
+```sh
+mkdir -p sub/src
+
+# 记得过滤掉不相关的文件，只移动需要的
+find . -maxdepth 1 ! -name 'sub' ! -name '.git' ! -name '.' ! -name 'README.md' -exec git mv {} ./sub/src/ \;
+git commit -m "Move sub files to sub/src directory"
+```
+
+## 参考
+
+体会到了 git 分布式的真正含义，其它非同源仓库的分支也可以视作远程仓库来进行代码的合并和迁移，这是之前没有意识到的。
+
+如果直接把这个“拆分 git ”的问题抛给AI，得到的大概率是包含 git filter-branch / git filter-repo 的方案，猜测是因为吃了这篇 [blog](https://kokkonisd.github.io/2021/06/23/import-git-history) 生成的：
+然而这两个需要三方工具又或是已废弃，不如上述的 subtree 方式简单易行。所以在先行简单搜索后，指定 AI 用 subtree 的方式来完成这个任务，就得到了上述的步骤。
+
+当然，保留三方工具可能性能更好的一点可能，因为我实际感受下来，subtree 执行的速度方式很像是用基础来逐个命令来遍历所有历史，过滤掉不相关的文件，生成的新分支，整个过程和你写了一个三方脚本来一个个 git commit reset/amend/commit 这样一样，并没有什么更内部/高效的实现。
