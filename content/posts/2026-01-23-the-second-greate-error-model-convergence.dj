@@ -1,0 +1,171 @@
+# [Translation] The Second Great Error Model Convergence
+
+编程语言错误处理模型的第二次大趋同
+
+译注：之前正好尝试在 dart/flutter 里不试用 try catch，而是手动实现一套 Result 类型来处理错误，尝试过还看了一圈社区项目最后还是放弃了这个想法。妥协于语言天然支持的错误处理模型更好用，去适应生态。
+看了这篇文章，意识了 dart 这种处于代际之间诞生的语言，出现这种
+原文链接 [The Second Great Error Model Convergence](https://matklad.github.io/2025/12/29/second-error-model-convergence.html)，全文如下：
+
+I feel like this has been said before, more than once, but I want to take a moment to note that most modern languages converged to the error management approach described in Joe Duffy's *[The Error Model](https://joeduffyblog.com/2016/02/07/the-error-model/#recoverable-errors-type-directed-exceptions)*, which is a generational shift from the previous consensus on exception handling.
+
+我觉得这个观点已经被提过不止一次了，但我还是想花点时间指出：大多数现代编程语言在错误管理方法上，都已经趋向于 Joe Duffy 在《错误模型》（*The Error Model*）中所描述的方案。这标志着编程语言界在错误处理共识上，发生了一次代际更替。
+
+C++, JavaScript, Python, Java, C# all have roughly equivalent `throw`, `catch`, `finally` constructs with roughly similar runtime semantics and typing rules. Even functional languages like Haskell, OCaml, and Scala feature exceptions prominently in their grammar, even if their usage is frowned upon by parts of the community.
+
+C++、JavaScript、Python、Java 和 C# 都拥有大致相同的 `throw`、`catch`、`finally` 结构，其运行时语义和类型规则也基本相似。甚至像 Haskell、OCaml 和 Scala 这样的函数式语言，也在语法中给予了“异常”突出的地位，尽管社区的一部分人并不推崇这种做法。
+
+But the same can be said about Go, Rust, Swift, and Zig! Their error handling is similar to each other, and quite distinct from the previous bunch, with Kotlin and Dart being notable, ahem, exceptions. Here are some commonalities of modern error handling:
+
+但同样的情况也出现在了 Go、Rust、Swift 和 Zig 身上！它们的错误处理方式彼此相似，却与前述的那一派语言截然不同（当然，Kotlin 和 Dart 是比较明显的……呃，例外）。以下是现代错误处理方式的一些共同点：
+
+*First*, and most notably, functions that can fail are annotated at the call side. While the old way looked like this:
+
+**第一点，也是最显著的一点：可能失败的函数在调用处必须进行标注。** 过去的方式是这样的：
+
+```java
+Widget widget = make_widget();
+```
+
+the new way is
+
+而现在的方式变成了这样：
+
+```rust
+let widget = make_widget()?;
+```
+
+```zig
+const widget = try make_widget();
+```
+
+```swift
+let widget = try makeWidget()
+```
+
+```go
+widget, err := makeWidget()
+if err != nil {
+    return err
+}
+```
+
+There's a syntactic marker alerting the reader that a particular operation is fallible, though the verbosity of the marker varies. For the writer, the marker ensures that changing the function contract from infallible to fallible (or vice versa) requires changing not only the function definition itself, but the entire call chain. On the other hand, adding a new error condition to a set of possible errors of a fallible function generally *doesn't* require reconsidering rethrowing call-sites.
+
+虽然标注的繁简程度各异，但都存在某种语法标记来提醒读者：该特定操作是可能出错的。对于开发者来说，这种标记确保了如果将函数从“永不失败”改为“可能失败”（反之亦然），不仅需要修改函数定义，还必须修改整个调用链。另一方面，为一个本就会失败的函数增加一种新的错误类型，通常并不需要重新审视那些负责“转发错误”的调用处是否要调整代码。
+
+*Second*, there's a separate, distinct mechanism that is invoked in case of a detectable bug. In Java, index out of bounds or null pointer dereference (examples of programming errors) use the same language machinery as operational errors. Rust, Go, Swift, and Zig use a separate panic path.
+
+**第二点，对于可检测到的 Bug，拥有一套独立且不同的处理机制。** 在 Java 中，数组越界或空指针解引用（这些属于编程错误）与业务逻辑错误使用的是同一套语言机制。而 Rust、Go、Swift 和 Zig 则使用了独立的 Panic 路径。
+
+In Go and Rust, panics unwind the stack, and they are recoverable via a library function. In Swift and Zig, panic aborts the entire process. Operational error of a lower layer can be classified as a programming error by the layer above, so there's generally a mechanism to escalate an erroneous result value to a panic. But the opposite is more important: a function which does only "ordinary" computations *can* be buggy, and *can* fail, but such failures are considered *catastrophic* and are invisible in the type system, and sufficiently transparent at runtime.
+
+在 Go 和 Rust 中，Panic 会引起调用栈回溯（Unwind），并且可以通过库函数进行恢复。在 Swift 和 Zig 中，Panic 会直接终止整个进程。底层产生的业务错误可以被上层定义为编程错误，因此通常存在一种机制将“错误结果值”升级为 Panic。但反过来的一点更为重要：一个只进行“常规”计算的函数也可能存在 Bug 并导致失败，但此类失败被视为“灾难性”的，它们在类型系统中是不可见的，在运行时则表现得足够透明（直接崩溃而非被隐式捕获）。
+
+*Third*, results of fallible computation are first-class values, as in Rust's `Result<T, E>`. There's generally little type system machinery dedicated exclusively to errors and `try` expressions are just a little more than syntax sugar for that little Go spell. This isn't true for Swift, which does treat errors specially. For example, the generic [`map`](https://www.google.com/search?q=%5Bhttps://developer.apple.com/documentation/swift/sequence/map%5D(https://developer.apple.com/documentation/swift/sequence/map)(_:)) function has to explicitly care about errors, and hard-codes the decision to bail early:
+
+**第三点，可能失败的计算结果是一等公民（First-class values），** 比如 Rust 中的 `Result<T, E>`。通常情况下，类型系统中专门用于错误的机制并不多，`try` 表达式往往只是针对那段 Go 语言式模板代码的语法糖。不过 Swift 是个例外，它确实对错误进行了特殊处理。例如，泛型的 `map` 函数必须显式处理错误，并硬编码了“一旦出错立即退出”的逻辑：
+
+```swift
+func map<T, E>(
+    _ transform: (Self.Element) throws(E) -> T
+) throws(E) -> [T] where E : Error
+```
+
+Swift does provide [first-classifier type](https://developer.apple.com/documentation/swift/result) for errors.
+
+不过，Swift 确实也为错误提供了[一等公民类型](https://developer.apple.com/documentation/swift/result)。
+
+Should you want to handle an exception, rather than propagate it, the handling is localized to a single throwing expression to deal with a single specific errors, rather than with any error from a block of statements:
+
+如果你想处理异常而不是传递它，处理逻辑通常局限在单个可能抛出异常的表达式上，针对某个具体的错误进行处理，而不是去捕获一整块语句中可能出现的任何错误：
+
+```rust
+let widget = match make_widget() {
+    Ok(it) => it,
+    Err(WidgetError::NotFound) => default_widget(),
+};
+```
+
+```zig
+let widget = make_widget() catch |err| switch (err) {
+    error.NotFound => default_widget(),
+};
+```
+
+Swift again sticks to more traditional try catch, but, interestingly, Kotlin does have `try` expressions.
+
+Swift 在这一点上再次回归了较传统的 try-catch，但有趣的是，Kotlin 确实支持 `try` 表达式。
+
+---
+
+The largest remaining variance is in what the error value looks like. This still feels like a research area. This is a hard problem due to a fundamental tension:
+
+目前剩下的最大差异在于“错误值”的具体形态。这看起来仍处于探索阶段。这是一个难题，源于一种根本性的张力：
+
+* On the one hand, at lower-levels you want to exhaustively enumerate errors to make sure that:
+  * internal error handling logic is complete and doesn't miss a case,
+  * public API doesn't leak any extra surprise error conditions.
+* On the other hand, at higher-levels, you want to string together widely different functionality from many separate subsystems without worrying about specific errors, other than:
+  * separating fallible functions from infallible,
+  * ensuring that there is some top-level handler to show a 500 error or an equivalent.
+
+* 一方面，在底层逻辑中，你希望穷举所有错误，以确保：
+  * 内部错误处理逻辑是完备的，没有遗漏任何情况；
+  * 公开 API 不会泄露任何意料之外的错误状态。
+* 另一方面，在高层逻辑中，你希望将来自多个独立子系统的、功能迥异的部分串联在一起，而不需要关心具体的错误细节，除了：
+  * 区分可能失败的函数和永不失败的函数；
+  * 确保存在某种顶层处理程序来显示 500 错误或类似的反馈。
+
+The two extremes are well understood. For exhaustiveness, nothing beats sum types (`enum`s in Rust). This I think is one of the key pieces which explains why the pendulum seemingly swung back on checked exceptions.
+
+这两个极端已经得到了很好的解决。为了实现完备性，没有什么比“和类型”（Sum types，如 Rust 中的 `enum`）更有效了。我认为这是解释为什么“钟摆”似乎又荡回“受检异常（Checked Exceptions）”的关键原因之一。
+
+In Java, a method can throw one of the several exceptions:
+
+在 Java 中，一个方法可以抛出几种异常：
+
+```java
+void f() throws FooException, BarException;
+```
+
+Critically, you *can't* abstract over this pair. The call chain has to either repeat the two cases, or type-erase them into a superclass, losing information. The former has a nasty side-effect that the entire chain needs updating if a third variant is added. Java-style checked exceptions are sensitive to "N to N + 1" transitions. Modern value-oriented error management is only sensitive to "0 to 1" transition.
+
+关键在于，你无法对这一对异常进行抽象。调用链要么必须重复这两个案例，要么将它们类型擦除（Type-erase）为一个父类，从而丢失信息。前者的副作用很糟糕：如果增加第三种异常，整个调用链都需要更新。Java 式的受检异常对“从 N 到 N+1”的变化非常敏感；现代基于值的错误管理只对‘从无到有’（即函数**是否**会失败）的变化敏感。
+
+Still, if I am back to writing Java at any point, I'd be *very* tempted to standardize on coarse-grained `throws Exception` signature for all throwing methods. This is exactly the *second* well understood extreme: there's a type-erased universal error type, and the "throwableness" of a function contains one bit of information. We only care *if* the function can throw, and the error itself can be whatever. You still can downcast dynamic error value handle specific conditions, but the downcasting is not checked by the compiler. That is, downcasting is "save" and nothing will panic in the error handling mechanism itself, but you'll never be sure if the errors you are handling can actually arise, and whether some errors *should* be handled, but aren't.
+
+尽管如此，如果我以后还要写 Java，我会非常想为所有可能抛出异常的方法统一使用粗粒度的 `throws Exception` 签名。这正是第二个已经被摸透的极端：存在一种被类型擦除的通用错误类型，函数的“可抛出性”只包含 1 比特的信息——我们只关心这个函数“是否”会抛出异常，至于错误本身是什么并不重要。你仍然可以通过向下转型（Downcast）动态错误值来处理特定情况，但这种转型不受编译器检查。也就是说，转型过程本身是“安全”的，错误处理机制不会引发 Panic，但你永远无法确定你正在处理的错误是否真的会出现，或者某些本该处理的错误是否被遗漏了。
+
+Go and Swift provide first-class universal errors, like Midori. Starting with Swift 4, you can also narrow the type down. Rust doesn't really have super strong conventions about the errors, but it started with mostly enums, and then `failure` and `anyhow` shone spotlight on the universal error type.
+
+Go 和 Swift 提供了一等公民级别的通用错误类型，就像 Midori 项目一样。从 Swift 4 开始，你还可以缩小类型的范围。Rust 在错误约定上并不是特别强势，它最初主要使用枚举，后来 `failure` 和 `anyhow` 等库让通用错误类型受到了关注。
+
+But overall, it feels like "midpoint" error handling is poorly served by either extreme. In larger applications, you sorta care about error kinds, and there are usually a few place where it is pretty important to be exhaustive in your handling, but threading necessary types to those few places infects the rest of the codebases, and ultimately leads to "a bag of everything" error types with many "dead" variants.
+
+但总的来说，对于‘中等复杂度’的错误处理场景，这两个极端方案都显得有些力不从心。在大型应用中，你或多或少会关心错误的种类，通常有那么几个地方，完备的处理逻辑非常重要。然而，为了将必要的类型传递到这几个地方，往往会污染整个代码库，最终导致产生一个包含所有可能性的“全家桶”错误类型，其中充斥着许多“死代码”变体。
+
+Zig makes an interesting choice of assuming mostly closed-world compilation model, and relying on cross-function inference to learn who can throw what.
+
+Zig 做出了一个有趣的抉择：它主要假设一种“闭合世界”的编译模型，并依赖跨函数推导（自动错误集推导）来了解哪个函数可能抛出什么错误。
+
+---
+
+What I find the most fascinating about the story is the generational aspect. There really was a strong consensus about exceptions, and then [an agreement that checked exceptions are a failure](https://www.artima.com/articles/the-trouble-with-checked-exceptions), and now, suddenly, we are back to "checked exceptions" with a twist, in the form of "errors are values" philosophy. What happened between the lull of the naughts and the past decade industrial PLT renaissance?
+
+在这个故事中，最令我着迷的是其代际特征。曾经，人们对“异常”有着强大的共识；随后，大家又一致认为“受检异常是一个失败的设计”；而现在，突然之间，我们又以“错误即值”的哲学形式，回到了“受检异常”的道路上，只是多了一点新花样。在 21 世纪初的沉寂期与过去十年间工业级编程语言理论（PLT）的复兴之间，究竟发生了什么？
+
+## 译注：关于 Midori
+
+[Midori](https://en.wikipedia.org/wiki/Midori_(operating_system)) 是微软在 2008 年开始研发的一个实验性操作系统项目，旨在探索基于托管代码和现代编程语言的操作系统设计。Midori 的设计理念强调安全性、可靠性和高效性，采用了许多创新的技术和概念，包括一种独特的错误处理模型。
+
+虽然 Midori 最终没有成为商业产品，但它沉淀出的技术思想直接影响了后来的 C#、Rust、Swift 和 Zig。
+
+**Joe Duffy 在 Midori 中确立的核心原则：**
+
+1. **区分“编程错误”与“运行错误”：** 这是 Midori 最伟大的贡献之一。
+   * **编程错误（Bugs）：** 如数组越界、空指针。这些是逻辑错误，应该通过 **Panic/Abandonment** 让程序立即崩溃，而不是尝试捕获它。
+   * **可恢复错误（Recoverable Errors）：** 如网络连接失败、文件未找到。这些是正常的业务逻辑，必须在类型系统中显式表现出来。
+
+2. **性能必须等同于返回整数：** 传统的异常机制（抛出、堆栈回溯）太慢。Midori 提出错误处理应该像返回一个整数或指针一样高效，这也是为什么现代语言倾向于使用 `Result<T, E>` 这种基于值的模型。
+
+3. **强迫显式性：** 在 Midori 语言中，任何可能抛出异常的函数调用都必须标记 `try` 或 `?`。这种做法被后来的 Rust 和 Zig 完美继承，终结了 Java 式“隐式异常”带来的不确定性。
