@@ -3,7 +3,7 @@
 编程语言错误处理模型的第二次大趋同
 
 译注：之前正好尝试在 dart/flutter 里不试用 try catch，而是手动实现一套 Result 类型来处理错误，尝试过还看了一圈社区项目最后还是放弃了这个想法。妥协于语言天然支持的错误处理模型更好用，去适应生态。
-看了这篇文章，意识了 dart 这种处于代际之间诞生的语言，出现这种
+看了这篇文章，意识了 dart 这种处于代际之间诞生的语言，确实容易在异常和 Result 类型之间产生纠结。
 原文链接 [The Second Great Error Model Convergence](https://matklad.github.io/2025/12/29/second-error-model-convergence.html)，全文如下：
 
 I feel like this has been said before, more than once, but I want to take a moment to note that most modern languages converged to the error management approach described in Joe Duffy's *[The Error Model](https://joeduffyblog.com/2016/02/07/the-error-model/#recoverable-errors-type-directed-exceptions)*, which is a generational shift from the previous consensus on exception handling.
