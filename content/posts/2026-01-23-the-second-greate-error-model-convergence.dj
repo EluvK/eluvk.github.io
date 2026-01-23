@@ -156,7 +156,7 @@ What I find the most fascinating about the story is the generational aspect. The
 
 ## 译注：关于 Midori
 
-[Midori](<https://en.wikipedia.org/wiki/Midori_(operating_system)>) 是微软在 2008 年开始研发的一个实验性操作系统项目，旨在探索基于托管代码和现代编程语言的操作系统设计。Midori 的设计理念强调安全性、可靠性和高效性，采用了许多创新的技术和概念，包括一种独特的错误处理模型。
+[Midori](https://en.wikipedia.org/wiki/Midori_(operating_system%29) 是微软在 2008 年开始研发的一个实验性操作系统项目，旨在探索基于托管代码和现代编程语言的操作系统设计。Midori 的设计理念强调安全性、可靠性和高效性，采用了许多创新的技术和概念，包括一种独特的错误处理模型。
 
 虽然 Midori 最终没有成为商业产品，但它沉淀出的技术思想直接影响了后来的 C#、Rust、Swift 和 Zig。
 
