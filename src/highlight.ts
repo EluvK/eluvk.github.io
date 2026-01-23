@@ -7,12 +7,12 @@ hljs.configure({ classPrefix: "hl-" });
 import latex from "highlightjs/languages/latex.min.js";
 // import nix from "highlightjs/languages/nix.min.js";
 // import x86asm from "highlightjs/languages/x86asm.min.js";
-// import zig from "./highlightjs-zig.js";
+import zig from "./highlightjs-zig.js";
 
 hljs.registerLanguage("latex", latex);
 // hljs.registerLanguage("nix", nix);
 // hljs.registerLanguage("x86asm", x86asm);
-// hljs.registerLanguage("Zig", zig);
+hljs.registerLanguage("Zig", zig);
 hljs.registerLanguage("ungrammar", () => ({
   name: "ungrammar",
   contains: [
