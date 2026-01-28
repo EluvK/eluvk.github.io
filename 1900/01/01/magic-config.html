@@ -1,0 +1,201 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Magic Config</title>
+  <meta name="description" content="hate to use these wubalubadubdub things.">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/1900/01/01/magic-config.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#Magic-Config"><span>Magic Config</span> <time datetime="1900-01-01">Jan 1, 1900</time></a>
+    </h1>
+<p><span>hate to use these wubalubadubdub things.</span></p>
+<section id="cargo-rustup">
+
+    <h2>
+    <a href="#cargo-rustup"><span>cargo &amp;&amp; rustup</span> </a>
+    </h2>
+<section id="s-1">
+
+    <h3>
+    <a href="#s-1"><span>官方源如果不行国内推荐使用字节源</span> </a>
+    </h3>
+<p><a href="https://rsproxy.cn/"><span>rsproxy.cn</span></a><span> 字节源支持了 sparse-index.</span></p>
+<p><span>file </span><code>~/.zshrc</code></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-built_in">export</span> RUSTUP_DIST_SERVER=<span class="hl-string">&quot;https://rsproxy.cn&quot;</span></span>
+<span class="line"><span class="hl-built_in">export</span> RUSTUP_UPDATE_ROOT=<span class="hl-string">&quot;https://rsproxy.cn/rustup&quot;</span></span></code></pre>
+
+</figure>
+<p><code>RUSTUP_DIST_SERVER="https://rsproxy.cn RUSTUP_UPDATE_ROOT="https://rsproxy.cn/rustup rustup update</code></p>
+<p><span>file </span><code>~/.cargo/config</code></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">[source.crates-io]</span>
+<span class="line">replace-with = &#x27;rsproxy-sparse&#x27;</span>
+<span class="line">[source.rsproxy]</span>
+<span class="line">registry = &quot;https://rsproxy.cn/crates.io-index&quot;</span>
+<span class="line">[source.rsproxy-sparse]</span>
+<span class="line">registry = &quot;sparse+https://rsproxy.cn/index/&quot;</span>
+<span class="line">[registries.rsproxy]</span>
+<span class="line">index = &quot;https://rsproxy.cn/crates.io-index&quot;</span>
+<span class="line">[net]</span>
+<span class="line">git-fetch-with-cli = true</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="git">
+
+    <h2>
+    <a href="#git"><span>git</span> </a>
+    </h2>
+<section id="default-replace-https-to-ssh">
+
+    <h3>
+    <a href="#default-replace-https-to-ssh"><span>default replace https to ssh</span> </a>
+    </h3>
+<p><span>file </span><code>~/.gitconfig</code></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">[url &quot;git@github.com:&quot;]</span>
+<span class="line">    insteadOf = https://github.com/</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="ssh">
+
+    <h2>
+    <a href="#ssh"><span>ssh</span> </a>
+    </h2>
+<section id="ssh-use-proxy">
+
+    <h3>
+    <a href="#ssh-use-proxy"><span>ssh use proxy</span> </a>
+    </h3>
+<p><span>file </span><code>~/.ssh/config</code></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"># github</span>
+<span class="line">    Host github.com</span>
+<span class="line">    HostName github.com</span>
+<span class="line">    IdentityFile ~/.ssh/id_ed25519</span>
+<span class="line">    ProxyCommand nc -X5 -x 127.0.0.1:1080 %h %p</span></code></pre>
+
+</figure>
+<p><span>for windows user: </span><code>ProxyCommand connect -S 127.0.0.1:1080 %h %p</code></p>
+</section>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/1900-01-01-magic-config.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>

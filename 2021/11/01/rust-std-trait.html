@@ -1,0 +1,1529 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rust Standard library trait</title>
+  <meta name="description" content="原 blog">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2021/11/01/rust-std-trait.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#Rust-Standard-library-trait"><span>Rust Standard library trait</span> <time datetime="2021-11-01">Nov 1, 2021</time></a>
+    </h1>
+<p><a href="https://github.com/pretzelhammer/rust-blog/blob/master/posts/tour-of-rusts-standard-library-traits.md"><span>原 blog</span></a></p>
+<section id="1-Generic-Type-vs-Associated-Type">
+
+    <h2>
+    <a href="#1-Generic-Type-vs-Associated-Type"><span>1. Generic Type vs Associated Type</span> </a>
+    </h2>
+<section id="1-1-Knowledge">
+
+    <h3>
+    <a href="#1-1-Knowledge"><span>1.1. Knowledge</span> </a>
+    </h3>
+<p><span>Both generic types and associated types defer the decision to the implementer on which concrete types should be used in the trait</span>&rsquo;<span>s functions and methods, so this section seeks to explain when to use one over the other.</span></p>
+<p><span>The general rule-of-thumb is:</span></p>
+<ul>
+<li>
+<span>Use associated types when there should only be a single impl of the trait per type.</span>
+</li>
+<li>
+<span>Use generic types when there can be many possible impls of the trait per type.</span>
+</li>
+</ul>
+<p><span>Let</span>&rsquo;<span>s say we want to define a trait called </span><code>Add</code><span> which allows us to add values together. Here</span>&rsquo;<span>s an initial design and impl that only uses associated types:</span></p>
+</section>
+<section id="1-2-Playground-Code">
+
+    <h3>
+    <a href="#1-2-Playground-Code"><span>1.2. Playground Code</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Add</span>&lt;Rhs&gt; {</span>
+<span class="line">    <span class="hl-comment">// Rhs is generic type, which can define multi type with multi implement</span></span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Output</span>; <span class="hl-comment">// Output is associated type, which can define only one type with multi implement</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">add</span>(<span class="hl-keyword">self</span>, rhs: Rhs) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">Self</span>::Output;</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    x: <span class="hl-type">i32</span>,</span>
+<span class="line">    y: <span class="hl-type">i32</span>,</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Add</span>&lt;Point&gt; <span class="hl-keyword">for</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Output</span> = Point;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">add</span>(<span class="hl-keyword">self</span>, rhs: Point) <span class="hl-punctuation">-&gt;</span> Point {</span>
+<span class="line">        Point {</span>
+<span class="line">            x: <span class="hl-keyword">self</span>.x + rhs.x,</span>
+<span class="line">            y: <span class="hl-keyword">self</span>.y + rhs.y,</span>
+<span class="line">        }</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Add</span>&lt;<span class="hl-type">i32</span>&gt; <span class="hl-keyword">for</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Output</span> = Point;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">add</span>(<span class="hl-keyword">self</span>, rhs: <span class="hl-type">i32</span>) <span class="hl-punctuation">-&gt;</span> Point {</span>
+<span class="line">        Point {</span>
+<span class="line">            x: <span class="hl-keyword">self</span>.x + rhs,</span>
+<span class="line">            y: <span class="hl-keyword">self</span>.y + rhs,</span>
+<span class="line">        }</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Add</span>&lt;<span class="hl-type">u32</span>&gt; <span class="hl-keyword">for</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Output</span> = <span class="hl-type">u32</span>; <span class="hl-comment">// it&#x27;s ok because above `Add&lt;u32&gt;` is different with any other implement.</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">add</span>(<span class="hl-keyword">self</span>, rhs: <span class="hl-type">u32</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">u32</span> {</span>
+<span class="line">        rhs</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// impl Add&lt;u32&gt; for Point{ // conflicting implementations of trait `Add&lt;u32&gt;` for type `Point`</span></span>
+<span class="line"><span class="hl-comment">//     type Output = i32; // not allowed!</span></span>
+<span class="line"><span class="hl-comment">//     fn add(self, rhs:u32) -&gt; i32 {</span></span>
+<span class="line"><span class="hl-comment">//         rhs as i32</span></span>
+<span class="line"><span class="hl-comment">//     }</span></span>
+<span class="line"><span class="hl-comment">// }</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">xx</span>: Point = Point { x: <span class="hl-number">3</span>, y: <span class="hl-number">4</span> };</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">yy</span>: Point = Point { x: <span class="hl-number">5</span>, y: <span class="hl-number">6</span> };</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">xx</span> = xx.<span class="hl-title function_ invoke__">add</span>(yy);</span>
+<span class="line">    <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;{}:{}&quot;</span>, xx.x, xx.y); <span class="hl-comment">// 8:10</span></span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">xx</span> = xx.<span class="hl-title function_ invoke__">add</span>(<span class="hl-number">3</span> <span class="hl-keyword">as</span> <span class="hl-type">i32</span>);</span>
+<span class="line">    <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;{}:{}&quot;</span>, xx.x, xx.y); <span class="hl-comment">// 11:13</span></span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">xx</span> = xx.<span class="hl-title function_ invoke__">add</span>(<span class="hl-number">3</span> <span class="hl-keyword">as</span> <span class="hl-type">u32</span>);</span>
+<span class="line">    <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;{}&quot;</span>, xx); <span class="hl-comment">// 3</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="2-SubTrait-SuperTrait">
+
+    <h2>
+    <a href="#2-SubTrait-SuperTrait"><span>2. SubTrait &amp;&amp; SuperTrait</span> </a>
+    </h2>
+<section id="2-1-Knowledge">
+
+    <h3>
+    <a href="#2-1-Knowledge"><span>2.1. Knowledge</span> </a>
+    </h3>
+<p><span>The </span>&ldquo;<span>sub</span>&rdquo;<span> in </span>&ldquo;<span>subtrait</span>&rdquo;<span> refers to subset and the </span>&ldquo;<span>super</span>&rdquo;<span> in </span>&ldquo;<span>supertrait</span>&rdquo;<span> refers to superset. If we have this trait declaration:</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Subtrait</span>: Supertrait {}</span></code></pre>
+
+</figure>
+<p><span>All of the types which impl Subtrait are a subset of all the types which impl Supertrait, or to put it in opposite but equivalent terms: all the types which impl Supertrait are a superset of all the types which impl Subtrait.</span></p>
+<p><span>Also, the above is just syntax sugar for:</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">`<span class="hl-keyword">trait</span> <span class="hl-title class_">Subtrait</span> <span class="hl-keyword">where</span> <span class="hl-keyword">Self</span>: Supertrait {}`</span></code></pre>
+
+</figure>
+</section>
+<section id="2-2-Comprehensive-Infos">
+
+    <h3>
+    <a href="#2-2-Comprehensive-Infos"><span>2.2. Comprehensive Infos</span> </a>
+    </h3>
+<p><span>The relationship between subtraits and supertraits is: subtraits </span><strong><strong><span>refine</span></strong></strong><span> their supertraits.</span>
+<strong><strong>&ldquo;<span>Refinement</span>&rdquo;</strong></strong><span> can mean different things in different contexts:</span></p>
+<ul>
+<li>
+<span>a subtrait might make its supertrait</span>&rsquo;<span>s methods</span>&rsquo;<span> impls more specialized, faster, use less memory, e.g. Copy: Clone</span>
+</li>
+<li>
+<span>a subtrait might make additional guarantees about the supertrait</span>&rsquo;<span>s methods</span>&rsquo;<span> impls, e.g. Eq: PartialEq, Ord: PartialOrd, ExactSizeIterator: Iterator</span>
+</li>
+<li>
+<span>a subtrait might make the supertrait</span>&rsquo;<span>s methods more flexible or easier to call, e.g. FnMut: FnOnce, Fn: FnMut</span>
+</li>
+<li>
+<span>a subtrait might extend a supertrait and add new methods, e.g. DoubleEndedIterator: Iterator, ExactSizeIterator: Iterator</span>
+</li>
+</ul>
+</section>
+<section id="2-3-Playground-Code">
+
+    <h3>
+    <a href="#2-3-Playground-Code"><span>2.3. Playground Code</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Supertrait</span> {</span>
+<span class="line">    <span class="hl-comment">// fn method(&amp;self);</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">method</span>(&amp;<span class="hl-keyword">self</span>) {</span>
+<span class="line">        <span class="hl-comment">// trait with default method implement</span></span>
+<span class="line">        <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;default Supertrait method&quot;</span>)</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Subtrait</span>: Supertrait {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">method</span>(&amp;<span class="hl-keyword">self</span>);</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Test</span>;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Supertrait</span> <span class="hl-keyword">for</span> <span class="hl-title class_">Test</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">method</span>(&amp;<span class="hl-keyword">self</span>) {</span>
+<span class="line">        <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;in Supertrait&quot;</span>);</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// empty</span></span>
+<span class="line"><span class="hl-comment">// impl Supertrait for Test {}</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Subtrait</span> <span class="hl-keyword">for</span> <span class="hl-title class_">Test</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">method</span>(&amp;<span class="hl-keyword">self</span>) {</span>
+<span class="line">        <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;in Subtrait&quot;</span>);</span>
+<span class="line">        Supertrait::<span class="hl-title function_ invoke__">method</span>(<span class="hl-keyword">self</span>);</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">st</span> = Test {};</span>
+<span class="line">    <span class="hl-comment">// st.method();</span></span>
+<span class="line">    &lt;Test <span class="hl-keyword">as</span> Supertrait&gt;::<span class="hl-title function_ invoke__">method</span>(&amp;st);</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="3-PartialEq-Eq-trait">
+
+    <h2>
+    <a href="#3-PartialEq-Eq-trait"><span>3. PartialEq &amp;&amp; Eq trait</span> </a>
+    </h2>
+<section id="3-1-Knowledge">
+
+    <h3>
+    <a href="#3-1-Knowledge"><span>3.1. Knowledge</span> </a>
+    </h3>
+<p><span>这两个 traits 的名称实际上来自于抽象代数中的等价关系和局部等价关系。</span></p>
+</section>
+<section id="3-2-equivalence-relation">
+
+    <h3>
+    <a href="#3-2-equivalence-relation"><span>3.2. </span><strong><strong><span>等价关系</span></strong></strong><span>（equivalence relation）</span> </a>
+    </h3>
+<p><span>设 R 是非空集合 A 上的二元关系，若 R 是自反的、对称的、传递的，则称 R 是 A 上的等价关系。</span></p>
+<ul>
+<li>
+<span>自反性(reflexivity)：</span><code>∀ a ∈A, =&gt; (a, a) ∈ R</code>
+</li>
+<li>
+<span>对称性(symmetry)：</span><code>(a, b) ∈R∧ a ≠ b =&gt; (b, a)∈R</code>
+</li>
+<li>
+<span>传递性(transitivity)：</span><code>(a, b)∈R,(b, c)∈R =&gt;(a, c)∈R</code>
+</li>
+</ul>
+<p><span>说人话版本：</span></p>
+<ul>
+<li>
+<span>自反性：满足 </span><code>a==a</code>
+</li>
+<li>
+<span>对称性：</span><code>if a==b than b==a</code>
+</li>
+<li>
+<span>传递性：</span><code>if a==b &amp;&amp; b==c than a==c</code>
+</li>
+</ul>
+</section>
+<section id="3-3-PartialEq">
+
+    <h3>
+    <a href="#3-3-PartialEq"><span>3.3. PartialEq</span> </a>
+    </h3>
+<p><span>对应局部等价关系，只满足对称性和传递性，不满足自反性。</span>
+<span>比如浮点数，</span><code>NaN!=NaN</code></p>
+</section>
+<section id="3-4-Eq">
+
+    <h3>
+    <a href="#3-4-Eq"><span>3.4. Eq</span> </a>
+    </h3>
+<p><span>对应等价关系，满足 </span><code>PartialEq</code><span> 的同时满足 </span><code>Eq</code>
+<span>在 Rust 中，</span><code>Eq</code><span> 的实现实际上是空的（也叫 </span><code>Marker Traits</code><span>），</span><code>Trait Eq</code><span> 是 </span><code>Trait PartialEq</code><span> 的 </span><code>Subtrait</code><span>，</span><code>Trait Eq</code><span> 需要的 </span><code>method</code><span>:</span><code>fn eq(&amp;self, other: &amp;Self) -&gt; bool</code><span>，已经在 </span><code>Trait Partial</code><span> 里实现了，声明 </span><code>Eq</code><span> 额外告诉编译器</span><strong><strong><span>这个类型满足自反性</span></strong></strong><span>这么个信息。</span></p>
+</section>
+<section id="3-5-Marker-Traits">
+
+    <h3>
+    <a href="#3-5-Marker-Traits"><span>3.5. Marker Traits</span> </a>
+    </h3>
+
+<figure class="blockquote">
+<blockquote><p><span>Marker traits are traits that have no trait items. Their job is to </span>&ldquo;<span>mark</span>&rdquo;<span> the implementing type as having some property which is otherwise not possible to represent using the type system.</span></p>
+</blockquote>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// Impling PartialEq for a type promises</span></span>
+<span class="line"><span class="hl-comment">// that equality for the type has these properties:</span></span>
+<span class="line"><span class="hl-comment">// - symmetry: a == b implies b == a, and</span></span>
+<span class="line"><span class="hl-comment">// - transitivity: a == b &amp;&amp; b == c implies a == c</span></span>
+<span class="line"><span class="hl-comment">// But DOES NOT promise this property:</span></span>
+<span class="line"><span class="hl-comment">// - reflexivity: a == a</span></span>
+<span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">PartialEq</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">eq</span>(&amp;<span class="hl-keyword">self</span>, other: &amp;<span class="hl-keyword">Self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">bool</span>;</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// Eq has no trait items! The eq method is already</span></span>
+<span class="line"><span class="hl-comment">// declared by PartialEq, but &quot;impling&quot; Eq</span></span>
+<span class="line"><span class="hl-comment">// for a type promises this additional equality property:</span></span>
+<span class="line"><span class="hl-comment">// - reflexivity: a == a</span></span>
+<span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Eq</span>: <span class="hl-built_in">PartialEq</span> {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// f64 impls PartialEq but not Eq because NaN != NaN</span></span>
+<span class="line"><span class="hl-comment">// i32 impls PartialEq &amp; Eq because there&#x27;s no NaNs :)</span></span></code></pre>
+
+</figure>
+</section>
+<section id="3-6-Implement">
+
+    <h3>
+    <a href="#3-6-Implement"><span>3.6. Implement</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">PartialEq</span>&lt;Rhs = <span class="hl-keyword">Self</span>&gt; </span>
+<span class="line"><span class="hl-keyword">where</span></span>
+<span class="line">    Rhs: ?<span class="hl-built_in">Sized</span>, </span>
+<span class="line">{</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">eq</span>(&amp;<span class="hl-keyword">self</span>, other: &amp;Rhs) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">bool</span>;</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-comment">// provided default impls</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">ne</span>(&amp;<span class="hl-keyword">self</span>, other: &amp;Rhs) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">bool</span>;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="3-7-Productive">
+
+    <h3>
+    <a href="#3-7-Productive"><span>3.7. Productive</span> </a>
+    </h3>
+<p><span>手动实现 </span><code>PartialEq</code></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Point</span>{</span>
+<span class="line">    x: <span class="hl-type">i32</span>,</span>
+<span class="line">    y: <span class="hl-type">i32</span></span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// Rhs == Self == Point</span></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">PartialEq</span> <span class="hl-keyword">for</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    <span class="hl-comment">// impl automatically symmetric &amp; transitive</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">eq</span>(&amp;<span class="hl-keyword">self</span>, other: &amp;Point) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">bool</span> {</span>
+<span class="line">        <span class="hl-keyword">self</span>.x == other.x &amp;&amp; <span class="hl-keyword">self</span>.y == other.y</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>自动实现:</span><code>PartialEq</code></p>
+<p><span>If all the members of a type impl </span><code>PartialEq</code><span> then it can be derived:</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-meta">#[derive(PartialEq)]</span></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    x: <span class="hl-type">i32</span>,</span>
+<span class="line">    y: <span class="hl-type">i32</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>引用类型的比较也会被自动实现</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>Once we impl </span><code>PartialEq</code><span> for our type we also get equality comparisons between references of our type for free thanks to these generic blanket impls:</span></p>
+</blockquote>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// this impl only gives us: Point == Point</span></span>
+<span class="line"><span class="hl-meta">#[derive(PartialEq)]</span></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    x: <span class="hl-type">i32</span>,</span>
+<span class="line">    y: <span class="hl-type">i32</span></span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// all of the generic blanket impls below</span></span>
+<span class="line"><span class="hl-comment">// are provided by the standard library</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// this impl gives us: &amp;Point == &amp;Point</span></span>
+<span class="line"><span class="hl-keyword">impl</span>&lt;A, B&gt; <span class="hl-built_in">PartialEq</span>&lt;&amp;<span class="hl-symbol">&#x27;_</span> B&gt; <span class="hl-keyword">for</span> &amp;<span class="hl-symbol">&#x27;_</span> A</span>
+<span class="line"><span class="hl-keyword">where</span> A: <span class="hl-built_in">PartialEq</span>&lt;B&gt; + ?<span class="hl-built_in">Sized</span>, B: ?<span class="hl-built_in">Sized</span>;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// this impl gives us: &amp;mut Point == &amp;Point</span></span>
+<span class="line"><span class="hl-keyword">impl</span>&lt;A, B&gt; <span class="hl-built_in">PartialEq</span>&lt;&amp;<span class="hl-symbol">&#x27;_</span> B&gt; <span class="hl-keyword">for</span> &amp;<span class="hl-symbol">&#x27;_</span> <span class="hl-keyword">mut</span> A</span>
+<span class="line"><span class="hl-keyword">where</span> A: <span class="hl-built_in">PartialEq</span>&lt;B&gt; + ?<span class="hl-built_in">Sized</span>, B: ?<span class="hl-built_in">Sized</span>;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// this impl gives us: &amp;Point == &amp;mut Point</span></span>
+<span class="line"><span class="hl-keyword">impl</span>&lt;A, B&gt; <span class="hl-built_in">PartialEq</span>&lt;&amp;<span class="hl-symbol">&#x27;_</span> <span class="hl-keyword">mut</span> B&gt; <span class="hl-keyword">for</span> &amp;<span class="hl-symbol">&#x27;_</span> A</span>
+<span class="line"><span class="hl-keyword">where</span> A: <span class="hl-built_in">PartialEq</span>&lt;B&gt; + ?<span class="hl-built_in">Sized</span>, B: ?<span class="hl-built_in">Sized</span>;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// this impl gives us: &amp;mut Point == &amp;mut Point</span></span>
+<span class="line"><span class="hl-keyword">impl</span>&lt;A, B&gt; <span class="hl-built_in">PartialEq</span>&lt;&amp;<span class="hl-symbol">&#x27;_</span> <span class="hl-keyword">mut</span> B&gt; <span class="hl-keyword">for</span> &amp;<span class="hl-symbol">&#x27;_</span> <span class="hl-keyword">mut</span> A</span>
+<span class="line"><span class="hl-keyword">where</span> A: <span class="hl-built_in">PartialEq</span>&lt;B&gt; + ?<span class="hl-built_in">Sized</span>, B: ?<span class="hl-built_in">Sized</span>;</span></code></pre>
+
+</figure>
+</section>
+<section id="3-8-Noted">
+
+    <h3>
+    <a href="#3-8-Noted"><span>3.8. Noted</span> </a>
+    </h3>
+
+<figure class="blockquote">
+<blockquote><p><span>Generally, we should only impl equality between different types if they contain the same kind of data and the only difference between the types is how they represent the data or how they allow interacting with the data.</span></p>
+<p><span>通常来说我们仅会实现相同类型之间的可相等性，除非两种类型虽然包含同一类数据，但又有表达形式或交互形式的差异，这时我们才会考虑实现不同类型之间的可相等性。</span></p>
+</blockquote>
+
+</figure>
+<p><span>原 Blog 里举得糟糕的扑克牌花色和大小的问题，也说明了 </span><code>PartialEq</code><span> 并不能理解为其内容里有一部分相等。本质上它应该是就是 </span><code>Eq</code><span>，只是不满足自反性的 Eq。</span>
+<span>胡乱的实现两个不同 type 的 </span><code>PartialEq</code><span> 最终会自相矛盾，扑克牌的例子用类似于 </span><code>fn Card.is_suit(shade: Shade) -&gt; bool</code><span> 的 </span><code>methods</code><span>，会合理的多。</span></p>
+</section>
+</section>
+<section id="4-PartialOrd-Ord-trait">
+
+    <h2>
+    <a href="#4-PartialOrd-Ord-trait"><span>4. PartialOrd &amp;&amp; Ord trait</span> </a>
+    </h2>
+<section id="4-1-PartialOrd">
+
+    <h3>
+    <a href="#4-1-PartialOrd"><span>4.1. PartialOrd</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">Ordering</span> {</span>
+<span class="line">    Less,</span>
+<span class="line">    Equal,</span>
+<span class="line">    Greater,</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">PartialOrd</span>&lt;Rhs = <span class="hl-keyword">Self</span>&gt;: <span class="hl-built_in">PartialEq</span>&lt;Rhs&gt; </span>
+<span class="line"><span class="hl-keyword">where</span></span>
+<span class="line">    Rhs: ?<span class="hl-built_in">Sized</span>, </span>
+<span class="line">{</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">partial_cmp</span>(&amp;<span class="hl-keyword">self</span>, other: &amp;Rhs) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Option</span>&lt;Ordering&gt;;</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-comment">// provided default impls</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">lt</span>(&amp;<span class="hl-keyword">self</span>, other: &amp;Rhs) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">bool</span>;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">le</span>(&amp;<span class="hl-keyword">self</span>, other: &amp;Rhs) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">bool</span>;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">gt</span>(&amp;<span class="hl-keyword">self</span>, other: &amp;Rhs) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">bool</span>;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">ge</span>(&amp;<span class="hl-keyword">self</span>, other: &amp;Rhs) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">bool</span>;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><code>PartialOrd</code><span> is a subtrait of </span><code>PartialEq</code><span> and their impls </span><strong><strong><span>must always agree with each other</span></strong></strong><span>.</span></p>
+<p><span>The </span><code>lt</code><span>, </span><code>le</code><span>, </span><code>gt</code><span>, and </span><code>ge</code><span> methods of this trait can be called using the </span><code>&lt;</code><span>, </span><code>&lt;=</code><span>, </span><code>&gt;</code><span>, and </span><code>&gt;=</code><span> operators, respectively.</span></p>
+<p><span>All </span><code>PartialOrd</code><span> impls must ensure that comparisons are </span><strong><strong><span>transitive</span></strong></strong><span> and </span><strong><strong><span>duality</span></strong></strong><span>. That means for all a, b, and c:</span></p>
+<ul>
+<li>
+<strong><strong><span>transitive</span></strong></strong><span>: </span><code>a &lt; b</code><span> and </span><code>b &lt; c</code><span> implies </span><code>a &lt; c</code><span>. The same must hold for both </span><code>==</code><span> and </span><code>&gt;</code><span>.</span>
+</li>
+<li>
+<strong><strong><span>duality</span></strong></strong><span>: </span><code>a &lt; b</code><span> if and only if </span><code>b &gt; a</code><span>.</span>
+</li>
+</ul>
+
+<figure class="blockquote">
+<blockquote><p><span>noted that the original blog use older version </span><code>asymmetry</code><span>, which was delete in rust-lang this </span><a href="https://github.com/rust-lang/rust/pull/85637"><span>PR: pull/85637</span></a></p>
+<p><span>and here quote the </span><a href="https://github.com/rust-lang/rust/pull/85637/files/1cfc1874b526fd8a681ebfaf64c554077586c8b1"><span>reason</span></a></p>
+<p><span>/// - asymmetry: if </span><code>a &lt; b</code><span> then </span><code>!(a &gt; b)</code><span>, as well as </span><code>a &gt; b</code><span> implying </span><code>!(a &lt; b)</code><span>;</span></p>
+<p><span>It is redundant: it already follows from a &lt; b being defined as </span><code>partial_cmp(a, b) == Some(Less)</code><span>, which implies </span><code>!(a &gt; b)</code><span> (defined as </span><code>partial_cmp(a, b) != Some(Greater)</code><span>).</span></p>
+<p>&ldquo;<span>asymmetry</span>&rdquo;<span> is the wrong term, an </span>&ldquo;<span>asymmetric</span>&rdquo;<span> relation is a relation that satisfies </span>&ldquo;<span>if </span><code>a &lt; b</code><span> then </span><code>!(b &lt; a)</code>&rdquo;<span>.</span></p>
+<p><span>asymmtery (in the correct sense of the word) is a consequence of duality, so we could state it in the corollary section if you wish. antisymmetry is more closely related to what the docs are currently stating, but it is defined for </span><code>&lt;=</code><span>-style relations: </span><code>R</code><span> is antisymmetric if </span><code>R(a, b) &amp;&amp; R(b, a)</code><span> implies </span><code>a == b</code><span>.</span></p>
+</blockquote>
+
+</figure>
+<p><span>impl a </span><code>PartialOrd</code><span> manually</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">use</span> std::cmp::{<span class="hl-keyword">self</span>, Ordering};</span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#[derive(PartialEq)]</span></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    x: <span class="hl-type">i32</span>,</span>
+<span class="line">    y: <span class="hl-type">i32</span>,</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">PartialOrd</span> <span class="hl-keyword">for</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">partial_cmp</span>(&amp;<span class="hl-keyword">self</span>, other: &amp;Point) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Option</span>&lt;cmp::Ordering&gt; {</span>
+<span class="line">        <span class="hl-keyword">if</span> <span class="hl-keyword">self</span>.x &gt; other.x {</span>
+<span class="line">            <span class="hl-title function_ invoke__">Some</span>(Ordering::Less)</span>
+<span class="line">        } <span class="hl-keyword">else</span> {</span>
+<span class="line">            <span class="hl-title function_ invoke__">Some</span>(Ordering::Greater)</span>
+<span class="line">        }</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">t1</span>: Point = Point { x: <span class="hl-number">1</span>, y: <span class="hl-number">2</span> };</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">t2</span>: Point = Point { x: <span class="hl-number">2</span>, y: <span class="hl-number">1</span> };</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-built_in">assert!</span>(!t1.<span class="hl-title function_ invoke__">lt</span>(&amp;t2));</span>
+<span class="line">    <span class="hl-built_in">assert!</span>(!t1.<span class="hl-title function_ invoke__">le</span>(&amp;t2));</span>
+<span class="line">    <span class="hl-built_in">assert!</span>(t1.<span class="hl-title function_ invoke__">ge</span>(&amp;t2));</span>
+<span class="line">    <span class="hl-built_in">assert!</span>(t1.<span class="hl-title function_ invoke__">gt</span>(&amp;t2));</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>If all the members of a type impl </span><code>PartialOrd</code><span> then it can be derived:</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// generates PartialOrd impl which orders</span></span>
+<span class="line"><span class="hl-comment">// Points based on x member first and</span></span>
+<span class="line"><span class="hl-comment">// y member second because that&#x27;s the order</span></span>
+<span class="line"><span class="hl-comment">// they appear in the source code</span></span>
+<span class="line"><span class="hl-meta">#[derive(PartialEq, PartialOrd)]</span></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    x: <span class="hl-type">i32</span>,</span>
+<span class="line">    y: <span class="hl-type">i32</span>,</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="4-2-Ord">
+
+    <h3>
+    <a href="#4-2-Ord"><span>4.2. Ord</span> </a>
+    </h3>
+<p><code>Ord</code><span> is a subtrait of </span><code>Eq</code><span> and </span><code>PartialOrd&lt;Self&gt;</code><span>:</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Ord</span>: <span class="hl-built_in">Eq</span> + <span class="hl-built_in">PartialOrd</span>&lt;<span class="hl-keyword">Self</span>&gt; {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">cmp</span>(&amp;<span class="hl-keyword">self</span>, other: &amp;<span class="hl-keyword">Self</span>) <span class="hl-punctuation">-&gt;</span> Ordering;</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-comment">// provided default impls</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">max</span>(<span class="hl-keyword">self</span>, other: <span class="hl-keyword">Self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">Self</span>;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">min</span>(<span class="hl-keyword">self</span>, other: <span class="hl-keyword">Self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">Self</span>;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">clamp</span>(<span class="hl-keyword">self</span>, min: <span class="hl-keyword">Self</span>, max: <span class="hl-keyword">Self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">Self</span>;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>use </span><code>#[derive(...)]</code><span> if members of a type impl that trait.</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-meta">#[derive(PartialEq, Eq, PartialOrd, Ord)]</span></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    x: <span class="hl-type">i32</span>,</span>
+<span class="line">    y: <span class="hl-type">i32</span>,</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>impl a </span><code>Ord</code><span> manually:</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">use</span> std::cmp::Ordering;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    x: <span class="hl-type">i32</span>,</span>
+<span class="line">    y: <span class="hl-type">i32</span>,</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Ord</span> <span class="hl-keyword">for</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">cmp</span>(&amp;<span class="hl-keyword">self</span>, other: &amp;<span class="hl-keyword">Self</span>) <span class="hl-punctuation">-&gt;</span> Ordering {</span>
+<span class="line">        <span class="hl-keyword">match</span> <span class="hl-keyword">self</span>.x.<span class="hl-title function_ invoke__">cmp</span>(&amp;other.x) {</span>
+<span class="line">            Ordering::Equal =&gt; <span class="hl-keyword">self</span>.y.<span class="hl-title function_ invoke__">cmp</span>(&amp;other.y),</span>
+<span class="line">            ordering =&gt; ordering,</span>
+<span class="line">        }</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">PartialOrd</span> <span class="hl-keyword">for</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">partial_cmp</span>(&amp;<span class="hl-keyword">self</span>, other: &amp;<span class="hl-keyword">Self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Option</span>&lt;Ordering&gt; {</span>
+<span class="line">        <span class="hl-title function_ invoke__">Some</span>(<span class="hl-keyword">self</span>.<span class="hl-title function_ invoke__">cmp</span>(other))</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">PartialEq</span> <span class="hl-keyword">for</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">eq</span>(&amp;<span class="hl-keyword">self</span>, other: &amp;<span class="hl-keyword">Self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">bool</span> {</span>
+<span class="line">        <span class="hl-keyword">self</span>.<span class="hl-title function_ invoke__">cmp</span>(other) == Ordering::Equal</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Eq</span> <span class="hl-keyword">for</span> <span class="hl-title class_">Point</span> {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">t1</span>: Point = Point { x: <span class="hl-number">1</span>, y: <span class="hl-number">2</span> };</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">t2</span>: Point = Point { x: <span class="hl-number">2</span>, y: <span class="hl-number">1</span> };</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-built_in">assert!</span>(t1.<span class="hl-title function_ invoke__">lt</span>(&amp;t2));</span>
+<span class="line">    <span class="hl-built_in">assert!</span>(t1.<span class="hl-title function_ invoke__">max</span>(t2) == Point { x: <span class="hl-number">2</span>, y: <span class="hl-number">1</span> });</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>需要注意的就是，要么都用 derive 宏的写法，要么都手动实现</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>Implementations of </span><code>PartialEq</code><span>, </span><code>PartialOrd</code><span>, and </span><code>Ord</code><span> </span><strong><strong><span>must</span></strong></strong><span> agree with each other. It</span>&rsquo;<span>s easy to accidentally make them disagree by deriving some of the traits and manually implementing others.</span></p>
+</blockquote>
+
+</figure>
+</section>
+<section id="4-3-Noted">
+
+    <h3>
+    <a href="#4-3-Noted"><span>4.3. Noted</span> </a>
+    </h3>
+<p><code>subtrait</code><span> 和 面向对象语言里的继承，思维方式是不一致的。上面这个手动实现 </span><code>Ord trait</code><span> 的代码，就没法用继承的逻辑来看。</span></p>
+<ul>
+<li>
+<code>Ord : Eq + PartialOrd&lt;Self&gt;</code><span> : 理解为 </span><code>Ord</code><span> </span><strong><strong><span>refine</span></strong></strong><span>(完善了) </span><code>Eq</code><span> + </span><code>PartialOrd</code>
+</li>
+<li>
+<span>但是一旦写完了 </span><code>imp Ord for Point</code><span>，虽然还没有 </span><code>PartialOrd/Eq/PartialEq</code><span>，但是剩下的 trait 可以用 </span><code>Ord</code><span> 的 methods 来判断了</span>&hellip;
+</li>
+<li>
+<span>强行用继承的思维去理解就是</span><sub><sub><span>父类方法的实现调用了子类方法</span></sub></sub><span>？？？ 所以不能这么想</span>&hellip;
+</li>
+</ul>
+</section>
+</section>
+<section id="5-Index-IndexMut">
+
+    <h2>
+    <a href="#5-Index-IndexMut"><span>5. Index &amp;&amp; IndexMut</span> </a>
+    </h2>
+<section id="5-1-Index-IndexMut-trait">
+
+    <h3>
+    <a href="#5-1-Index-IndexMut-trait"><span>5.1. Index &amp;&amp; IndexMut trait</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Index</span>&lt;Idx: ?<span class="hl-built_in">Sized</span>&gt; {</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Output</span>: ?<span class="hl-built_in">Sized</span>;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">index</span>(&amp;<span class="hl-keyword">self</span>, index: Idx) <span class="hl-punctuation">-&gt;</span> &amp;<span class="hl-keyword">Self</span>::Output;</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">IndexMut</span>&lt;Idx&gt;: Index&lt;Idx&gt; <span class="hl-keyword">where</span> Idx: ?<span class="hl-built_in">Sized</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">index_mut</span>(&amp;<span class="hl-keyword">mut</span> <span class="hl-keyword">self</span>, index: Idx) <span class="hl-punctuation">-&gt;</span> &amp;<span class="hl-keyword">mut</span> <span class="hl-keyword">Self</span>::Output;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>可以用</span><code>[]</code><span>来对实现了 </span><code>Index&lt;T, Output = U&gt;</code><span>的类型进行取值为 </span><code>T</code><span> 的运算，返回</span><code>&amp;U</code><span> 类型，编译器会自动加上解引用运算符</span><code>*</code><span>，需要注意的语法糖</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-comment">// Vec&lt;i32&gt; impls Index&lt;usize, Output = i32&gt; so</span></span>
+<span class="line">    <span class="hl-comment">// indexing Vec&lt;i32&gt; should produce &amp;i32s and yet...</span></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">vec</span> = <span class="hl-built_in">vec!</span>[<span class="hl-number">1</span>, <span class="hl-number">2</span>, <span class="hl-number">3</span>, <span class="hl-number">4</span>, <span class="hl-number">5</span>];</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">num_ref</span>: &amp;<span class="hl-type">i32</span> = vec[<span class="hl-number">0</span>]; <span class="hl-comment">// ❌ expected &amp;i32 found i32</span></span>
+<span class="line">    </span>
+<span class="line">    <span class="hl-comment">// above line actually desugars to</span></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">num_ref</span>: &amp;<span class="hl-type">i32</span> = *vec[<span class="hl-number">0</span>]; <span class="hl-comment">// ❌ expected &amp;i32 found i32</span></span>
+<span class="line"></span>
+<span class="line">    <span class="hl-comment">// both of these alternatives work</span></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">num</span>: <span class="hl-type">i32</span> = vec[<span class="hl-number">0</span>]; <span class="hl-comment">// ✅</span></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">num_ref</span>: &amp;<span class="hl-type">i32</span> = &amp;vec[<span class="hl-number">0</span>]; <span class="hl-comment">// ✅</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>More: </span><code>[]</code><span>里可以用 </span><code>Range&lt;uszie&gt;</code><span>索引来得到切片。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">vec</span> = <span class="hl-built_in">vec!</span>[<span class="hl-number">1</span>, <span class="hl-number">2</span>, <span class="hl-number">3</span>, <span class="hl-number">4</span>, <span class="hl-number">5</span>];</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(&amp;vec[..], &amp;[<span class="hl-number">1</span>, <span class="hl-number">2</span>, <span class="hl-number">3</span>, <span class="hl-number">4</span>, <span class="hl-number">5</span>]); <span class="hl-comment">// ✅</span></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(&amp;vec[<span class="hl-number">1</span>..], &amp;[<span class="hl-number">2</span>, <span class="hl-number">3</span>, <span class="hl-number">4</span>, <span class="hl-number">5</span>]); <span class="hl-comment">// ✅</span></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(&amp;vec[..<span class="hl-number">4</span>], &amp;[<span class="hl-number">1</span>, <span class="hl-number">2</span>, <span class="hl-number">3</span>, <span class="hl-number">4</span>]); <span class="hl-comment">// ✅</span></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(&amp;vec[<span class="hl-number">1</span>..<span class="hl-number">4</span>], &amp;[<span class="hl-number">2</span>, <span class="hl-number">3</span>, <span class="hl-number">4</span>]); <span class="hl-comment">// ✅</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>MORE: 通过手动实现 </span><code>Index trait</code><span>，可以把 </span><code>Index&lt;T, Output = U&gt;</code><span>里的 </span><code>T</code><span> 改成我们想用的任意类型，这样就可以使用</span><code>[]</code><span>运算符来取值。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">use</span> std::ops::Index;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#[derive(PartialEq, Eq, Debug)]</span></span>
+<span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">BasketballPosition</span> {</span>
+<span class="line">    PointGuard,</span>
+<span class="line">    ShootingGuard,</span>
+<span class="line">    Center,</span>
+<span class="line">    PowerForward,</span>
+<span class="line">    SmallForward,</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">BasketballPlayer</span> {</span>
+<span class="line">    name: &amp;<span class="hl-symbol">&#x27;static</span> <span class="hl-type">str</span>,</span>
+<span class="line">    position: BasketballPosition,</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">BasketballTeam</span> {</span>
+<span class="line">    point_guard: BasketballPlayer,</span>
+<span class="line">    shooting_guard: BasketballPlayer,</span>
+<span class="line">    center: BasketballPlayer,</span>
+<span class="line">    power_forward: BasketballPlayer,</span>
+<span class="line">    small_forward: BasketballPlayer,</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Index</span>&lt;BasketballPosition&gt; <span class="hl-keyword">for</span> <span class="hl-title class_">BasketballTeam</span> {</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Output</span> = BasketballPlayer;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">index</span>(&amp;<span class="hl-keyword">self</span>, position: BasketballPosition) <span class="hl-punctuation">-&gt;</span> &amp;BasketballPlayer {</span>
+<span class="line">        <span class="hl-keyword">match</span> position {</span>
+<span class="line">            BasketballPosition::PointGuard =&gt; &amp;<span class="hl-keyword">self</span>.point_guard,</span>
+<span class="line">            BasketballPosition::ShootingGuard =&gt; &amp;<span class="hl-keyword">self</span>.shooting_guard,</span>
+<span class="line">            BasketballPosition::Center =&gt; &amp;<span class="hl-keyword">self</span>.center,</span>
+<span class="line">            BasketballPosition::PowerForward =&gt; &amp;<span class="hl-keyword">self</span>.power_forward,</span>
+<span class="line">            BasketballPosition::SmallForward =&gt; &amp;<span class="hl-keyword">self</span>.small_forward,</span>
+<span class="line">        }</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">team</span> = BasketballTeam {</span>
+<span class="line">        point_guard: BasketballPlayer {</span>
+<span class="line">            name: (<span class="hl-string">&quot;PointGuard&quot;</span>),</span>
+<span class="line">            position: (BasketballPosition::PointGuard),</span>
+<span class="line">        },</span>
+<span class="line">        shooting_guard: BasketballPlayer {</span>
+<span class="line">            name: (<span class="hl-string">&quot;ShootingGuard&quot;</span>),</span>
+<span class="line">            position: (BasketballPosition::ShootingGuard),</span>
+<span class="line">        },</span>
+<span class="line">        center: BasketballPlayer {</span>
+<span class="line">            name: (<span class="hl-string">&quot;Center&quot;</span>),</span>
+<span class="line">            position: (BasketballPosition::Center),</span>
+<span class="line">        },</span>
+<span class="line">        power_forward: BasketballPlayer {</span>
+<span class="line">            name: (<span class="hl-string">&quot;PowerForward&quot;</span>),</span>
+<span class="line">            position: (BasketballPosition::PowerForward),</span>
+<span class="line">        },</span>
+<span class="line">        small_forward: BasketballPlayer {</span>
+<span class="line">            name: (<span class="hl-string">&quot;SmallForward&quot;</span>),</span>
+<span class="line">            position: (BasketballPosition::SmallForward),</span>
+<span class="line">        },</span>
+<span class="line">    };</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(</span>
+<span class="line">        &amp;team[BasketballPosition::PowerForward].name,</span>
+<span class="line">        &amp;<span class="hl-string">&quot;PowerForward&quot;</span></span>
+<span class="line">    );</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(</span>
+<span class="line">        &amp;team[BasketballPosition::PowerForward].position,</span>
+<span class="line">        &amp;BasketballPosition::PowerForward</span>
+<span class="line">    );</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="6-From-Into">
+
+    <h2>
+    <a href="#6-From-Into"><span>6. From &amp;&amp; Into</span> </a>
+    </h2>
+<section id="6-1-From-trait">
+
+    <h3>
+    <a href="#6-1-From-trait"><span>6.1. From trait</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">From</span>&lt;T&gt; {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">from</span>(T) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">Self</span>;</span>
+<span class="line">}</span>
+<span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Into</span>&lt;T&gt; { </span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">into</span>(<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> T;</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// impl From&lt;T&gt; and Into&lt;T&gt; impl is automatically provided by generic blanket impl below.</span></span>
+<span class="line"><span class="hl-keyword">impl</span>&lt;T, U&gt; <span class="hl-built_in">Into</span>&lt;U&gt; <span class="hl-keyword">for</span> <span class="hl-title class_">T</span></span>
+<span class="line"><span class="hl-keyword">where</span></span>
+<span class="line">    U : from&lt;T&gt;,</span>
+<span class="line">{</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">into</span>(<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> U {</span>
+<span class="line">        U::<span class="hl-title function_ invoke__">from</span>(<span class="hl-keyword">self</span>)</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="6-2-From-trait">
+
+    <h3>
+    <a href="#6-2-From-trait"><span>6.2. 使用 From trait 简化构造</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// ...</span></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">BasketballPlayer</span> {</span>
+<span class="line">    name: &amp;<span class="hl-symbol">&#x27;static</span> <span class="hl-type">str</span>,</span>
+<span class="line">    position: BasketballPosition,</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">From</span>&lt;(&amp;<span class="hl-symbol">&#x27;static</span> <span class="hl-type">str</span>, BasketballPosition)&gt; <span class="hl-keyword">for</span> <span class="hl-title class_">BasketballPlayer</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">from</span>((s, p): (&amp;<span class="hl-symbol">&#x27;static</span> <span class="hl-type">str</span>, BasketballPosition)) <span class="hl-punctuation">-&gt;</span> BasketballPlayer {</span>
+<span class="line">        BasketballPlayer {</span>
+<span class="line">            name: s,</span>
+<span class="line">            position: p,</span>
+<span class="line">        }</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">BasketballTeam</span> {</span>
+<span class="line">    point_guard: BasketballPlayer,</span>
+<span class="line">    shooting_guard: BasketballPlayer,</span>
+<span class="line">    center: BasketballPlayer,</span>
+<span class="line">    power_forward: BasketballPlayer,</span>
+<span class="line">    small_forward: BasketballPlayer,</span>
+<span class="line">}</span>
+<span class="line"><span class="hl-comment">// ..</span></span>
+<span class="line"><span class="hl-keyword">impl</span>&lt;Pos&gt; <span class="hl-built_in">From</span>&lt;[Pos; <span class="hl-number">5</span>]&gt; <span class="hl-keyword">for</span> <span class="hl-title class_">BasketballTeam</span></span>
+<span class="line"><span class="hl-keyword">where</span></span>
+<span class="line">    Pos: <span class="hl-built_in">Into</span>&lt;BasketballPlayer&gt;,</span>
+<span class="line">{</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">from</span>([p1, p2, p3, p4, p5]: [Pos; <span class="hl-number">5</span>]) <span class="hl-punctuation">-&gt;</span> BasketballTeam {</span>
+<span class="line">        BasketballTeam {</span>
+<span class="line">            point_guard: p1.<span class="hl-title function_ invoke__">into</span>(),</span>
+<span class="line">            shooting_guard: p2.<span class="hl-title function_ invoke__">into</span>(),</span>
+<span class="line">            center: p3.<span class="hl-title function_ invoke__">into</span>(),</span>
+<span class="line">            power_forward: p4.<span class="hl-title function_ invoke__">into</span>(),</span>
+<span class="line">            small_forward: p5.<span class="hl-title function_ invoke__">into</span>(),</span>
+<span class="line">        }</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// ...</span></span>
+<span class="line"><span class="hl-keyword">let</span> <span class="hl-variable">team</span> = BasketballTeam::<span class="hl-title function_ invoke__">from</span>([</span>
+<span class="line">    (<span class="hl-string">&quot;PointGuard&quot;</span>, BasketballPosition::PointGuard),</span>
+<span class="line">    (<span class="hl-string">&quot;ShootingGuard&quot;</span>, BasketballPosition::ShootingGuard),</span>
+<span class="line">    (<span class="hl-string">&quot;Center&quot;</span>, BasketballPosition::Center),</span>
+<span class="line">    (<span class="hl-string">&quot;PowerForward&quot;</span>, BasketballPosition::PowerForward),</span>
+<span class="line">    (<span class="hl-string">&quot;SmallForward&quot;</span>, BasketballPosition::SmallForward),</span>
+<span class="line">]);</span></code></pre>
+
+</figure>
+<ul>
+<li>
+<span>More</span>
+</li>
+</ul>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Person</span> {</span>
+<span class="line">    name: <span class="hl-type">String</span>,</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Person</span> {</span>
+<span class="line">    <span class="hl-comment">// accepts:</span></span>
+<span class="line">    <span class="hl-comment">// - String</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">new1</span>(name: <span class="hl-type">String</span>) <span class="hl-punctuation">-&gt;</span> Person {</span>
+<span class="line">        Person { name }</span>
+<span class="line">    }</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-comment">// accepts:</span></span>
+<span class="line">    <span class="hl-comment">// - String</span></span>
+<span class="line">    <span class="hl-comment">// - &amp;String</span></span>
+<span class="line">    <span class="hl-comment">// - &amp;str</span></span>
+<span class="line">    <span class="hl-comment">// - Box&lt;str&gt;</span></span>
+<span class="line">    <span class="hl-comment">// - Cow&lt;&#x27;_, str&gt;</span></span>
+<span class="line">    <span class="hl-comment">// - char</span></span>
+<span class="line">    <span class="hl-comment">// since all of the above types can be converted into String</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">new2</span>&lt;N: <span class="hl-built_in">Into</span>&lt;<span class="hl-type">String</span>&gt;&gt;(name: N) <span class="hl-punctuation">-&gt;</span> Person {</span>
+<span class="line">        Person { name: name.<span class="hl-title function_ invoke__">into</span>() }</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="7-Error">
+
+    <h2>
+    <a href="#7-Error"><span>7. Error</span> </a>
+    </h2>
+<section id="7-1-Error-trait">
+
+    <h3>
+    <a href="#7-1-Error-trait"><span>7.1. Error trait</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Error</span>: <span class="hl-built_in">Debug</span> + Display {</span>
+<span class="line">    <span class="hl-comment">// provided default impls</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">source</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Option</span>&lt;&amp;(<span class="hl-keyword">dyn</span> Error + <span class="hl-symbol">&#x27;static</span>)&gt;;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">backtrace</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Option</span>&lt;&amp;Backtrace&gt;; <span class="hl-comment">// unstable</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">description</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> &amp;<span class="hl-type">str</span>; <span class="hl-comment">// rustc_deprecated since = &quot;1.42.0&quot;</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">cause</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Option</span>&lt;&amp;<span class="hl-keyword">dyn</span> Error&gt;; <span class="hl-comment">// rustc_deprecated since = &quot;1.33.0&quot;</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><code>fn source(&amp;self) -&gt; Option&lt;&amp;(dyn Error + 'static)&gt;;</code></p>
+<ul>
+<li>
+<span>默认实现是空的 </span><code>None</code><span>，有需要的话可以覆写加上自己的实现</span>
+</li>
+<li>
+<code>source</code><span> 的意思是 </span><code>The lower-level source of this error, if any.</code>
+</li>
+</ul>
+<p><code>fn backtrace(&amp;self) -&gt; Option&lt;&amp;Backtrace&gt;;</code></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">/// Returns a stack backtrace, if available, of where this error occurred.</span></span>
+<span class="line"><span class="hl-comment">///</span></span>
+<span class="line"><span class="hl-comment">/// This function allows inspecting the location, in code, of where an error</span></span>
+<span class="line"><span class="hl-comment">/// happened. The returned `Backtrace` contains information about the stack</span></span>
+<span class="line"><span class="hl-comment">/// trace of the OS thread of execution of where the error originated from.</span></span>
+<span class="line"><span class="hl-comment">///</span></span>
+<span class="line"><span class="hl-comment">/// Note that not all errors contain a `Backtrace`. Also note that a</span></span>
+<span class="line"><span class="hl-comment">/// `Backtrace` may actually be empty. For more information consult the</span></span>
+<span class="line"><span class="hl-comment">/// `Backtrace` type itself.</span></span>
+<span class="line"><span class="hl-meta">#[unstable(feature = <span class="hl-string">&quot;backtrace&quot;</span>, issue = <span class="hl-string">&quot;53487&quot;</span>)]</span></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">backtrace</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Option</span>&lt;&amp;Backtrace&gt; {</span>
+<span class="line">    <span class="hl-literal">None</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><code>fn description(&amp;self) -&gt; &amp;str;</code><span>、</span><code>fn cause(&amp;self) -&gt; Option&lt;&amp;dyn Error&gt;;</code><span>两个废弃接口，分别被 </span><code>Display trait</code><span> 和 </span><code>fn source</code><span> 取代了</span></p>
+</section>
+</section>
+<section id="8-TryFrom">
+
+    <h2>
+    <a href="#8-TryFrom"><span>8. TryFrom</span> </a>
+    </h2>
+<section id="8-1-TryFrom-trait">
+
+    <h3>
+    <a href="#8-1-TryFrom-trait"><span>8.1. TryFrom trait</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">TryFrom</span>&lt;T&gt; {</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Error</span>;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">try_from</span>(value: T) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;<span class="hl-keyword">Self</span>, <span class="hl-keyword">Self</span>::Error&gt;;</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">TryInto</span>&lt;T&gt; {</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Error</span>;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">try_into</span>(<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;T, <span class="hl-keyword">Self</span>::Error&gt;;</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// same as `From` and `Into`</span></span>
+<span class="line"><span class="hl-comment">// impl TryFrom&lt;T&gt; and TryInto&lt;T&gt; impl is automatically provided by generic blanket impl below.</span></span>
+<span class="line"><span class="hl-keyword">impl</span>&lt;T, U&gt; TryInto&lt;U&gt; <span class="hl-keyword">for</span> <span class="hl-title class_">T</span></span>
+<span class="line"><span class="hl-keyword">where</span></span>
+<span class="line">    U: TryFrom&lt;T&gt;,</span>
+<span class="line">{</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Error</span> = U::Error;</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">try_into</span>(<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;U, U::Error&gt; {</span>
+<span class="line">        U::<span class="hl-title function_ invoke__">try_from</span>(<span class="hl-keyword">self</span>)</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="8-2-Playground-Code">
+
+    <h3>
+    <a href="#8-2-Playground-Code"><span>8.2. Playground Code</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">use</span> std::convert::TryFrom;</span>
+<span class="line"><span class="hl-keyword">use</span> std::fmt;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#[derive(Debug)]</span></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    x: <span class="hl-type">i32</span>,</span>
+<span class="line">    y: <span class="hl-type">i32</span>,</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#[derive(Debug)]</span></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">OutOfBounds</span>;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">fmt</span>::Display <span class="hl-keyword">for</span> <span class="hl-title class_">OutOfBounds</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">fmt</span>(&amp;<span class="hl-keyword">self</span>, f: &amp;<span class="hl-keyword">mut</span> fmt::Formatter&lt;<span class="hl-symbol">&#x27;_</span>&gt;) <span class="hl-punctuation">-&gt;</span> fmt::<span class="hl-type">Result</span> {</span>
+<span class="line">        <span class="hl-built_in">write!</span>(f, <span class="hl-string">&quot;out of bounds&quot;</span>)</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">TryFrom</span>&lt;(<span class="hl-type">i32</span>, <span class="hl-type">i32</span>)&gt; <span class="hl-keyword">for</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Error</span> = OutOfBounds;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">try_from</span>((x, y): (<span class="hl-type">i32</span>, <span class="hl-type">i32</span>)) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;<span class="hl-keyword">Self</span>, <span class="hl-keyword">Self</span>::Error&gt; {</span>
+<span class="line">        <span class="hl-keyword">if</span> x.<span class="hl-title function_ invoke__">abs</span>() &gt; <span class="hl-number">1000</span> || y.<span class="hl-title function_ invoke__">abs</span>() &gt; <span class="hl-number">1000</span> {</span>
+<span class="line">            <span class="hl-keyword">return</span> <span class="hl-title function_ invoke__">Err</span>(OutOfBounds);</span>
+<span class="line">        }</span>
+<span class="line">        <span class="hl-title function_ invoke__">Ok</span>(Point { x, y })</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#[test]</span></span>
+<span class="line"><span class="hl-meta">#[should_panic]</span></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">will_panic</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">_</span> = Point::<span class="hl-title function_ invoke__">try_from</span>((<span class="hl-number">11111</span>, <span class="hl-number">11111</span>)).<span class="hl-title function_ invoke__">expect</span>(<span class="hl-string">&quot;&quot;</span>);</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">pp</span> = Point::<span class="hl-title function_ invoke__">try_from</span>((<span class="hl-number">100</span>, <span class="hl-number">100</span>)).<span class="hl-title function_ invoke__">unwrap</span>();</span>
+<span class="line">    <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;{:?} : {},{}&quot;</span>, pp, pp.x, pp.y);</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="9-FromStr">
+
+    <h2>
+    <a href="#9-FromStr"><span>9. FromStr</span> </a>
+    </h2>
+<section id="9-1-FromStr-trait">
+
+    <h3>
+    <a href="#9-1-FromStr-trait"><span>9.1. FromStr trait</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">FromStr</span> {</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Err</span>;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">from_str</span>(s: &amp;<span class="hl-type">str</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;<span class="hl-keyword">Self</span>, <span class="hl-keyword">Self</span>::<span class="hl-literal">Err</span>&gt;;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<ul>
+<li>
+<code>trait From</code><span> 的限定加强版，可能失败的转换</span>
+</li>
+<li>
+<code>trait TryFrom</code><span> 的 str 限定版本，等同于 </span><code>TryFrom&lt;&amp;str&gt;</code>
+</li>
+</ul>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// suppose we have impl FromStr for TypeA here.</span></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">FromStr</span> <span class="hl-keyword">for</span> <span class="hl-title class_">TypeA</span> {</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Err</span> = SomeError;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">from_str</span>(s: &amp;<span class="hl-type">str</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;<span class="hl-keyword">Self</span>, <span class="hl-keyword">Self</span>::<span class="hl-literal">Err</span>&gt; {</span>
+<span class="line">        <span class="hl-comment">//... with very complex code.</span></span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// easy impl and we got `try_from() &amp;&amp; try_into()` with &amp;str for TypeA</span></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">TryFrom</span>&lt;&amp;<span class="hl-type">str</span>&gt; <span class="hl-keyword">for</span> <span class="hl-title class_">TypeA</span> {</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Error</span> = SomeError;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">try_from</span>(s: &amp;<span class="hl-type">str</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;<span class="hl-keyword">Self</span>, <span class="hl-keyword">Self</span>::Error&gt; {</span>
+<span class="line">        &lt;TypeA <span class="hl-keyword">as</span> FromStr&gt;::<span class="hl-title function_ invoke__">from_str</span>(s)</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="9-2-Playground-Code">
+
+    <h3>
+    <a href="#9-2-Playground-Code"><span>9.2. Playground Code</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">use</span> std::iter::Enumerate;</span>
+<span class="line"><span class="hl-keyword">use</span> std::num::ParseIntError;</span>
+<span class="line"><span class="hl-keyword">use</span> std::<span class="hl-type">str</span>::{Chars, FromStr};</span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#[derive(Debug)]</span></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    x: <span class="hl-type">i32</span>,</span>
+<span class="line">    y: <span class="hl-type">i32</span>,</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#[derive(Debug)]</span></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">ParsePointError</span>;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">From</span>&lt;ParseIntError&gt; <span class="hl-keyword">for</span> <span class="hl-title class_">ParsePointError</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">from</span>(_: ParseIntError) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">Self</span> {</span>
+<span class="line">        ParsePointError</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">FromStr</span> <span class="hl-keyword">for</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Err</span> = ParsePointError;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">from_str</span>(s: &amp;<span class="hl-type">str</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;<span class="hl-keyword">Self</span>, <span class="hl-keyword">Self</span>::<span class="hl-literal">Err</span>&gt; {</span>
+<span class="line">        <span class="hl-keyword">let</span> <span class="hl-variable">get_num</span> =</span>
+<span class="line">            |char_indexs: &amp;<span class="hl-keyword">mut</span> Enumerate&lt;Chars&lt;<span class="hl-symbol">&#x27;_</span>&gt;&gt;| <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;(<span class="hl-type">usize</span>, <span class="hl-type">usize</span>), ParsePointError&gt; {</span>
+<span class="line">                <span class="hl-keyword">let</span> <span class="hl-variable">is_num</span> = |(_, c): &amp;(<span class="hl-type">usize</span>, <span class="hl-type">char</span>)| matches!(c, <span class="hl-string">&#x27;0&#x27;</span>..=<span class="hl-string">&#x27;9&#x27;</span> | <span class="hl-string">&#x27;-&#x27;</span>);</span>
+<span class="line">                <span class="hl-keyword">let</span> <span class="hl-variable">isnt_num</span> = |t: &amp;(<span class="hl-type">usize</span>, <span class="hl-type">char</span>)| !<span class="hl-title function_ invoke__">is_num</span>(t);</span>
+<span class="line"></span>
+<span class="line">                <span class="hl-keyword">let</span> (start, _) = char_indexs</span>
+<span class="line">                    .<span class="hl-title function_ invoke__">skip_while</span>(isnt_num)</span>
+<span class="line">                    .<span class="hl-title function_ invoke__">next</span>()</span>
+<span class="line">                    .<span class="hl-title function_ invoke__">ok_or</span>(ParsePointError)?;</span>
+<span class="line">                <span class="hl-keyword">let</span> (end, _) = char_indexs</span>
+<span class="line">                    .<span class="hl-title function_ invoke__">skip_while</span>(is_num)</span>
+<span class="line">                    .<span class="hl-title function_ invoke__">next</span>()</span>
+<span class="line">                    .<span class="hl-title function_ invoke__">ok_or</span>(ParsePointError)?;</span>
+<span class="line"></span>
+<span class="line">                <span class="hl-title function_ invoke__">Ok</span>((start, end))</span>
+<span class="line">            };</span>
+<span class="line"></span>
+<span class="line">        <span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">char_indexs</span> = s.<span class="hl-title function_ invoke__">chars</span>().<span class="hl-title function_ invoke__">enumerate</span>();</span>
+<span class="line"></span>
+<span class="line">        <span class="hl-keyword">let</span> (x_begin, x_end) = <span class="hl-title function_ invoke__">get_num</span>(&amp;<span class="hl-keyword">mut</span> char_indexs)?;</span>
+<span class="line">        <span class="hl-keyword">let</span> (y_begin, y_end) = <span class="hl-title function_ invoke__">get_num</span>(&amp;<span class="hl-keyword">mut</span> char_indexs)?;</span>
+<span class="line"></span>
+<span class="line">        <span class="hl-keyword">let</span> <span class="hl-variable">x</span> = s[x_begin..x_end].parse::&lt;<span class="hl-type">i32</span>&gt;()?; <span class="hl-comment">// need impl From&lt;ParseIntError&gt; for ParsePointError {}</span></span>
+<span class="line">        <span class="hl-keyword">let</span> <span class="hl-variable">y</span> = s[y_begin..y_end].parse::&lt;<span class="hl-type">i32</span>&gt;()?;</span>
+<span class="line"></span>
+<span class="line">        <span class="hl-title function_ invoke__">Ok</span>(Point { x, y })</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">p</span> = <span class="hl-string">&quot;(1,2)&quot;</span>.parse::&lt;Point&gt;();</span>
+<span class="line">    <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;{:?}&quot;</span>, p);</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="10-Iterator">
+
+    <h2>
+    <a href="#10-Iterator"><span>10. Iterator</span> </a>
+    </h2>
+<section id="10-1-Iterator-trait">
+
+    <h3>
+    <a href="#10-1-Iterator-trait"><span>10.1. Iterator trait</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Iterator</span> {</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Item</span>;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">next</span>(&amp;<span class="hl-keyword">mut</span> <span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Option</span>&lt;<span class="hl-keyword">Self</span>::Item&gt;;</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-comment">// provided default impls</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">size_hint</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> (<span class="hl-type">usize</span>, <span class="hl-type">Option</span>&lt;<span class="hl-type">usize</span>&gt;);</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">count</span>(<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">usize</span>;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">last</span>(<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Option</span>&lt;<span class="hl-keyword">Self</span>::Item&gt;;</span>
+<span class="line">    <span class="hl-comment">// over 70 methods......</span></span>
+<span class="line">    <span class="hl-comment">// https://doc.rust-lang.org/std/iter/trait.Iterator.html</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>即使是对同一个类型实现迭代器，可以通过给返回的对象 </span><code>Item</code><span> 加上不同的限定符来实现返回</span><strong><strong><span>不可变引用</span></strong></strong><span>、</span><strong><strong><span>可变引用</span></strong></strong><span>、</span><strong><strong><span>值</span></strong></strong><span>，for example： </span><code>Vec</code><span>:</span></p>
+<table>
+<tr>
+<th><code>Vec&lt;T&gt;</code><span>方法</span></th>
+<th><span>返回类型</span></th>
+</tr>
+<tr>
+<td><code>.iter()</code></td>
+<td><code>Iterator&lt;Item = &amp;T&gt;</code></td>
+</tr>
+<tr>
+<td><code>.iter_mut()</code></td>
+<td><code>Iterator&lt;Item = &amp;mut T&gt;</code></td>
+</tr>
+<tr>
+<td><code>.into_iter()</code></td>
+<td><code>Iterator&lt;Item = T&gt;</code></td>
+</tr>
+</table>
+</section>
+<section id="10-2">
+
+    <h3>
+    <a href="#10-2"><span>10.2. 任意迭代器的可变引用也是迭代器</span> </a>
+    </h3>
+<p><span>有点绕口</span>&hellip;<span>，标准库里有这么个泛型实现：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-meta">#[stable(feature = <span class="hl-string">&quot;rust1&quot;</span>, since = <span class="hl-string">&quot;1.0.0&quot;</span>)]</span></span>
+<span class="line"><span class="hl-keyword">impl</span>&lt;I: <span class="hl-built_in">Iterator</span> + ?<span class="hl-built_in">Sized</span>&gt; <span class="hl-built_in">Iterator</span> <span class="hl-keyword">for</span> &amp;<span class="hl-keyword">mut</span> I {</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Item</span> = I::Item;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">next</span>(&amp;<span class="hl-keyword">mut</span> <span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Option</span>&lt;I::Item&gt; {</span>
+<span class="line">        (**<span class="hl-keyword">self</span>).<span class="hl-title function_ invoke__">next</span>()</span>
+<span class="line">    }</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">size_hint</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> (<span class="hl-type">usize</span>, <span class="hl-type">Option</span>&lt;<span class="hl-type">usize</span>&gt;) {</span>
+<span class="line">        (**<span class="hl-keyword">self</span>).<span class="hl-title function_ invoke__">size_hint</span>()</span>
+<span class="line">    }</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">advance_by</span>(&amp;<span class="hl-keyword">mut</span> <span class="hl-keyword">self</span>, n: <span class="hl-type">usize</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;(), <span class="hl-type">usize</span>&gt; {</span>
+<span class="line">        (**<span class="hl-keyword">self</span>).<span class="hl-title function_ invoke__">advance_by</span>(n)</span>
+<span class="line">    }</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">nth</span>(&amp;<span class="hl-keyword">mut</span> <span class="hl-keyword">self</span>, n: <span class="hl-type">usize</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Option</span>&lt;<span class="hl-keyword">Self</span>::Item&gt; {</span>
+<span class="line">        (**<span class="hl-keyword">self</span>).<span class="hl-title function_ invoke__">nth</span>(n)</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>就是说，一个迭代器的可变引用，可以被当作迭代器使用。比如 </span><code>Iterator::take()</code></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// take use self as input.</span></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">take</span>(<span class="hl-keyword">self</span>, n: <span class="hl-type">usize</span>) <span class="hl-punctuation">-&gt;</span> Take&lt;<span class="hl-keyword">Self</span>&gt;;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// ...</span></span>
+<span class="line"><span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">v</span> = <span class="hl-built_in">vec!</span>[<span class="hl-number">1</span>, <span class="hl-number">2</span>, <span class="hl-number">3</span>, <span class="hl-number">4</span>, <span class="hl-number">5</span>];</span>
+<span class="line"><span class="hl-keyword">let</span> <span class="hl-variable">iter</span> = v.<span class="hl-title function_ invoke__">iter</span>();</span>
+<span class="line"><span class="hl-keyword">let</span> <span class="hl-variable">_</span> = iter.<span class="hl-title function_ invoke__">take</span>(<span class="hl-number">3</span>); <span class="hl-comment">// ✅</span></span>
+<span class="line"><span class="hl-comment">// let _ = iter.take(3);// ❌ iter was used.</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">let</span> <span class="hl-variable">mut_iter</span> = v.<span class="hl-title function_ invoke__">iter_mut</span>();</span>
+<span class="line"><span class="hl-keyword">let</span> <span class="hl-variable">_</span> = mut_iter.<span class="hl-title function_ invoke__">take</span>(<span class="hl-number">3</span>);<span class="hl-comment">// ✅</span></span>
+<span class="line"><span class="hl-comment">// let _ = mut_iter.take(3);// ❌ mut_iter was used.</span></span></code></pre>
+
+</figure>
+</section>
+<section id="10-3">
+
+    <h3>
+    <a href="#10-3"><span>10.3. 什么都可以是迭代器</span> </a>
+    </h3>
+<p><code>Iterator</code><span> 是一个 trait</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>there are no rules or conventions on what can or cannot be an iterator. If the type impls Iterator then it</span>&rsquo;<span>s an iterator.</span></p>
+</blockquote>
+
+</figure>
+<p><span>标准库：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">use</span> std::sync::mpsc::channel;</span>
+<span class="line"><span class="hl-keyword">use</span> std::thread;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">paths_can_be_iterated</span>(path: &amp;Path) {</span>
+<span class="line">    <span class="hl-keyword">for</span> <span class="hl-variable">part</span> <span class="hl-keyword">in</span> path {</span>
+<span class="line">        <span class="hl-comment">// iterate over parts of a path</span></span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">receivers_can_be_iterated</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> (send, recv) = <span class="hl-title function_ invoke__">channel</span>();</span>
+<span class="line"></span>
+<span class="line">    thread::<span class="hl-title function_ invoke__">spawn</span>(<span class="hl-keyword">move</span> || {</span>
+<span class="line">        send.<span class="hl-title function_ invoke__">send</span>(<span class="hl-number">1</span>).<span class="hl-title function_ invoke__">unwrap</span>();</span>
+<span class="line">        send.<span class="hl-title function_ invoke__">send</span>(<span class="hl-number">2</span>).<span class="hl-title function_ invoke__">unwrap</span>();</span>
+<span class="line">        send.<span class="hl-title function_ invoke__">send</span>(<span class="hl-number">3</span>).<span class="hl-title function_ invoke__">unwrap</span>();</span>
+<span class="line">    });</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">for</span> <span class="hl-variable">received</span> <span class="hl-keyword">in</span> recv {</span>
+<span class="line">        <span class="hl-comment">// iterate over received values</span></span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="11-IntoIterator">
+
+    <h2>
+    <a href="#11-IntoIterator"><span>11. IntoIterator</span> </a>
+    </h2>
+<section id="11-1-IntoIterator-trait">
+
+    <h3>
+    <a href="#11-1-IntoIterator-trait"><span>11.1. IntoIterator trait</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">IntoIterator</span> </span>
+<span class="line"><span class="hl-keyword">where</span></span>
+<span class="line">    &lt;<span class="hl-keyword">Self</span>::IntoIter <span class="hl-keyword">as</span> <span class="hl-built_in">Iterator</span>&gt;::Item == <span class="hl-keyword">Self</span>::Item, </span>
+<span class="line">{</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Item</span>;</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">IntoIter</span>: <span class="hl-built_in">Iterator</span>;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">into_iter</span>(<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">Self</span>::IntoIter;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<ul>
+<li>
+<code>IntoIterator</code><span> types can be converted into iterators</span>
+</li>
+<li>
+<code>for-in</code><span> loop will call </span><code>into_iter</code><span> method:</span>
+</li>
+</ul>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// vec = Vec&lt;T&gt;</span></span>
+<span class="line"><span class="hl-keyword">for</span> <span class="hl-variable">v</span> <span class="hl-keyword">in</span> vec {} <span class="hl-comment">// v = T</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// same as :</span></span>
+<span class="line"><span class="hl-keyword">for</span> <span class="hl-variable">v</span> <span class="hl-keyword">in</span> vec.<span class="hl-title function_ invoke__">into_iter</span>() {}</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="12-FromIterator">
+
+    <h2>
+    <a href="#12-FromIterator"><span>12. FromIterator</span> </a>
+    </h2>
+<section id="12-1-FromIterator-trait">
+
+    <h3>
+    <a href="#12-1-FromIterator-trait"><span>12.1. FromIterator trait</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">FromIterator</span>&lt;A&gt; {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">from_iter</span>&lt;T&gt;(iter: T) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">Self</span></span>
+<span class="line">    <span class="hl-keyword">where</span></span>
+<span class="line">        T: <span class="hl-built_in">IntoIterator</span>&lt;Item = A&gt;;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="12-2-Iterator-trait-fn-collect-FromIterator-trait">
+
+    <h3>
+    <a href="#12-2-Iterator-trait-fn-collect-FromIterator-trait"><span>12.2. </span><code>Iterator trait</code><span> 里的 </span><code>fn collect()</code><span>方法需要实现了 </span><code>FromIterator trait</code> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">collect</span>&lt;B&gt;(<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> B</span>
+<span class="line"><span class="hl-keyword">where</span></span>
+<span class="line">    B: FromIterator&lt;<span class="hl-keyword">Self</span>::Item&gt;;</span></code></pre>
+
+</figure>
+</section>
+<section id="12-3-IntoIterator-trait-FromIterator-trait">
+
+    <h3>
+    <a href="#12-3-IntoIterator-trait-FromIterator-trait"><span>12.3. 标准库的集合都实现了 </span><code>IntoIterator trait</code><span> 和 </span><code>FromIterator trait</code> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">use</span> std::collections::{BTreeSet, HashMap, HashSet, LinkedList};</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// String -&gt; HashSet&lt;char&gt;</span></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">unique_chars</span>(string: &amp;<span class="hl-type">str</span>) <span class="hl-punctuation">-&gt;</span> HashSet&lt;<span class="hl-type">char</span>&gt; {</span>
+<span class="line">    string.<span class="hl-title function_ invoke__">chars</span>().<span class="hl-title function_ invoke__">collect</span>()</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// Vec&lt;T&gt; -&gt; BTreeSet&lt;T&gt;</span></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">ordered_unique_items</span>&lt;T: <span class="hl-built_in">Ord</span>&gt;(vec: <span class="hl-type">Vec</span>&lt;T&gt;) <span class="hl-punctuation">-&gt;</span> BTreeSet&lt;T&gt; {</span>
+<span class="line">    vec.<span class="hl-title function_ invoke__">into_iter</span>().<span class="hl-title function_ invoke__">collect</span>()</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// HashMap&lt;K, V&gt; -&gt; LinkedList&lt;(K, V)&gt;</span></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">entry_list</span>&lt;K, V&gt;(map: HashMap&lt;K, V&gt;) <span class="hl-punctuation">-&gt;</span> LinkedList&lt;(K, V)&gt; {</span>
+<span class="line">    map.<span class="hl-title function_ invoke__">into_iter</span>().<span class="hl-title function_ invoke__">collect</span>()</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="12-4-Playground-Code">
+
+    <h3>
+    <a href="#12-4-Playground-Code"><span>12.4. Playground Code</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">let</span> <span class="hl-variable">x</span> = (<span class="hl-number">0</span>..<span class="hl-number">5</span>)</span>
+<span class="line">    .<span class="hl-title function_ invoke__">flat_map</span>(|x| x * <span class="hl-number">101</span>..x * <span class="hl-number">111</span>)</span>
+<span class="line">    .<span class="hl-title function_ invoke__">enumerate</span>()</span>
+<span class="line">    .<span class="hl-title function_ invoke__">filter</span>(|&amp;(i, x)| (i + x) % <span class="hl-number">3</span> == <span class="hl-number">0</span>)</span>
+<span class="line">    .<span class="hl-title function_ invoke__">take</span>(<span class="hl-number">10</span>)</span>
+<span class="line">    .<span class="hl-title function_ invoke__">map</span>(|(_, x)| x)</span>
+<span class="line">    .collect::&lt;<span class="hl-type">Vec</span>&lt;<span class="hl-type">usize</span>&gt;&gt;();</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="13-This-is-us-now">
+
+    <h2>
+    <a href="#13-This-is-us-now"><span>13. This is us now</span> </a>
+    </h2>
+
+<figure>
+
+<img alt="2021-11/jason-jarvis-stdlib-traits.png" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2021-11/jason-jarvis-stdlib-traits.png">
+</figure>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2021-11-01-rust-std-trait.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>

@@ -1,0 +1,461 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blockchain VM</title>
+  <meta name="description" content="这是22年5月份在我在公司内部分享的关于区块链虚拟机的基础介绍，整理资料的时候翻出来发到博客上。">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2023/01/15/blockchain-vm.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#Blockchain-VM"><span>Blockchain VM</span> <time datetime="2023-01-15">Jan 15, 2023</time></a>
+    </h1>
+<p><span>这是22年5月份在我在公司内部分享的关于区块链虚拟机的基础介绍，整理资料的时候翻出来发到博客上。</span></p>
+<section id="s-1">
+
+    <h2>
+    <a href="#s-1"><span>什么是区块链虚拟机</span> </a>
+    </h2>
+<section id="s-2">
+
+    <h3>
+    <a href="#s-2"><span>区块链</span> </a>
+    </h3>
+<ul>
+<li>
+<span>不可篡改的去中心化分布式账本</span>
+</li>
+<li>
+<span>运用密码学加密，把块（一些记录）连接起来形成链</span>
+</li>
+</ul>
+</section>
+<section id="s-3">
+
+    <h3>
+    <a href="#s-3"><span>虚拟机</span> </a>
+    </h3>
+<ul>
+<li>
+<span>用来模拟计算机的程序</span>
+</li>
+<li>
+<span>虚拟的 CPU、内存、存储</span>
+</li>
+<li>
+<span>使用起来和物理机器没有区别</span>
+</li>
+</ul>
+</section>
+</section>
+<section id="s-4">
+
+    <h2>
+    <a href="#s-4"><span>从比特币脚本到以太坊虚拟机</span> </a>
+    </h2>
+<section id="s-5">
+
+    <h3>
+    <a href="#s-5"><span>比特币脚本</span> </a>
+    </h3>
+<section id="UTXO">
+
+    <h4>
+    <a href="#UTXO"><span>UTXO 模型</span> </a>
+    </h4>
+<p><span>UTXO (Unspent Transaction Output) ，简单来说就是：</span></p>
+<ol>
+<li>
+<span>一个 UTXO 包含一个面额和一个当前的拥有者。</span>
+</li>
+<li>
+<span>某个一账户的余额 是由 当前区块链网络里，所有属于这个账户的 UTXO 组成的：</span>
+</li>
+</ol>
+
+<figure>
+
+<img alt="utxo_1" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/utxo_1.png">
+</figure>
+<p><span>一笔交易里可以包含多个 input \也可以有多个 output，只需要保证 </span><code>sum(inputs) &gt; sum(outputs) + fee</code><span> 即可。</span></p>
+<p><span>如果一个用户想要发送一笔交易，发送 X 个币到一个特定的地址，有时候，他们拥有的 UTXO 的一些子集组合起来面值恰好是 X，在这种情况下，他们可以创造一个交易：花费他们的 UTXO 并创造出一笔新的、价值 X 的 UTXO ，由目标地址占有。当这种完美的配对不可能的时候，用户就必须打包其和值 大于 X 的 UTXO 输入集合，并添加一笔拥有第二个目标地址的 UTXO ，称为“变更输出”，分配剩下的币到一个由他们自己控制的地址。</span></p>
+<section id="s-6">
+
+    <h5>
+    <a href="#s-6"><span>思考？</span> </a>
+    </h5>
+<p><span>账户模型和 UTXO 模型相比，有什么优势，有什么缺点？</span></p>
+<ul>
+<li>
+<span>账号模型特点：</span>
+<span>- 余额状态简单，绝大多数情况下，并不会关心自己的资产由哪些面值组成，一般只关心总额多少。而 UTXO 模型需要统计当前状态下的所有 UTXO。</span>
+<span>- 状态数据和用户数量正相关，不会随着时间增大而无限增加</span>
+<span>- 轻量级客户端更容易编写</span>
+</li>
+<li>
+<span>UTXO 模型特点：</span>
+<span>- 资产的可追溯性更强</span>
+<span>- UTXO 模型理论上来说可以并行地利用不同的 UTXO 签发多笔交易。但是如果双花，同一个 UTXO 最终也只会在一个交易里被确认。</span>
+</li>
+</ul>
+</section>
+</section>
+<section id="output">
+
+    <h4>
+    <a href="#output"><span>使用 output</span> </a>
+    </h4>
+
+<figure>
+
+<img alt="utxo_2" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/utxo_2.png">
+</figure>
+<p><span>这里涉及到的两个脚本：</span></p>
+<ul>
+<li>
+<span>锁定脚本 </span><code>scriptPubKey</code>
+</li>
+<li>
+<span>解锁脚本 </span><code>scriptSig</code>
+</li>
+</ul>
+<p><span>比特币虚拟机在执行交易时：需要验证解锁脚本能否解开锁定脚本，会把 </span><strong><strong><span>锁定脚本</span></strong></strong><span>( </span><code>scriptPubKey</code><span> )和对应索引的</span><strong><strong><span>解锁脚本</span></strong></strong><span>( </span><code>scriptSig</code><span> )拼接起来从左到右执行一遍。如果执行过程中</span><strong><strong><span>没有出现错误并且执行结果为真</span></strong></strong><span>，则验证通过，意味着钥匙打开了锁，这个 UTXO 可以被花费。</span></p>
+
+<figure>
+
+<img alt="utxo_3" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/utxo_3.png">
+</figure>
+<p><span>请注意，解锁脚本里不能出现 PUSHDATA 以外的任何操作码，否则会报错</span>
+<span>&gt; 16: mandatory-script-verify-flag-failed (Only non-push operators allowed in signatures)</span></p>
+<p><span>解锁脚本里只能有数据不能出现逻辑操作，否则任何 UTXO 都可以用 </span><code>OP_RETURN</code><span> 解锁:</span>
+<code>OP_TRUE OP_RETURN</code></p>
+</section>
+<section id="Script">
+
+    <h4>
+    <a href="#Script"><span>脚本 Script</span> </a>
+    </h4>
+<p><a href="https://github.com/bitcoin/bitcoin/blob/master/src/script/interpreter.cpp"><span>bitcoin-core 源码 interpreter.cpp</span></a><span>里的注释：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">/**</span></span>
+<span class="line"><span class="hl-comment"> * Script is a stack machine (like Forth) that evaluates a predicate</span></span>
+<span class="line"><span class="hl-comment"> * returning a bool indicating valid or not.  There are no loops.</span></span>
+<span class="line"><span class="hl-comment"> */</span></span></code></pre>
+
+</figure>
+<p><span>Script 是一种类 Forth、基于栈式模型、无状态的、非图灵完备的语言。</span>
+<span>opcodes 分为常量、流程控制、栈操作、算术运算、位运算、密码学运算、保留字等若干类，还包括3个内部使用的伪指令。</span></p>
+<section id="A-simple-example">
+
+    <h5>
+    <a href="#A-simple-example"><span>A simple example</span> </a>
+    </h5>
+<p><span>先看一个简单的例子，只需要用到几个简单的操作符：</span></p>
+<table>
+<tr>
+<th><span>Word</span></th>
+<th><span>Opcode</span></th>
+<th><span>Hex</span></th>
+<th><span>Input</span></th>
+<th><span>Output</span></th>
+<th><span>Description</span></th>
+</tr>
+<tr>
+<td><span>OP</span><em><span>1</span>&hellip;<span>OP</span></em><span>16</span></td>
+<td><span>81-96</span></td>
+<td><span>0x51-0x60</span></td>
+<td><span>Nothing</span></td>
+<td><span>1-16</span></td>
+<td><span>push the number into stack</span></td>
+</tr>
+<tr>
+<td><span>OP_ADD</span></td>
+<td><span>147</span></td>
+<td><span>0x93</span></td>
+<td><span>a b</span></td>
+<td><span>out</span></td>
+<td><span>a is added to b.</span></td>
+</tr>
+<tr>
+<td><span>OP_EQUAL</span></td>
+<td><span>135</span></td>
+<td><span>0x87</span></td>
+<td><span>x1 x2</span></td>
+<td><span>True/false</span></td>
+<td><span>Return True if x1 == x2, or false</span></td>
+</tr>
+</table>
+<p><span>比如 A 需要转账给 B 一笔钱，那么 B 就需要提供一个收款方式（锁定脚本模板），A 按照 B 提供的</span><strong><strong><span>锁定脚本</span></strong></strong><span>把钱锁定，就相当于完成了对 B 的转账。</span></p>
+<p><span>假如 B 提供的收款方式是：因为只有我知道 </span><code>x + 2 = 3</code><span> 的解是 </span><code>x = 1</code><span> ，所以告诉 A，你只需要把金额通过以下脚本锁定：</span>
+<code>OP_2 OP_ADD 3 OP_EQUAL</code></p>
+<p><span>当 B 需要使用这笔钱的时候：B 就可以使用</span><strong><strong><span>解锁脚本</span></strong></strong><span>：</span><code>OP_1</code><span> 来证明自己可以使用这笔钱了：</span>
+<span>因为：解锁脚本 + 锁定脚本: </span><code>OP_1 OP_2 OP_ADD 3 OP_EQUAL</code><span> 的执行结果是 True</span></p>
+<p><span>当然，这样提供锁定脚本的方法</span>&ldquo;<span>只能用一次</span>&rdquo;<span>，因为你的解锁方式使用过以后就相当于公开了。</span></p>
+</section>
+<section id="s-7">
+
+    <h5>
+    <a href="#s-7"><span>实际点的例子</span> </a>
+    </h5>
+<p><span>下面举几个在后面的脚本中会出现的指令，全部的指令可参考</span><a href="https://en.bitcoin.it/wiki/Script#Opcodes"><span>官方文档</span></a><span>和源码。</span></p>
+<p><span>举例几个：</span></p>
+<table>
+<tr>
+<th><span>Word</span></th>
+<th><span>Opcode</span></th>
+<th><span>Hex</span></th>
+<th><span>Input</span></th>
+<th><span>Output</span></th>
+<th><span>Description</span></th>
+</tr>
+<tr>
+<td><code>OP_DUP</code><span></span></td>
+<td><span>118</span></td>
+<td><span>0x76</span></td>
+<td><span>x</span></td>
+<td><span>x x</span></td>
+<td><span>Duplicates the top stack item.</span></td>
+</tr>
+<tr>
+<td><code>OP_HASH160</code><span></span></td>
+<td><span>169</span></td>
+<td><span>0xa9</span></td>
+<td><span>in</span></td>
+<td><span>hash</span></td>
+<td><span>The input is hashed twice: first with SHA-256 and then with RIPEMD-160.</span></td>
+</tr>
+<tr>
+<td><code>OP_EQUALVERIFY</code><span></span></td>
+<td><span>136</span></td>
+<td><span>0x88</span></td>
+<td><span>x1 x2</span></td>
+<td><span>Nothing / fail</span></td>
+<td><span>Same as OP</span><em><span>EQUAL, but runs OP</span></em><span>VERIFY afterward.</span></td>
+</tr>
+<tr>
+<td><code>OP_CHECKSIG</code><span></span></td>
+<td><span>172</span></td>
+<td><span>0xac</span></td>
+<td><span>sig pubkey</span></td>
+<td><span>True / false</span></td>
+<td><span>The entire transaction</span>&rsquo;<span>s outputs, inputs, and script (from the most recently-executed OP</span><em><span>CODESEPARATOR to the end) are hashed. The signature used by OP</span></em><span>CHECKSIG must be a valid signature for this hash and public key. If it is, 1 is returned, 0 otherwise.</span></td>
+</tr>
+</table>
+<p><span>B 给 A 提供了一个锁定脚本模板：</span><code>OP_DUP OP_HASH160 &lt;pubKeyHash&gt; OP_EQUALVERIFY OP_CHECKSIG</code><span>，告诉了 A 他的收款地址（等效于其中的公钥 hash），当 A 需要使用这笔钱的时候，在本地计算出相应的签名再附上公钥即可：</span></p>
+<p><strong><strong><span>解锁脚本</span></strong></strong><span>：</span><code>&lt;sig&gt; &lt;pubKey&gt;</code><span> +</span></p>
+<p><strong><strong><span>锁定脚本</span></strong></strong><span>：</span><code>OP_DUP OP_HASH160 &lt;pubKeyHash&gt; OP_EQUALVERIFY OP_CHECKSIG</code></p>
+<p><span>看一下执行过程 PPT:</span></p>
+
+<figure>
+
+<img alt="bitcoin-sig-scrpit" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/bitcoin-sig-script.gif">
+</figure>
+<p><span>注： 关于为什么使用公钥 hash,可以参考下面第一篇拓展阅读，介绍了“付款到公钥” 和 “付款到公钥哈希”的问题</span></p>
+</section>
+</section>
+<section id="s-8">
+
+    <h4>
+    <a href="#s-8"><span>比特币相关知识拓展阅读</span> </a>
+    </h4>
+<ul>
+<li>
+<a href="https://aaron67.cc/2018/12/28/bitcoin-transaction-p2pk-p2pkh/"><span>比特币公钥哈希</span></a>
+</li>
+<li>
+<a href="https://aaron67.cc/2018/12/23/bitcoin-keys/"><span>比特币公钥私钥</span></a>
+</li>
+<li>
+<a href="https://aaron67.cc/2019/01/04/bitcoin-address/"><span>比特币的地址</span></a>
+</li>
+<li>
+<a href="https://aaron67.cc/2019/01/22/bitcoin-wallet/"><span>比特币钱包</span></a>
+</li>
+<li>
+<a href="https://gist.github.com/gavinandresen/3966071"><span>比特币2-of-3多签</span></a>
+</li>
+</ul>
+</section>
+<section id="s-9">
+
+    <h4>
+    <a href="#s-9"><span>比特币的智能合约</span> </a>
+    </h4>
+<p><span>比特币也是支持有限的智能合约的，再</span><a href="https://github.com/bitcoin/bips/blob/master/bip-0011.mediawiki"><span>BIP-11</span></a><span>提出 M-of-N 多签交易后，也增加了 </span><code>OP_CHECKMULTISIG</code><span> 指令，也可以一定程度上实现多签功能，用在托管资产、多签钱包等场景。</span></p>
+</section>
+</section>
+<section id="s-10">
+
+    <h3>
+    <a href="#s-10"><span>以太坊虚拟机</span> </a>
+    </h3>
+<section id="s-11">
+
+    <h4>
+    <a href="#s-11"><span>账户模型</span> </a>
+    </h4>
+
+<figure>
+
+<img alt="eth-account-1" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/eth_account_1.png">
+</figure>
+<p><span>整个以太坊会保存所有账户的状态：</span></p>
+
+<figure>
+
+<img alt="eth-global-state" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/eth_global_state.jfif">
+</figure>
+</section>
+<section id="s-12">
+
+    <h4>
+    <a href="#s-12"><span>以太坊状态机</span> </a>
+    </h4>
+<p><code>(nonce, from, to, value, input)</code><span> 是一个 </span><code>Transaction</code><span> 包含的最重要的几个字段，通过 </span><code>nonce</code><span> 防止重放攻击， </span><code>from</code><span> 和 </span><code>to</code><span> 分别表示了当前交易的发出者和接受者， </span><code>value</code><span> 是当前交易包含的 </span><code>Ether</code><span> ， </span><code>input</code><span> 中包含了合约调用相关的二进制信息。</span></p>
+
+<figure>
+
+<img alt="eth-state-machine" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/eth_state_machine.png">
+</figure>
+<p><span>每当一个 </span><code>Transaction</code><span> 被 </span><code>Ethereum</code><span> 主网挖到后， </span><code>from</code><span> 和 </span><code>to</code><span> 账户的 </span><code>Ether</code><span> 余额就会变动， </span><code>Ethereum</code><span> 就像一个状态机，它接受一个又一个的 </span><code>Transaction</code><span> 并不停改变自己的状态。</span></p>
+</section>
+<section id="EVM">
+
+    <h4>
+    <a href="#EVM"><span>以太坊虚拟机 EVM</span> </a>
+    </h4>
+<p><span>EVM 准确来说是一个准图灵机，文法上它能够执行任意操作，但为了防止网络滥用、以及避免由于图灵完整性带来的安全问题，以太坊中所有操作都进行了经济学上的限制，也就是 gas 机制</span></p>
+<p><span>EVM 执行的过程：</span></p>
+<ul>
+<li>
+<span>从 </span><code>EVM code</code><span> 中取指令，所有的操作在 </span><code>Stack</code><span> 上进行，</span>
+</li>
+<li>
+<code>Memory</code><span> 作为临时的变量存储， </span><code>storage</code><span> 是账户状态。</span>
+</li>
+<li>
+<span>执行受到 </span><code>gas avail</code><span> 限制。</span>
+</li>
+</ul>
+
+<figure>
+
+<img alt="evm" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/evm1.jfif">
+</figure>
+<p><span>执行过程中的消息调用（CALL）：合约之间的调用，参数和返回值在 memory 中传递</span>
+<img alt="evm" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/evm2.jfif"></p>
+</section>
+</section>
+</section>
+<section id="s-13">
+
+    <h2>
+    <a href="#s-13"><span>如何写一个简单堆栈虚拟机</span> </a>
+    </h2>
+<p><a href="https://github.com/CharlesLiu-TOPNetwork/ssvm/tree/demo/literal_instruction"><span>ssvm</span></a></p>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2023-01-15-blockchain-vm.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>

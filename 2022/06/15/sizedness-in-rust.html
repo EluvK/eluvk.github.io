@@ -1,0 +1,1376 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sizedness In Rust</title>
+  <meta name="description" content="原blog">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2022/06/15/sizedness-in-rust.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#Sizedness-In-Rust"><span>Sizedness In Rust</span> <time datetime="2022-06-15">Jun 15, 2022</time></a>
+    </h1>
+<p><a href="https://github.com/pretzelhammer/rust-blog/blob/master/posts/sizedness-in-rust.md"><span>原blog</span></a></p>
+<p><span>译注：文章很长，我也是分了多次在学习&amp;&amp;翻译。不求一口气全部看完理解，但也需要静下心来慢慢看。示例代码部分最好自己敲一遍看看运行报错。可以理解的更好~</span></p>
+<section id="1-Intro">
+
+    <h2>
+    <a href="#1-Intro"><span>1. Intro</span> </a>
+    </h2>
+<p><code>Sizedness</code><span> 的概念可能是 </span><code>Rust</code><span> 里最重要也最不起眼的一个，实际编程中冷不防就会碰到类似于 </span><code>x doesn't have size known at compile time</code><span> (编译期无法确定x的大小)的错误。</span></p>
+<p><span>全文涉及术语解释：</span></p>
+<table>
+<tr>
+<th><span>phrase</span></th>
+<th><span>shorthand for</span></th>
+<th><span>翻译</span></th>
+</tr>
+<tr>
+<td><span>sizedness</span></td>
+<td><span>property of being </span><code>sized</code><span> or </span><code>unsized</code><span></span></td>
+<td><span>确定大小或不确定大小的这种特性</span></td>
+</tr>
+<tr>
+<td><code>sized</code><span> type</span></td>
+<td><span>type with a known size at compile time</span></td>
+<td><span>编译期可确定大小的类型</span></td>
+</tr>
+<tr>
+<td><code>unsized</code><span> type / </span><code>DST</code><span></span></td>
+<td><span>dynamically-sized type, i.e. size not known at compile time</span></td>
+<td><span>编译器无法确定大小的类型，或者称之为动态大小类型</span></td>
+</tr>
+<tr>
+<td><code>?sized</code><span> type</span></td>
+<td><span>type that </span><strong><strong><span>may or may not be sized</span></strong></strong><span></span></td>
+<td><span>可能是确定大小，也可能是不确定大小的类型</span></td>
+</tr>
+<tr>
+<td><span>unsized coercion</span></td>
+<td><span>coercing a </span><code>sized</code><span> type into an </span><code>unsized</code><span> type</span></td>
+<td><span>强制把确定大小类型转为不确定大小类型</span></td>
+</tr>
+<tr>
+<td><code>ZST</code><span></span></td>
+<td><span>zero-sized type, i.e. instances of the type are 0 bytes in size</span></td>
+<td><span>零大小类型</span></td>
+</tr>
+<tr>
+<td><code>width</code><span></span></td>
+<td><span>single unit of measurement of pointer </span><code>width</code><span></span></td>
+<td><span>指针宽度的测量单位</span></td>
+</tr>
+<tr>
+<td><span>thin pointer / </span><code>single-width</code><span> pointer</span></td>
+<td><span>pointer that is </span><em><span>1 width</span></em><span></span></td>
+<td><span>窄指针，1个宽度的指针</span></td>
+</tr>
+<tr>
+<td><span>fat pointer / </span><code>double-width</code><span> pointer</span></td>
+<td><span>pointer that is </span><em><span>2 widths</span></em><span></span></td>
+<td><span>宽指针，2个宽度的指针</span></td>
+</tr>
+<tr>
+<td><span>pointer / reference</span></td>
+<td><span>some pointer of some </span><code>width</code><span>, </span><code>width</code><span> will be clarified by context</span></td>
+<td><span>宽度由上下文确定的指针</span></td>
+</tr>
+<tr>
+<td><span>slice</span></td>
+<td><code>double-width</code><span> pointer to a dynamically sized view into some array</span></td>
+<td><span>切片，用一个宽指针指向一个动态大小类型的视图</span></td>
+</tr>
+</table>
+</section>
+<section id="2-Sizedness">
+
+    <h2>
+    <a href="#2-Sizedness"><span>2. Sizedness</span> </a>
+    </h2>
+<ul>
+<li>
+<span>在 </span><code>Rust</code><span> 中，如果一个类型的大小可以在编译期间确定，那么就说这个类型是 </span><code>sized</code><span> ，能够确定大小才能在栈( </span><code>stack</code><span> )上分配内存。确定大小的类型可以通过值传递、通过引用传递</span>
+</li>
+<li>
+<span>如果一个类型的大小，在编译期间无法确定，那就是 </span><code>unsized</code><span> ，或者 </span><code>DST</code><span>。 </span><code>unsized</code><span> 类型只能通过引用传递。</span>
+</li>
+</ul>
+<section id="2-1-Sized-example">
+
+    <h3>
+    <a href="#2-1-Sized-example"><span>2.1. Sized example</span> </a>
+    </h3>
+<section id="2-1-1">
+
+    <h4>
+    <a href="#2-1-1"><span>2.1.1. 基础类型</span> </a>
+    </h4>
+<p><span>基本类型、以及由基本类型通过 结构体(</span><code>struct</code><span>)、元组(</span><code>tuple</code><span>)、枚举(</span><code>enum</code><span>)、定长数组(</span><code>arrays</code><span>)等方式(递归得)组成的类型，在考虑了填充、对齐(padding and alignment)后，可以比较直观的把字节数加起来得到确定的结果。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">use</span> std::mem::size_of;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-comment">// primitives</span></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">4</span>, size_of::&lt;<span class="hl-type">f32</span>&gt;());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">8</span>, size_of::&lt;<span class="hl-type">i64</span>&gt;());</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-comment">// tuple</span></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">16</span>, size_of::&lt;(<span class="hl-type">i32</span>, <span class="hl-type">f32</span>, <span class="hl-type">i64</span>)&gt;());</span>
+<span class="line">    <span class="hl-comment">// tuple with padding</span></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">16</span>, size_of::&lt;(<span class="hl-type">i32</span>, <span class="hl-type">i64</span>)&gt;());</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-comment">// fixed-size arrays</span></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">0</span>, size_of::&lt;[<span class="hl-type">i32</span>; <span class="hl-number">0</span>]&gt;());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">16</span>, size_of::&lt;[<span class="hl-type">i32</span>; <span class="hl-number">4</span>]&gt;());</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-meta">#[allow(dead_code)]</span></span>
+<span class="line">    <span class="hl-keyword">struct</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">        x: <span class="hl-type">i32</span>,</span>
+<span class="line">        y: <span class="hl-type">i32</span>,</span>
+<span class="line">    }</span>
+<span class="line">    <span class="hl-comment">// struct</span></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">8</span>, size_of::&lt;Point&gt;());</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-comment">// emums</span></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">8</span>, size_of::&lt;<span class="hl-type">Option</span>&lt;<span class="hl-type">i32</span>&gt;&gt;());</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="2-1-2">
+
+    <h4>
+    <a href="#2-1-2"><span>2.1.2. 枚举</span> </a>
+    </h4>
+<p><span>以下为尝试后能够成功编译运行的代码：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-meta">#![allow(dead_code)]</span></span>
+<span class="line"><span class="hl-keyword">use</span> std::mem::size_of;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-comment">//enums of options</span></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">8</span>, size_of::&lt;<span class="hl-type">Option</span>&lt;<span class="hl-type">i32</span>&gt;&gt;());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">16</span>, size_of::&lt;<span class="hl-type">Option</span>&lt;<span class="hl-type">i64</span>&gt;&gt;());</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-comment">//enums of result</span></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">8</span>, size_of::&lt;<span class="hl-type">Result</span>&lt;<span class="hl-type">i32</span>, <span class="hl-type">i32</span>&gt;&gt;());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">16</span>, size_of::&lt;<span class="hl-type">Result</span>&lt;<span class="hl-type">i32</span>, <span class="hl-type">i64</span>&gt;&gt;());</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">enum</span> <span class="hl-title class_">Color</span> {</span>
+<span class="line">        <span class="hl-title function_ invoke__">Blue</span>(<span class="hl-type">i32</span>),</span>
+<span class="line">        <span class="hl-title function_ invoke__">Red</span>(<span class="hl-type">i32</span>),</span>
+<span class="line">        <span class="hl-title function_ invoke__">Green</span>(<span class="hl-type">i32</span>),</span>
+<span class="line">    }</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">8</span>, size_of::&lt;Color&gt;());</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">enum</span> <span class="hl-title class_">Color2</span> {</span>
+<span class="line">        <span class="hl-title function_ invoke__">Blue</span>(<span class="hl-type">i32</span>),</span>
+<span class="line">        <span class="hl-title function_ invoke__">Red</span>(<span class="hl-type">i32</span>),</span>
+<span class="line">        <span class="hl-title function_ invoke__">Green</span>(<span class="hl-type">i64</span>),</span>
+<span class="line">    }</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">16</span>, size_of::&lt;Color2&gt;());</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><code>Rust</code><span> 的枚举的size大小就有点复杂了，是一个</span><a href="https://en.wikipedia.org/wiki/Tagged_union"><span>tagged union</span></a><span>，详细的可以看看</span><a href="https://doc.rust-lang.org/nomicon/repr-rust.html"><span>Rustonomicon: Data Layout</span></a><span>。</span></p>
+<p><span>简单来说就是除了用来保存枚举数据的空间，额外还需要一个表示是哪个枚举的 </span><code>tag</code><span> 的空间。</span>
+<span>但是当枚举里是一个 </span><code>None</code><span> 和一个 </span><code>&amp;T</code><span> 引用时，这个枚举的空间就显得没必要了。可以看以下这个例子：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-meta">#![allow(dead_code)]</span></span>
+<span class="line"><span class="hl-keyword">use</span> std::mem::size_of;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">enum</span> <span class="hl-title class_">MustOption</span>&lt;T&gt; {</span>
+<span class="line">        <span class="hl-title function_ invoke__">Value</span>(T),</span>
+<span class="line">    }</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">enum</span> <span class="hl-title class_">MyOption</span>&lt;T&gt; {</span>
+<span class="line">        <span class="hl-title function_ invoke__">Value</span>(T),</span>
+<span class="line">        <span class="hl-literal">None</span>,</span>
+<span class="line">    }</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-meta">#[repr(C)]</span></span>
+<span class="line">    <span class="hl-keyword">enum</span> <span class="hl-title class_">MyOptionInC</span>&lt;T&gt; {</span>
+<span class="line">        <span class="hl-title function_ invoke__">Value</span>(T),</span>
+<span class="line">        <span class="hl-literal">None</span>,</span>
+<span class="line">    }</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">4</span>, size_of::&lt;<span class="hl-type">i32</span>&gt;());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">8</span>, size_of::&lt;&amp;<span class="hl-type">i32</span>&gt;());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">8</span>, size_of::&lt;MustOption&lt;&amp;<span class="hl-type">i32</span>&gt;&gt;());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">8</span>, size_of::&lt;MyOption&lt;&amp;<span class="hl-type">i32</span>&gt;&gt;());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">16</span>, size_of::&lt;MyOptionInC&lt;&amp;<span class="hl-type">i32</span>&gt;&gt;());</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>其中</span><code>#[repc(C)]</code><span>表示按照C的内存布局来操作，也就没有了 </span><code>Rust</code><span> 优化这种case下不必要的 </span><code>tag</code><span> （为了表示 </span><code>None</code><span> ）而节省的空间。这种标志在 </span><code>FFI</code><span> 场景下是很关键的的细节。其它表示方法参考</span><a href="https://doc.rust-lang.org/nomicon/other-reprs.html"><span>Rustonomicon: Data Layout - others reprs</span></a></p>
+</section>
+<section id="2-1-3">
+
+    <h4>
+    <a href="#2-1-3"><span>2.1.3. 指针大小</span> </a>
+    </h4>
+<p><span>有点远了收回来，看一下指针的size。指针有窄指针和宽指针，分别用1个和2个 </span><code>width</code><span> 表示，一个 </span><code>width</code><span> 是8个字节，</span></p>
+<ul>
+<li>
+<span>对于</span><strong><strong><span>固定大小的对象</span></strong></strong><span>的指针，都是窄指针，一个 </span><code>width</code><span> 大小，只需要存储地址</span>
+</li>
+</ul>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">use</span> std::mem::size_of;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">const</span> WIDTH: <span class="hl-type">usize</span> = size_of::&lt;&amp;()&gt;();</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(WIDTH, size_of::&lt;&amp;<span class="hl-type">i32</span>&gt;());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(WIDTH, size_of::&lt;&amp;&amp;<span class="hl-type">i32</span>&gt;());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(WIDTH, size_of::&lt;&amp;<span class="hl-keyword">mut</span> <span class="hl-type">i32</span>&gt;());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(WIDTH, size_of::&lt;<span class="hl-type">Box</span>&lt;<span class="hl-type">i32</span>&gt;&gt;());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(WIDTH, size_of::&lt;&amp;[<span class="hl-type">i64</span>; <span class="hl-number">10</span>]&gt;());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(WIDTH, size_of::&lt;<span class="hl-title function_ invoke__">fn</span>(<span class="hl-type">i32</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">i32</span>&gt;());</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<ul>
+<li>
+<span>对于</span><strong><strong><span>不固定大小的对象</span></strong></strong><span>的指针，都是宽指针，两个 </span><code>width</code><span> 大小，因为需要存储地址+大小</span>
+</li>
+</ul>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">use</span> std::mem::size_of;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">const</span> WIDTH: <span class="hl-type">usize</span> = size_of::&lt;&amp;()&gt;();</span>
+<span class="line"><span class="hl-keyword">const</span> DOUBLE_WIDTH: <span class="hl-type">usize</span> = <span class="hl-number">2</span> * WIDTH;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">struct</span> <span class="hl-title class_">UnsizedStruct</span> {</span>
+<span class="line">        _unsized_slice: [<span class="hl-type">i32</span>],</span>
+<span class="line">    }</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(DOUBLE_WIDTH, size_of::&lt;&amp;<span class="hl-type">str</span>&gt;()); <span class="hl-comment">// string slice</span></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(DOUBLE_WIDTH, size_of::&lt;&amp;[<span class="hl-type">i32</span>]&gt;()); <span class="hl-comment">// i32 slice</span></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(DOUBLE_WIDTH, size_of::&lt;&amp;<span class="hl-keyword">dyn</span> <span class="hl-built_in">ToString</span>&gt;()); <span class="hl-comment">// trait object</span></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(DOUBLE_WIDTH, size_of::&lt;<span class="hl-type">Box</span>&lt;<span class="hl-keyword">dyn</span> <span class="hl-built_in">ToString</span>&gt;&gt;()); <span class="hl-comment">// trait object</span></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(DOUBLE_WIDTH, size_of::&lt;&amp;UnsizedStruct&gt;()) <span class="hl-comment">// unsized-type-ptr</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="2-2">
+
+    <h3>
+    <a href="#2-2"><span>2.2. 总结</span> </a>
+    </h3>
+<p><span>Rust智能操作能够确定大小的对象，也就是 </span><code>Sized</code><span> 的对象，对于动态大小的对象，只能通过引用来操作，指针类型指向的对象可以是动态大小的，但是指针对象本身肯定也是 </span><code>Sized</code><span> 的。</span></p>
+</section>
+</section>
+<section id="3-Sized-Trait">
+
+    <h2>
+    <a href="#3-Sized-Trait"><span>3. Sized Trait</span> </a>
+    </h2>
+<p><code>Sized</code><span> 这个Trait是自动实现的标记Trait (both </span><code>auto trait</code><span> &amp;&amp; </span><code>marked trait</code><span>)，</span><code>auto trait</code><span> 也一定是 </span><code>marked trait</code><span> 但是反之不成立（比如之前的 </span><code>Eq</code><span> Trait就是一个 </span><code>marked trait</code><span>，需要程序员手动注明，告知编译器该类型具有自反性。</span>
+<span>也就是说类型是否有 </span><code>Sized</code><span> 的Trait完全由编译器(根据其成员类型)判断并添加上默认空实现，而且也无法手动去掉这个Trait:</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-meta">#![feature(negative_impls)]</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// this type is Sized, Send, and Sync</span></span>
+<span class="line"><span class="hl-comment">// auto marked trait</span></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Struct</span>;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// opt-out of Send trait</span></span>
+<span class="line"><span class="hl-keyword">impl</span> !<span class="hl-built_in">Send</span> <span class="hl-keyword">for</span> <span class="hl-title class_">Struct</span> {} <span class="hl-comment">// ✅</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// opt-out of Sync trait</span></span>
+<span class="line"><span class="hl-keyword">impl</span> !<span class="hl-built_in">Sync</span> <span class="hl-keyword">for</span> <span class="hl-title class_">Struct</span> {} <span class="hl-comment">// ✅</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// can&#x27;t opt-out of Sized</span></span>
+<span class="line"><span class="hl-keyword">impl</span> !<span class="hl-built_in">Sized</span> <span class="hl-keyword">for</span> <span class="hl-title class_">Struct</span> {} <span class="hl-comment">// ❌</span></span></code></pre>
+
+</figure>
+<section id="3-1">
+
+    <h3>
+    <a href="#3-1"><span>3.1. 总结</span> </a>
+    </h3>
+<p><code>Sized</code><span> 是无法手动消除的</span><code>auto marked trait</code><span>。语言特性下的规则。</span></p>
+</section>
+</section>
+<section id="4-Sized">
+
+    <h2>
+    <a href="#4-Sized"><span>4. 在泛型里的 </span><code>Sized</code> </a>
+    </h2>
+<section id="4-1">
+
+    <h3>
+    <a href="#4-1"><span>4.1. 泛型语法糖</span> </a>
+    </h3>
+<ol>
+<li>
+<span>实际上使用泛型时，编译器会默认加上 </span><code>Sized</code><span> 的泛型限制：</span>
+</li>
+<li>
+<span>当然我们也可以手动限制成 </span><code>?Sized</code><span> 的泛型类型</span>
+</li>
+</ol>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// normally we do:</span></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">func</span>&lt;T&gt;(t: T) {}  <span class="hl-comment">// ✅</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// de-sugar version:</span></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">func</span>&lt;T: <span class="hl-built_in">Sized</span>&gt;(t: T) {} <span class="hl-comment">// ✅</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// try mark `?Sized` ?</span></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">func</span>&lt;T: ?<span class="hl-built_in">Sized</span>&gt;(t: T) {} <span class="hl-comment">// ❌ the size for values of type `T` </span></span>
+<span class="line">                            <span class="hl-comment">// cannot be known at compilation time</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// we can use ?Sized to mark a ref params:</span></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">func</span>&lt;T: ?<span class="hl-built_in">Sized</span>&gt;(t: &amp;T) {} <span class="hl-comment">// ✅</span></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">func</span>&lt;T: ?<span class="hl-built_in">Sized</span>&gt;(t: <span class="hl-type">Box</span>&lt;T&gt;) {} <span class="hl-comment">// ✅</span></span></code></pre>
+
+</figure>
+</section>
+<section id="4-2-Example">
+
+    <h3>
+    <a href="#4-2-Example"><span>4.2. Example</span> </a>
+    </h3>
+<p><span>刚开始接触泛型时很可能会出现的问题：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">use</span> std::fmt::<span class="hl-built_in">Debug</span>;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">debug</span>&lt;T: <span class="hl-built_in">Debug</span>&gt;(t: T) { <span class="hl-comment">// T: Debug + Sized</span></span>
+<span class="line">    <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;{:?}&quot;</span>, t);</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-title function_ invoke__">debug</span>(<span class="hl-string">&quot;my str&quot;</span>); <span class="hl-comment">// T = &amp;str, &amp;str: Debug + Sized ✅</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>一切正常，但是发现 </span><code>debug</code><span> 函数拿走了 </span><code>t</code><span> 的所有权，自然想到改成 </span><code>&amp;T</code><span>：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">use</span> std::fmt::<span class="hl-built_in">Debug</span>;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">debug</span>&lt;T: <span class="hl-built_in">Debug</span>&gt;(t: &amp;T) {</span>
+<span class="line">    <span class="hl-comment">// T: Debug + Sized</span></span>
+<span class="line">    <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;{:?}&quot;</span>, t);</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-title function_ invoke__">debug</span>(<span class="hl-string">&quot;my str&quot;</span>); <span class="hl-comment">// now &amp;T = &amp;str,</span></span>
+<span class="line">                     <span class="hl-comment">// so   T =  str,</span></span>
+<span class="line">                     <span class="hl-comment">// str: Debug + ?Sized ❌</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>Boom! 编译器告诉你：</span><strong><strong><span>the trait </span><code>Sized</code><span> is not implemented for </span><code>str</code></strong></strong></p>
+<p><span>因为此时传入debug的类型 </span><code>&amp;T</code><span> 对应的是 </span><code>&amp;str</code><span> ，而 </span><code>str</code><span> 本身是 </span><code>Unsized</code><span> 的，就不符合泛型里默认对 </span><code>T</code><span> 的限制了。</span></p>
+<p><span>强大的rustc甚至直接提示：考虑加上</span><code>?Sized</code></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"> --&gt; src/main.rs:3:10</span>
+<span class="line">  |</span>
+<span class="line">3 | fn debug&lt;T: Debug&gt;(t: &amp;T) {</span>
+<span class="line">  |          ^ required by this bound in `debug`</span>
+<span class="line">help: consider relaxing the implicit `Sized` restriction</span>
+<span class="line">  |</span>
+<span class="line">3 | fn debug&lt;T: Debug + ?Sized&gt;(t: &amp;T) {</span>
+<span class="line">  |                   ++++++++</span></code></pre>
+
+</figure>
+<p><span>把 </span><code>debug</code><span> 函数的泛型限制加上 </span><code>?Sized</code><span> 后，此时传入的参数虽然是 </span><code>Unsized</code><span> 的，但是也在编译器的预期( </span><code>?Sized</code><span> )内，是引用就ok，执行成功。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">use</span> std::fmt::<span class="hl-built_in">Debug</span>;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">debug</span>&lt;T: <span class="hl-built_in">Debug</span> + ?<span class="hl-built_in">Sized</span>&gt;(t: &amp;T) {</span>
+<span class="line">    <span class="hl-comment">// T: Debug + ?Sized</span></span>
+<span class="line">    <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;{:?}&quot;</span>, t);</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-title function_ invoke__">debug</span>(<span class="hl-string">&quot;my str&quot;</span>); <span class="hl-comment">// &amp;T = &amp;str, T = str, str: Debug + !Sized ✅</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="4-3">
+
+    <h3>
+    <a href="#4-3"><span>4.3. 总结</span> </a>
+    </h3>
+<ol>
+<li>
+<span>泛型类型会自动加上 </span><code>T: Sized</code><span> 的类型限制</span>
+</li>
+<li>
+<span>如果我们传入的是泛型 </span><code>T</code><span> 的引用类型，大多是时候不妨想清楚并写明此时 </span><code>T</code><span> 本身是否可以是动态大小类型，如果可以，加上 </span><code>T: ?Sized</code>
+</li>
+</ol>
+</section>
+</section>
+<section id="5-Unsized-Type">
+
+    <h2>
+    <a href="#5-Unsized-Type"><span>5. Unsized Type</span> </a>
+    </h2>
+<section id="5-1-Slices">
+
+    <h3>
+    <a href="#5-1-Slices"><span>5.1. 切片 </span><code>Slices</code> </a>
+    </h3>
+<p><code>&amp;str</code><span> 和 </span><code>&amp;[T]</code><span> 是最常见的切片类型。切片在Rust里被大量使用，特别是涉及到类型之间的转换时，经常使用切片类型做过度。</span></p>
+<p><span>在函数/方法参数中经常会出现的强制类型转换：</span><code>deref coercion</code><span> &amp;&amp; </span><code>unsized coercion</code></p>
+<ul>
+<li>
+<span>去引用(</span><code>deref coercion</code><span>)，类型 </span><code>T</code><span> 通过解引用操作 </span><code>T: Deref&lt;Target = U&gt;</code><span> 强制转换为类型 </span><code>U</code><span>，比如 </span><code>String.deref() -&gt; str</code>
+</li>
+<li>
+<span>去确定大小(</span><code>unsized coercion</code><span>)，确定大小类型 </span><code>T</code><span> 通过 </span><code>T: Unsize&lt;U&gt;</code><span> 强制转换为 不确定大小类型 </span><code>U</code><span>，比如 </span><code>[i32;3] -&gt; [i32]</code>
+</li>
+</ul>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">method</span>(&amp;<span class="hl-keyword">self</span>) {}</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Trait</span> <span class="hl-keyword">for</span> <span class="hl-title class_">str</span> {</span>
+<span class="line">    <span class="hl-comment">// we can call method on</span></span>
+<span class="line">    <span class="hl-comment">// 1. str</span></span>
+<span class="line">    <span class="hl-comment">// 2. String (due to String: Deref&lt;Target = str&gt;)</span></span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span>&lt;T&gt; Trait <span class="hl-keyword">for</span> [T] {</span>
+<span class="line">    <span class="hl-comment">// we can call method on</span></span>
+<span class="line">    <span class="hl-comment">// 1. any &amp;[T]</span></span>
+<span class="line">    <span class="hl-comment">// 2. any U where U: Deref&lt;Target = [T]&gt;,  e.g. Vec&lt;T&gt;</span></span>
+<span class="line">    <span class="hl-comment">// 3. [T; N], since [T; N]: Unsize&lt;[T]&gt;</span></span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">str_func</span>(_s: &amp;<span class="hl-type">str</span>) {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">slice_func</span>&lt;T&gt;(_s: &amp;[T]) {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-comment">// 1. str slice</span></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">str_slice</span>: &amp;<span class="hl-type">str</span> = <span class="hl-string">&quot;str_slice&quot;</span>;</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">string</span>: <span class="hl-type">String</span> = <span class="hl-string">&quot;string&quot;</span>.<span class="hl-title function_ invoke__">to_owned</span>();</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-comment">// function calls:</span></span>
+<span class="line">    <span class="hl-title function_ invoke__">str_func</span>(str_slice);</span>
+<span class="line">    <span class="hl-title function_ invoke__">str_func</span>(&amp;string); <span class="hl-comment">// deref coercion</span></span>
+<span class="line"></span>
+<span class="line">    <span class="hl-comment">// method calls:</span></span>
+<span class="line">    str_slice.<span class="hl-title function_ invoke__">method</span>();</span>
+<span class="line">    string.<span class="hl-title function_ invoke__">method</span>();</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-comment">// 2. array slice</span></span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">slice</span>: &amp;[<span class="hl-type">i32</span>] = &amp;[<span class="hl-number">1</span>];</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">three_arr</span>: [<span class="hl-type">i32</span>; <span class="hl-number">3</span>] = [<span class="hl-number">1</span>, <span class="hl-number">2</span>, <span class="hl-number">3</span>];</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">vec</span>: <span class="hl-type">Vec</span>&lt;<span class="hl-type">i32</span>&gt; = <span class="hl-built_in">vec!</span>[<span class="hl-number">1</span>];</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-comment">// function calls:</span></span>
+<span class="line">    <span class="hl-title function_ invoke__">slice_func</span>(slice);</span>
+<span class="line">    <span class="hl-title function_ invoke__">slice_func</span>(&amp;three_arr); <span class="hl-comment">// unsized coercion</span></span>
+<span class="line">    <span class="hl-title function_ invoke__">slice_func</span>(&amp;vec); <span class="hl-comment">// deref coercion</span></span>
+<span class="line"></span>
+<span class="line">    <span class="hl-comment">// method calls</span></span>
+<span class="line">    slice.<span class="hl-title function_ invoke__">method</span>();</span>
+<span class="line">    three_arr.<span class="hl-title function_ invoke__">method</span>(); <span class="hl-comment">// unsized coercion</span></span>
+<span class="line">    vec.<span class="hl-title function_ invoke__">method</span>(); <span class="hl-comment">// deref coercion</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>这两种强制转换经常发生，但不常被注意到。</span></p>
+</section>
+<section id="5-2-Trait-Objects">
+
+    <h3>
+    <a href="#5-2-Trait-Objects"><span>5.2. Trait Objects</span> </a>
+    </h3>
+<p><code>Rust</code><span> 的 </span><code>Traits</code><span> 都会自动加上 </span><code>?Sized</code><span>，也没有办法手动再加上：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait</span>: ?<span class="hl-built_in">Sized</span> {} <span class="hl-comment">// compile error ❌</span></span>
+<span class="line"><span class="hl-comment">// `?Trait` is not premitted in supertraits. traits are `?Sized` by default</span></span></code></pre>
+
+</figure>
+<p><span>Traits 都是 </span><code>?Sized</code><span> 的，去语法糖后是：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait</span> <span class="hl-keyword">where</span> <span class="hl-keyword">Self</span>: ?<span class="hl-built_in">Sized</span> {}</span></code></pre>
+
+</figure>
+<p><span>表示Traits是允许</span><code>self</code><span>对象是不定长的类型，但是如果把 </span><code>self</code><span> (注意不是</span><code>&amp;self</code><span>) 对象作为参数传入，编译还是会报错，因为大小可能不确定：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">method</span>(<span class="hl-keyword">self</span>) {} <span class="hl-comment">// compile error ❌</span></span>
+<span class="line">    <span class="hl-comment">// the size for values of type `Self` cannot be known at compilation time</span></span>
+<span class="line">    <span class="hl-comment">// help: consider further restricting `Self`</span></span>
+<span class="line">    <span class="hl-comment">//   |</span></span>
+<span class="line">    <span class="hl-comment">// 2 |     fn method(self) where Self: Sized {}</span></span>
+<span class="line">    <span class="hl-comment">//   |                     +++++++++++++++++</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>我们可以选择把Trait标记为 </span><code>:Sized</code><span>，不过这样的话会出现以下问题：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait</span>: <span class="hl-built_in">Sized</span> { </span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">method</span>(<span class="hl-keyword">self</span>) {} <span class="hl-comment">// ✅</span></span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Trait</span> <span class="hl-keyword">for</span> <span class="hl-title class_">str</span> { <span class="hl-comment">// compile error ❌</span></span>
+<span class="line">    <span class="hl-comment">// we don&#x27;t knonw size of `str` </span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>也可以选择把method标记为</span><code>:Sized</code><span>类型限定使用：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">method</span>(<span class="hl-keyword">self</span>) <span class="hl-keyword">where</span> <span class="hl-keyword">Self</span>: <span class="hl-built_in">Sized</span>, {</span>
+<span class="line">    } </span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Trait</span> <span class="hl-keyword">for</span> <span class="hl-title class_">str</span> { <span class="hl-comment">// ✅</span></span>
+<span class="line">    </span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>然是这个 </span><code>method</code><span> 方法无法给</span><code>str</code><span>实现了：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Trait</span> <span class="hl-keyword">for</span> <span class="hl-title class_">str</span> { <span class="hl-comment">// ✅</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">method</span>(<span class="hl-keyword">self</span>) {} <span class="hl-comment">// compile error ❌</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>如果不实现 </span><code>method</code><span> ，即上面的代码，是可以编译通过允许的，当然也不能使用 </span><code>method</code><span> 方法，否则还会报错。Rust给这种情况提供了一定的灵活性：Trait 在包含一些 </span><code>Sized</code><span> 限定的方法时，也可以给不定长的类型实现，只要我们不去使用这些限定方法。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">method</span>(<span class="hl-keyword">self</span>) <span class="hl-keyword">where</span> <span class="hl-keyword">Self</span>: <span class="hl-built_in">Sized</span> {}</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">method2</span>(&amp;<span class="hl-keyword">self</span>) {}</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Trait</span> <span class="hl-keyword">for</span> <span class="hl-title class_">str</span> {} <span class="hl-comment">// ✅</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-comment">// we never call &quot;method&quot; so no errors</span></span>
+<span class="line">    <span class="hl-string">&quot;str&quot;</span>.<span class="hl-title function_ invoke__">method2</span>(); <span class="hl-comment">// ✅</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>绕回来，Rust之所以把Trait设计为默认 </span><code>?Sized</code><span> ，都是为了Trait对象 (</span><code>Trait Object</code><span>)，Trait对象都是unsized的，因为给对象实现一个Trait并不要求这个对象的大小是确定的。</span></p>
+<p><span>实际上，当我们写了一个Trait时：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait</span> {}</span></code></pre>
+
+</figure>
+<p><span>可以认为编译器自动的加上了：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait</span>: ?<span class="hl-built_in">Sized</span> {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Trait</span> <span class="hl-keyword">for</span> <span class="hl-title class_">dyn</span> Trait {</span>
+<span class="line">    <span class="hl-comment">// compiler magic here</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>这样我们才能使用</span><code>&amp;dyn Trait</code><span>作为参数，不过和之前一样的，我们不能使用 </span><code>Sized</code><span> 限定方法（如果有的话）</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">method</span>(<span class="hl-keyword">self</span>) <span class="hl-keyword">where</span> <span class="hl-keyword">Self</span>:<span class="hl-built_in">Sized</span> {}</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">method2</span>(&amp;<span class="hl-keyword">self</span>) {}</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">function</span>(arg: &amp;<span class="hl-keyword">dyn</span> Trait) {</span>
+<span class="line">  arg.<span class="hl-title function_ invoke__">method</span>();  <span class="hl-comment">// compile error ❌</span></span>
+<span class="line">  arg.<span class="hl-title function_ invoke__">method2</span>(); <span class="hl-comment">// ✅</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>而如果我们限制了Trait为 </span><code>:Sized</code><span>，那也没法为 </span><code>dyn Trait</code><span> 实现Trait了</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait</span>: <span class="hl-built_in">Sized</span> {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Trait</span> <span class="hl-keyword">for</span> <span class="hl-title class_">dyn</span> Trait {} <span class="hl-comment">// compile error ❌</span></span></code></pre>
+
+</figure>
+<section id="5-2-1">
+
+    <h4>
+    <a href="#5-2-1"><span>5.2.1. 总结</span> </a>
+    </h4>
+<ol>
+<li>
+<span>所有 Traits 默认都是</span><code>?Sized</code>
+</li>
+<li>
+<span>想实现 </span><code>Trait Object</code><span>，也就是</span><code>impl Trait for dyn Trait</code><span>，要求</span><code>Trait: ?Sized</code><span>，编译器也会自动实现。反之，如果被 </span><code>Sized</code><span> 约束的Trait，就无法使用 </span><code>Trait Object</code><span> 了</span>
+</li>
+<li>
+<span>我们可以保留Traits的默认 </span><code>?Sized</code><span>，但是在方法上限制 </span><code>Self: Sized</code>
+</li>
+</ol>
+</section>
+</section>
+<section id="5-3-Trait-Objects-Limitations">
+
+    <h3>
+    <a href="#5-3-Trait-Objects-Limitations"><span>5.3. Trait Objects Limitations</span> </a>
+    </h3>
+<p><span>即使一个trait是对象安全的，仍然存在 </span><code>sizedness</code><span> 相关的边界情况。</span></p>
+<p><span>介绍两种限制情况，包括转换成 </span><code>Trait Object</code><span> 的限制，和 </span><code>Trait Object</code><span> 对 Trait 个数的限制。其本质原因都是由于 </span><code>sizedness</code><span>。</span></p>
+<section id="5-3-1-Cannot-Cast-Unsized-Types-to-Trait-Objects">
+
+    <h4>
+    <a href="#5-3-1-Cannot-Cast-Unsized-Types-to-Trait-Objects"><span>5.3.1. Cannot Cast Unsized Types to Trait Objects</span> </a>
+    </h4>
+<p><span>不能把不确定大小类型转换为 </span><code>Trait Object</code></p>
+<p><span>比如这个例子：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">generic</span>&lt;T: <span class="hl-built_in">ToString</span>&gt;(t: T) {}</span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">trait_object</span>(t: &amp;<span class="hl-keyword">dyn</span> <span class="hl-built_in">ToString</span>) {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-title function_ invoke__">generic</span>(<span class="hl-type">String</span>::<span class="hl-title function_ invoke__">from</span>(<span class="hl-string">&quot;String&quot;</span>)); <span class="hl-comment">// ✅</span></span>
+<span class="line">    <span class="hl-title function_ invoke__">generic</span>(<span class="hl-string">&quot;str&quot;</span>); <span class="hl-comment">// ✅</span></span>
+<span class="line">    <span class="hl-title function_ invoke__">trait_object</span>(&amp;<span class="hl-type">String</span>::<span class="hl-title function_ invoke__">from</span>(<span class="hl-string">&quot;String&quot;</span>)); <span class="hl-comment">// ✅ - unsized coercion</span></span>
+<span class="line">    <span class="hl-title function_ invoke__">trait_object</span>(<span class="hl-string">&quot;str&quot;</span>); <span class="hl-comment">// ❌ - unsized coercion impossible</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><code>String</code><span> 是 </span><code>sized type</code><span> ，所以可以通过 </span><code>unsized coercion</code><span> 转换为 </span><code>unsized type</code><span>，比如 </span><code>&amp;dyn ToString</code><span>。但是 </span><code>str</code><span> 已经是一个 </span><code>unsized type</code><span> 了，所以会报错： </span><code>"str" doesn't have a size known at compile-time</code><span>。因为无法通过 </span><code>unsized coercion</code><span> 把一个本就是 </span><code>unsized type</code><span> 转换为新的 </span><code>unsized type</code><span>。</span></p>
+<p><span>更详细的说明：</span></p>
+<ul>
+<li>
+<code>String</code><span> 是确定大小类型，所以 </span><code>&amp;String</code><span> 指针是一个宽度（WIDTH）的指针，指向数据</span>
+</li>
+<li>
+<code>str</code><span> 是不确定大小类型， 所以 </span><code>&amp;str</code><span> 指针是2个宽度的（DOUBLE_WIDTH），包括一个执行数据地址的指针和数据的长度。</span>
+</li>
+<li>
+<code>&amp;dyn ToString</code><span> 也是两个宽度的指针，包含指向的数据(另一个指针)的指针和一个指向虚函数表(</span><code>vtable</code><span>)的指针</span>
+</li>
+</ul>
+<p><span>因此可得 =&gt;</span></p>
+<ul>
+<li>
+<span>从 </span><code>&amp;String</code><span> 转换到 </span><code>&amp;dyn ToString</code><span> 是可行的，</span>
+</li>
+<li>
+<span>从 </span><code>&amp;str</code><span> 转换到 </span><code>&amp;dyn ToString</code><span> 是不可行的。 因为你需要用三个宽度来表示你需要的内容，而Rust不支持。但是从 </span><code>&amp;&amp;str</code><span> 转换到 </span><code>&amp;dyn ToString</code><span> 是可行的(doge)</span>
+</li>
+</ul>
+<p><span>总结表格：</span></p>
+<table>
+<tr>
+<th style="text-align: center;"><span>Type</span></th>
+<th style="text-align: center;"><span>Pointer to Data</span></th>
+<th style="text-align: center;"><span>Data Length</span></th>
+<th style="text-align: center;"><span>Pointer to Vtable</span></th>
+<th style="text-align: center;"><span>Total</span></th>
+</tr>
+<tr>
+<td style="text-align: center;"><code>&amp;String</code><span></span></td>
+<td style="text-align: center;"><span>✅</span></td>
+<td style="text-align: center;"><span>❌</span></td>
+<td style="text-align: center;"><span>❌</span></td>
+<td style="text-align: center;"><span>1 ✅</span></td>
+</tr>
+<tr>
+<td style="text-align: center;"><code>&amp;str</code><span></span></td>
+<td style="text-align: center;"><span>✅</span></td>
+<td style="text-align: center;"><span>✅</span></td>
+<td style="text-align: center;"><span>❌</span></td>
+<td style="text-align: center;"><span>2 ✅</span></td>
+</tr>
+<tr>
+<td style="text-align: center;"><code>&amp;String as &amp;dyn ToString</code><span></span></td>
+<td style="text-align: center;"><span>✅</span></td>
+<td style="text-align: center;"><span>❌</span></td>
+<td style="text-align: center;"><span>✅</span></td>
+<td style="text-align: center;"><span>2 ✅</span></td>
+</tr>
+<tr>
+<td style="text-align: center;"><code>&amp;str as &amp;dyn ToString</code><span></span></td>
+<td style="text-align: center;"><span>✅</span></td>
+<td style="text-align: center;"><span>✅</span></td>
+<td style="text-align: center;"><span>✅</span></td>
+<td style="text-align: center;"><span>3 ❌</span></td>
+</tr>
+</table>
+</section>
+<section id="5-3-2-Cannot-create-Multi-Trait-Objects">
+
+    <h4>
+    <a href="#5-3-2-Cannot-create-Multi-Trait-Objects"><span>5.3.2. Cannot create Multi-Trait Objects</span> </a>
+    </h4>
+<p><span>不能使用多个Trait的 Trait对象：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait</span> {}</span>
+<span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait2</span> {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">func</span>(t: &amp;(<span class="hl-keyword">dyn</span> Trait + Trait2)) {}</span>
+<span class="line"><span class="hl-comment">//                       ^^^^^^</span></span>
+<span class="line"><span class="hl-comment">// ❌ only auto traits can be used as additional traits in a trait object</span></span></code></pre>
+
+</figure>
+<p><span>和上面的原因类似， </span><code>Trait Object</code><span> 的指针是2个宽度（DOUBLE_WIDTH）,一个指向数据一个指向虚函数表</span><code>vtable</code><span>，如果有两个就需要指向两个虚函数表，指针需要3个宽度了。</span></p>
+<p><span>可以通过使用 </span><code>supertraits</code><span> 的方式来满足一部分的需求：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">method1</span>(&amp;<span class="hl-keyword">self</span>) {}</span>
+<span class="line">}</span>
+<span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait2</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">method2</span>(&amp;<span class="hl-keyword">self</span>) {}</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait3</span>: Trait + Trait2 {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span>&lt;T: Trait + Trait2&gt; Trait3 <span class="hl-keyword">for</span> <span class="hl-title class_">T</span> {} </span>
+<span class="line"><span class="hl-comment">// auto blanket impl Trait3 for any type that also impls Trait &amp; Trait2</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">func</span>(t: &amp;<span class="hl-keyword">dyn</span> Trait3) {</span>
+<span class="line">    t.<span class="hl-title function_ invoke__">method1</span>(); <span class="hl-comment">// ✅</span></span>
+<span class="line">    t.<span class="hl-title function_ invoke__">method2</span>(); <span class="hl-comment">// ✅</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>但是！Rust 的 </span><code>supertraits</code><span> 不支持 </span><code>upcasting</code><span> ，也就是在其它OO语言里子类对象转换为父类对象的特性，上面的 </span><code>&amp;dyn Trait3</code><span> 无法被用在需要一个 </span><code>&amp;dyn Trait2</code><span> 或 </span><code>&amp;dyn Trait</code><span> 的地方。比如上面的例子修改一下：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">method1</span>(&amp;<span class="hl-keyword">self</span>) {}</span>
+<span class="line">}</span>
+<span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait2</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">method2</span>(&amp;<span class="hl-keyword">self</span>) {}</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait3</span>: Trait + Trait2 {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span>&lt;T: Trait + Trait2&gt; Trait3 <span class="hl-keyword">for</span> <span class="hl-title class_">T</span> {} </span>
+<span class="line"><span class="hl-comment">// auto blanket impl Trait3 for any type that also impls Trait &amp; Trait2</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">take_trait</span>(t: &amp;<span class="hl-keyword">dyn</span> Trait) {}</span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">take_trait2</span>(t: &amp;<span class="hl-keyword">dyn</span> Trait2) {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">func</span>(t: &amp;<span class="hl-keyword">dyn</span> Trait3) {</span>
+<span class="line">    t.<span class="hl-title function_ invoke__">method1</span>(); <span class="hl-comment">// ✅</span></span>
+<span class="line">    t.<span class="hl-title function_ invoke__">method2</span>(); <span class="hl-comment">// ✅</span></span>
+<span class="line">    <span class="hl-title function_ invoke__">take_trait</span>(t); <span class="hl-comment">// ❌</span></span>
+<span class="line">    <span class="hl-title function_ invoke__">take_trait2</span>(t); <span class="hl-comment">// ❌</span></span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {}</span></code></pre>
+
+</figure>
+<p><span>报错：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">cannot cast `dyn Trait3` to `dyn Trait`, trait upcasting coercion is experimental</span>
+<span class="line">see issue #65991 &lt;https://github.com/rust-lang/rust/issues/65991&gt; for more information</span>
+<span class="line">add `#![feature(trait_upcasting)]` to the crate attributes to enable</span>
+<span class="line">required when coercing `&amp;dyn Trait3` into `&amp;dyn Trait` rustc[E0658]</span></code></pre>
+
+</figure>
+<p><span>目前还是实验性的特性，规避的方式是手动加上转换：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"></span>
+<span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Trait3</span>: Trait + Trait2 {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">as_trait</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> &amp;<span class="hl-keyword">dyn</span> Trait;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">as_trait2</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> &amp;<span class="hl-keyword">dyn</span> Trait2;</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span>&lt;T: Trait + Trait2&gt; Trait3 <span class="hl-keyword">for</span> <span class="hl-title class_">T</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">as_trait</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> &amp;<span class="hl-keyword">dyn</span> Trait {</span>
+<span class="line">        <span class="hl-keyword">self</span></span>
+<span class="line">    }</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">as_trait2</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> &amp;<span class="hl-keyword">dyn</span> Trait2 {</span>
+<span class="line">        <span class="hl-keyword">self</span></span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// take_trait(t.as_trait()); // ✅</span></span></code></pre>
+
+</figure>
+<p><span>期待在未来Rust core team会把这个特性完善好。</span></p>
+<p><span>Update: 2025.03.31 Rust 1.86.0 该特性已 stable。无需手动转换上述 </span><code>take_trait(t)</code><span> 可直接使用不会报错。</span></p>
+</section>
+<section id="5-3-3">
+
+    <h4>
+    <a href="#5-3-3"><span>5.3.3. 总结</span> </a>
+    </h4>
+<p><span>Rust 指针不支持超过两个宽度的大小。这意味着</span></p>
+<ul>
+<li>
+<span>无法把 </span><code>unsized types</code><span> 转换为 </span><code>Trait Object</code>
+</li>
+<li>
+<span>无法创建多 Trait 的 </span><code>Trait Object</code><span> ，可以通过 </span><code>supertraits</code><span> 的方式解决特定需求</span>
+</li>
+</ul>
+</section>
+</section>
+<section id="5-4-User-Defined-Unsized-Types">
+
+    <h3>
+    <a href="#5-4-User-Defined-Unsized-Types"><span>5.4. User-Defined Unsized Types</span> </a>
+    </h3>
+<p><span>用户自定义的类型可以是不确定大小的类型，我们可以在 </span><code>struct</code><span> 的最后一个字段写一个不确定大小的类型。结构里仅能有一个不确定大小的类型，且必须写在最后。</span></p>
+<p><span>比如我们可以定义一个 </span><code>struct Unsized</code><span>:</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Unsized</span> {</span>
+<span class="line">    unsized_field: [<span class="hl-type">i32</span>],</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>但是却发现好像写不出来初始化一个 </span><code>Unsized</code><span> 对象的代码？因为作为Rust的参数对象必须是 </span><code>Sized</code><span> 。一个妥协方式是使用前面提过的 </span><code>unsized coercion</code><span> ，把确定大小的 </span><code>[i32;3]</code><span> 通过去确定大小强制转换转换为 </span><code>[i32]</code><span>：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">MaybeUnSized</span>&lt;T: ?<span class="hl-built_in">Sized</span>&gt; {</span>
+<span class="line">    field: T,</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">s</span>: &amp;MaybeUnSized&lt;[<span class="hl-type">i32</span>]&gt; = &amp;MaybeUnSized { field: [<span class="hl-number">1</span>, <span class="hl-number">2</span>, <span class="hl-number">3</span>] };</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>标准库里的 </span><code>std::ffi::OsStr</code><span> 和 </span><code>std::path::Path</code><span> 就是 </span><code>Unsized Type</code><span>：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">pub</span> <span class="hl-keyword">struct</span> <span class="hl-title class_">OsStr</span> {</span>
+<span class="line">    inner: Slice,</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">pub</span> <span class="hl-keyword">struct</span> <span class="hl-title class_">Path</span> {</span>
+<span class="line">    inner: OsStr,</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Path</span> {</span>
+<span class="line">    <span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">new</span>&lt;S: <span class="hl-built_in">AsRef</span>&lt;OsStr&gt; + ?<span class="hl-built_in">Sized</span>&gt;(s: &amp;S) <span class="hl-punctuation">-&gt;</span> &amp;Path {</span>
+<span class="line">        <span class="hl-keyword">unsafe</span> { &amp;*(s.<span class="hl-title function_ invoke__">as_ref</span>() <span class="hl-keyword">as</span> *<span class="hl-keyword">const</span> OsStr <span class="hl-keyword">as</span> *<span class="hl-keyword">const</span> Path) }</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>不确定大小类型确实目前还是不成熟的特性。使用起来的限制比带来的好处要多。</span></p>
+</section>
+</section>
+<section id="6-Zero-Sized-Types">
+
+    <h2>
+    <a href="#6-Zero-Sized-Types"><span>6. Zero-Sized Types</span> </a>
+    </h2>
+<p><span>零大小类型( </span><code>ZST</code><span> for short)，或许听起来奇怪，但是却被到处使用。</span></p>
+<section id="6-1-Unit-Type">
+
+    <h3>
+    <a href="#6-1-Unit-Type"><span>6.1. Unit Type</span> </a>
+    </h3>
+<p><span>最常见的 </span><code>ZST</code><span> 应该就是单元类型（ </span><code>Unit Type</code><span> ）: </span><code>()</code><span> 。</span></p>
+<p><span>所有的空代码块都等于 </span><code>()</code>
+<span>非空代码块如果最后的表达式有 </span><code>;</code><span> 分号丢弃结果 ，最终也等于 </span><code>()</code></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">a</span>: () = {};</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">b</span>: () = {</span>
+<span class="line">        <span class="hl-number">5</span>; <span class="hl-comment">// here 5 means nothing. b == ()</span></span>
+<span class="line">    };</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>所有无返回值的函数，实际上也是返回 </span><code>()</code></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// with sugar</span></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">function</span>() {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// desugared</span></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">function</span>() <span class="hl-punctuation">-&gt;</span> () {}</span></code></pre>
+
+</figure>
+<p><span>既然 </span><code>()</code><span> 是类型大小为0， 一些简单的Trait也已经实现了</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-meta">#[stable(feature = <span class="hl-string">&quot;rust1&quot;</span>, since = <span class="hl-string">&quot;1.0.0&quot;</span>)]</span></span>
+<span class="line"><span class="hl-meta">#[rustc_const_unstable(feature = <span class="hl-string">&quot;const_default_impls&quot;</span>, issue = <span class="hl-string">&quot;87864&quot;</span>)]</span></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">const</span> <span class="hl-built_in">Default</span> <span class="hl-title function_ invoke__">for</span> () {</span>
+<span class="line">    <span class="hl-meta">#[inline]</span></span>
+<span class="line">    <span class="hl-meta">#[doc = <span class="hl-string">&quot;Returns the default value of `()`&quot;</span>]</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">default</span>() <span class="hl-punctuation">-&gt;</span> () {</span>
+<span class="line">        ()</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#[stable(feature = <span class="hl-string">&quot;rust1&quot;</span>, since = <span class="hl-string">&quot;1.0.0&quot;</span>)]</span></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">PartialEq</span> <span class="hl-title function_ invoke__">for</span> () {</span>
+<span class="line">    <span class="hl-meta">#[inline]</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">eq</span>(&amp;<span class="hl-keyword">self</span>, _other: &amp;()) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">bool</span> {</span>
+<span class="line">        <span class="hl-literal">true</span></span>
+<span class="line">    }</span>
+<span class="line">    <span class="hl-meta">#[inline]</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">ne</span>(&amp;<span class="hl-keyword">self</span>, _other: &amp;()) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">bool</span> {</span>
+<span class="line">        <span class="hl-literal">false</span></span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#[stable(feature = <span class="hl-string">&quot;rust1&quot;</span>, since = <span class="hl-string">&quot;1.0.0&quot;</span>)]</span></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Ord</span> <span class="hl-title function_ invoke__">for</span> () {</span>
+<span class="line">    <span class="hl-meta">#[inline]</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">cmp</span>(&amp;<span class="hl-keyword">self</span>, _other: &amp;()) <span class="hl-punctuation">-&gt;</span> Ordering {</span>
+<span class="line">        Ordering::Equal</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>因为编译器知道 </span><code>()</code><span> 是 </span><code>ZST</code><span> ，所以可以针对此做不少优化：比如 </span><code>Vec&lt;()&gt;</code><span> 并不会去分配堆内存、</span><code>push</code><span> 和 </span><code>pop</code><span> 一个 </span><code>()</code><span> 到 </span><code>Vec</code><span> 只修改它的 </span><code>len</code><span> 字段，不会触发容量变化：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-comment">// zero capacity is all the capacity we need to &quot;store&quot; infinitely many ()</span></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">vec</span>: <span class="hl-type">Vec</span>&lt;()&gt; = <span class="hl-type">Vec</span>::<span class="hl-title function_ invoke__">with_capacity</span>(<span class="hl-number">0</span>);</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-comment">// causes no heap allocations or vec capacity changes</span></span>
+<span class="line">    vec.<span class="hl-title function_ invoke__">push</span>(()); <span class="hl-comment">// len++</span></span>
+<span class="line">    vec.<span class="hl-title function_ invoke__">push</span>(()); <span class="hl-comment">// len++</span></span>
+<span class="line">    vec.<span class="hl-title function_ invoke__">push</span>(()); <span class="hl-comment">// len++</span></span>
+<span class="line">    vec.<span class="hl-title function_ invoke__">pop</span>(); <span class="hl-comment">// len--</span></span>
+<span class="line"></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">2</span>, vec.<span class="hl-title function_ invoke__">len</span>());</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-type">usize</span>::MAX, vec.<span class="hl-title function_ invoke__">capacity</span>());</span>
+<span class="line">    <span class="hl-comment">// pub fn capacity(&amp;self) -&gt; usize {</span></span>
+<span class="line">    <span class="hl-comment">//     if mem::size_of::&lt;T&gt;() == 0 { usize::MAX } else { self.cap }</span></span>
+<span class="line">    <span class="hl-comment">// }</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>实际的应用场景：标准库里的容器，</span><code>HashSet</code><span> 是通过 </span><code>HashMap</code><span> 实现的： </span><a href="https://github.com/rust-lang/hashbrown/blob/v0.12.0/src/set.rs#L115"><span>hashbrown/set.rs</span></a></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">pub</span> <span class="hl-keyword">struct</span> <span class="hl-title class_">HashSet</span>&lt;T&gt; {</span>
+<span class="line">    map: HashMap&lt;T, ()&gt;,</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="6-2-User-Defined-Unit-Structs">
+
+    <h3>
+    <a href="#6-2-User-Defined-Unit-Structs"><span>6.2. User-Defined Unit Structs</span> </a>
+    </h3>
+<p><span>用户定义的单元结构体：即不包含任何成员的结构体：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Struct</span>;</span></code></pre>
+
+</figure>
+<p><span>使用单元结构体的优点：</span></p>
+<ul>
+<li>
+<span>可以给自定义的单元结构体实现任意Trait，因为Rust trait的 </span><code>orphan rules</code><span>，我们没法给 </span><code>()</code><span> 实现任何Trait。</span>
+</li>
+<li>
+<span>可以给自定义的单元结构体取一个有意义的名字，增强代码可读性。</span>
+</li>
+<li>
+<span>和其它结构体一样，默认是非拷贝的(non-Copy)，在程序中或许有用。</span>
+</li>
+</ul>
+</section>
+<section id="6-3-Never-Type">
+
+    <h3>
+    <a href="#6-3-Never-Type"><span>6.3. Never Type</span> </a>
+    </h3>
+<p><span>另一个重要的 </span><code>ZST</code><span> 就是 </span><code>Never Type</code><span>： </span><code>!</code><span>，它的重要特性：</span></p>
+<ul>
+<li>
+<span>它可以被强制转换到任意其它类型。</span>
+</li>
+<li>
+<span>无法实例化一个 </span><code>!</code>
+</li>
+</ul>
+<p><span>这也是和 </span><code>()</code><span> 最大的区别：</span></p>
+
+<figure class="blockquote">
+<blockquote><p><code>!</code><span> basically means </span>&ldquo;<span>this can never happen</span>&rdquo;<span> while </span><code>()</code><span> means </span>&ldquo;<span>there is no value here</span>&rdquo;<span>.</span></p>
+</blockquote>
+
+</figure>
+<p><code>unimplemented!()</code><span> </span><code>todo!()</code><span> </span><code>panic!()</code><span> </span><code>unreachable!()</code><span> 等宏都有这个特点，在快速构建原型、标记问题上很有用。</span></p>
+<p><span>另外 </span><code>break</code><span> </span><code>continue</code><span> </span><code>return</code><span> 等关键字也是 </span><code>!</code><span> 类型。</span></p>
+<p><span>工程上，可以用 </span><code>!</code><span> 类型系统来标记一些不可能的情况，比如如下的函数签名分别表示：这个函数只要返回就一定是返回成功，和这个函数只要返回就一定是返回失败。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">function</span>() <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;Success, !&gt;;</span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">function</span>() <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;!, Error&gt;;</span></code></pre>
+
+</figure>
+<p><span>标准库在实践中也用到：把 </span><code>&amp;str</code><span> 转换为 </span><code>String</code><span> 一定会成功：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-meta">#![feature(never_type)]</span></span>
+<span class="line"><span class="hl-keyword">use</span> std::<span class="hl-type">str</span>::FromStr;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">FromStr</span> <span class="hl-keyword">for</span> <span class="hl-title class_">String</span> {</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Err</span> = !; <span class="hl-comment">// actually here uses `Infallible` , will be illustrated later.</span></span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">from_str</span>(s: &amp;<span class="hl-type">str</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;<span class="hl-type">String</span>, <span class="hl-keyword">Self</span>::<span class="hl-literal">Err</span>&gt; {</span>
+<span class="line">        <span class="hl-title function_ invoke__">Ok</span>(<span class="hl-type">String</span>::<span class="hl-title function_ invoke__">from</span>(s))</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>对于如果返回一定是返回失败的场景：考虑服务器端 </span><code>loop{}</code><span> 等待，仅在出错时返回：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-meta">#![feature(never_type)]</span></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">run_server</span>() <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;!, ConnectionError&gt; {</span>
+<span class="line">    <span class="hl-keyword">loop</span> {</span>
+<span class="line">        <span class="hl-keyword">let</span> (request, response) = <span class="hl-title function_ invoke__">get_request</span>()?;</span>
+<span class="line">        <span class="hl-keyword">let</span> <span class="hl-variable">result</span> = request.<span class="hl-title function_ invoke__">process</span>();</span>
+<span class="line">        response.<span class="hl-title function_ invoke__">send</span>(result);</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>注意需要写上 </span><code>#![feature(never_type)]</code><span> + 使用 </span><code>nightly</code><span> rust ，因为目前还是实验性标准。</span></p>
+</section>
+<section id="6-4-User-Defined-Pseudo-Never-Types">
+
+    <h3>
+    <a href="#6-4-User-Defined-Pseudo-Never-Types"><span>6.4. User-Defined Pseudo Never Types</span> </a>
+    </h3>
+<p><span>写上 </span><code>feature</code><span> 标签就需要 </span><code>nightly</code><span> 的 Rust，如果一定想在 </span><code>stable</code><span> 下实现类似的效果也不是没有办法。</span>
+<span>虽然我们没法定义一个类型，使其可以强制转换到任何其它类型。</span>
+<span>但是我们确实可以定义一个类型，让它没法实例化出对象。</span></p>
+<p><span>比如没有任何选择的枚举：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">Void</span> {}</span></code></pre>
+
+</figure>
+<p><span>使用这个 </span><code>Void</code><span> 代替 </span><code>!</code><span>，就可以在 </span><code>stable</code><span> Rust 下，实现上面和 </span><code>!</code><span> 类似的效果：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">Void</span> {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// example 1</span></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">FromStr</span> <span class="hl-keyword">for</span> <span class="hl-title class_">String</span> {</span>
+<span class="line">    <span class="hl-keyword">type</span> <span class="hl-title class_">Err</span> = Void;</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">from_str</span>(s: &amp;<span class="hl-type">str</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;<span class="hl-type">String</span>, <span class="hl-keyword">Self</span>::<span class="hl-literal">Err</span>&gt; {</span>
+<span class="line">        <span class="hl-title function_ invoke__">Ok</span>(<span class="hl-type">String</span>::<span class="hl-title function_ invoke__">from</span>(s))</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// example 2</span></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">run_server</span>() <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;Void, ConnectionError&gt; {</span>
+<span class="line">    <span class="hl-keyword">loop</span> {</span>
+<span class="line">        <span class="hl-keyword">let</span> (request, response) = <span class="hl-title function_ invoke__">get_request</span>()?;</span>
+<span class="line">        <span class="hl-keyword">let</span> <span class="hl-variable">result</span> = request.<span class="hl-title function_ invoke__">process</span>();</span>
+<span class="line">        response.<span class="hl-title function_ invoke__">send</span>(result);</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>rust标准库就是这么做的：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">pub</span> <span class="hl-keyword">enum</span> <span class="hl-title class_">Infallible</span> {}</span></code></pre>
+
+</figure>
+<p><span>上面 </span><code>FromStr</code><span> 的例子里，实际标准库的代码是 </span><code>type Err = Infallible;</code></p>
+</section>
+<section id="6-5-PhantomData">
+
+    <h3>
+    <a href="#6-5-PhantomData"><span>6.5. PhantomData</span> </a>
+    </h3>
+<p><span>第三个重要的 </span><code>ZST</code><span> 就是 </span><code>PhantomData</code><span> 幽灵数据 ，0大小标记结构体。用来标记一个结构体拥有一些特定的属性。基本上是为了给编译器看的。</span></p>
+<p><span>译注：原文在这里用一个去除结构体 </span><code>Send</code><span> 和 </span><code>Sync</code><span> 的Trait的例子来说明其作用。以后再单独总结下幽灵数据 </span><code>PhantomData</code><span> 的用法。</span></p>
+<p><span>更多的内容可以参考 </span><a href="https://doc.rust-lang.org/nightly/nomicon/phantom-data.html"><span>nomicon/PhantomData</span></a></p>
+</section>
+</section>
+<section id="7-Conclusion">
+
+    <h2>
+    <a href="#7-Conclusion"><span>7. Conclusion</span> </a>
+    </h2>
+<p><span>啊懒得翻译了贴原文，以上所有内容的总结的总结：</span></p>
+<ul>
+<li>
+<span>only instances of sized types can be placed on the stack, i.e. can be passed around by value</span>
+</li>
+<li>
+<span>instances of unsized types can</span>&rsquo;<span>t be placed on the stack and must be passed around by reference</span>
+</li>
+<li>
+<span>pointers to unsized types are double-width because aside from pointing to data they need to do an extra bit of bookkeeping to also keep track of the data</span>&rsquo;<span>s length </span><em><span>or</span></em><span> point to a vtable</span>
+</li>
+<li>
+<code>Sized</code><span> is an </span>&ldquo;<span>auto</span>&rdquo;<span> marker trait</span>
+</li>
+<li>
+<span>all generic type parameters are auto-bound with </span><code>Sized</code><span> by default</span>
+</li>
+<li>
+<span>if we have a generic function which takes an argument of some </span><code>T</code><span> behind a pointer, e.g. </span><code>&amp;T</code><span>, </span><code>Box&lt;T&gt;</code><span>, </span><code>Rc&lt;T&gt;</code><span>, et cetera, then we almost always want to opt-out of the default </span><code>Sized</code><span> bound with </span><code>T: ?Sized</code>
+</li>
+<li>
+<span>leveraging slices and Rust</span>&rsquo;<span>s auto type coercions allows us to write flexible APIs</span>
+</li>
+<li>
+<span>all traits are </span><code>?Sized</code><span> by default</span>
+</li>
+<li>
+<code>Trait: ?Sized</code><span> is required for </span><code>impl Trait for dyn Trait</code>
+</li>
+<li>
+<span>we can require </span><code>Self: Sized</code><span> on a per-method basis</span>
+</li>
+<li>
+<span>traits bound by </span><code>Sized</code><span> can</span>&rsquo;<span>t be made into trait objects</span>
+</li>
+<li>
+<span>Rust doesn</span>&rsquo;<span>t support pointers wider than 2 widths so: #1. we can</span>&rsquo;<span>t cast unsized types to trait objects #2. we can</span>&rsquo;<span>t have multi-trait objects, but we can work around this by coalescing multiple traits into a single trait</span>
+</li>
+<li>
+<span>user-defined unsized types are a half-baked feature right now and their limitations outweigh any benefits</span>
+</li>
+<li>
+<span>all instances of a ZST are equal to each other</span>
+</li>
+<li>
+<span>Rust compiler knows to optimize away interactions with ZSTs</span>
+</li>
+<li>
+<code>!</code><span> can be coerced into any other type</span>
+</li>
+<li>
+<span>it</span>&rsquo;<span>s not possible to create instances of </span><code>!</code><span> which we can use to mark certain states as impossible at a type level</span>
+</li>
+<li>
+<code>PhantomData</code><span> is a zero-sized marker struct which can be used to </span>&ldquo;<span>mark</span>&rdquo;<span> a containing struct as having certain properties</span>
+</li>
+</ul>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2022-06-15-sizedness-in-rust.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>

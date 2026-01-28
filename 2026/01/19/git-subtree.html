@@ -1,0 +1,148 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>git move files to new repo with history</title>
+  <meta name="description" content="使用 git subtree 拆分文件到新仓库并保留文件历史修改记录：">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2026/01/19/git-subtree.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#git-move-files-to-new-repo-with-history"><span>git move files to new repo with history</span> <time datetime="2026-01-19">Jan 19, 2026</time></a>
+    </h1>
+<p><span>使用 git subtree 拆分文件到新仓库并保留文件历史修改记录：</span></p>
+<p><span>假设你需要对现存的大仓库 A 进行功能拆分，把其中的某一个模块代码完全迁移出来单独维护，但是同时你又想要保留这些文件的历史修改记录：操作方式如下：</span></p>
+<p><span>比如需要从 A 仓库里抽出 sub 模块的所有代码单独用新仓库维护：</span></p>
+<p><span>1.首先进入到 A 仓库，通过这个 subtree 命令把 src/sub 目录下的代码提取出来，生成一个新的分支 drain_sub：</span></p>
+<p><code>git subtree split --prefix=src/sub -b drain_sub</code></p>
+<p><span>这个过程会比较慢，因为需要遍历整个提交历史，1000+的commit，把和 src/sub 目录相关的提交都提取出来，建立了一个新的子树分支，里面只包含 src/sub 目录下的代码和相关的提交记录。</span></p>
+<p><span>耗时7min运行完成后，可以通过以下命令看出来这个分支有200多个提交</span></p>
+<p><code>git log drain_sub --oneline | wc -l</code></p>
+<p><span>2.切换目录去在新仓库里：</span></p>
+<p><span>把这个抽出来的分支当作一个远程分支拉取进来，因为没有任何共同历史，所以需要加上 </span><code>--allow-unrelated-histories</code><span> 参数：</span></p>
+<p><code>git pull ../A drain_sub --allow-unrelated-histories</code></p>
+<p><span>你就得到了一个包含所有提交历史的sub merge结果分支。</span></p>
+<p><span>3.但是这些文件大概率还不在你需要它们在的位置上，需要把它们移动到 sub/src 目录下，用 git mv 移动一下单独再提交一个提交来尽可能让git维持文件历史：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-built_in">mkdir</span> -p sub/src</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># 记得过滤掉不相关的文件，只移动需要的</span></span>
+<span class="line">find . -maxdepth 1 ! -name <span class="hl-string">&#x27;sub&#x27;</span> ! -name <span class="hl-string">&#x27;.git&#x27;</span> ! -name <span class="hl-string">&#x27;.&#x27;</span> ! -name <span class="hl-string">&#x27;README.md&#x27;</span> -<span class="hl-built_in">exec</span> git <span class="hl-built_in">mv</span> {} ./sub/src/ \;</span>
+<span class="line">git commit -m <span class="hl-string">&quot;Move sub files to sub/src directory&quot;</span></span></code></pre>
+
+</figure>
+<section id="s-1">
+
+    <h2>
+    <a href="#s-1"><span>参考</span> </a>
+    </h2>
+<p><span>体会到了 git 分布式的真正含义，其它非同源仓库的分支也可以视作远程仓库来进行代码的合并和迁移，这是之前没有意识到的。</span></p>
+<p><span>如果直接把这个“拆分 git ”的问题抛给AI，得到的大概率是包含 git filter-branch / git filter-repo 的方案，猜测是因为吃了这篇 </span><a href="https://kokkonisd.github.io/2021/06/23/import-git-history"><span>blog</span></a><span> 生成的：</span>
+<span>然而这两个需要三方工具又或是已废弃，不如上述的 subtree 方式简单易行。所以在先行简单搜索后，指定 AI 用 subtree 的方式来完成这个任务，就得到了上述的步骤。</span></p>
+<p><span>当然，保留三方工具可能性能更好的一点可能，因为我实际感受下来，subtree 执行的速度方式很像是用基础来逐个命令来遍历所有历史，过滤掉不相关的文件，生成的新分支，整个过程和你写了一个三方脚本来一个个 git commit reset/amend/commit 这样一样，并没有什么更内部/高效的实现。</span></p>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2026-01-19-git-subtree.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>

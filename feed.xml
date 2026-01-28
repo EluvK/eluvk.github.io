@@ -1,0 +1,2297 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+<link href="https://eluvk.github.io/feed.xml" rel="self" type="application/atom+xml"/>
+<link href="https://eluvk.github.io" rel="alternate" type="text/html"/>
+<updated>2026-01-28T03:06:37.640Z</updated>
+<id>https://eluvk.github.io/feed.xml</id>
+<title type="html">eluvk</title>
+<subtitle>Yet another programming blog by eluvk.</subtitle>
+<author><name>EluvK</name></author>
+
+<entry>
+<title type="text">[Translation] The Second Great Error Model Convergence</title>
+<link href="https://eluvk.github.io/2026/01/23/the-second-greate-error-model-convergence.html" rel="alternate" type="text/html" title="[Translation] The Second Great Error Model Convergence" />
+<published>2026-01-23T00:00:00+00:00</published>
+<updated>2026-01-23T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2026/01/23/the-second-greate-error-model-convergence</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[编程语言错误处理模型的第二次大趋同]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2026/01/23/the-second-greate-error-model-convergence.html"><![CDATA[
+    <h1>
+    <a href="#Translation-The-Second-Great-Error-Model-Convergence"><span>[Translation] The Second Great Error Model Convergence</span> <time datetime="2026-01-23">Jan 23, 2026</time></a>
+    </h1>
+<p><span>编程语言错误处理模型的第二次大趋同</span></p>
+<p><span>译注：之前正好尝试在 dart/flutter 里不试用 try catch，而是手动实现一套 Result 类型来处理错误，尝试过还看了一圈社区项目最后还是放弃了这个想法。妥协于语言天然支持的错误处理模型更好用，去适应生态。</span>
+<span>看了这篇文章，意识了 dart 这种处于代际之间诞生的语言，确实容易在异常和 Result 类型之间产生纠结。</span>
+<span>原文链接 </span><a href="https://matklad.github.io/2025/12/29/second-error-model-convergence.html"><span>The Second Great Error Model Convergence</span></a><span>，全文如下：</span></p>
+<p><span>I feel like this has been said before, more than once, but I want to take a moment to note that most modern languages converged to the error management approach described in Joe Duffy</span>&rsquo;<span>s </span><strong><a href="https://joeduffyblog.com/2016/02/07/the-error-model/#recoverable-errors-type-directed-exceptions"><span>The Error Model</span></a></strong><span>, which is a generational shift from the previous consensus on exception handling.</span></p>
+<p><span>我觉得这个观点已经被提过不止一次了，但我还是想花点时间指出：大多数现代编程语言在错误管理方法上，都已经趋向于 Joe Duffy 在《错误模型》（</span><strong><span>The Error Model</span></strong><span>）中所描述的方案。这标志着编程语言界在错误处理共识上，发生了一次代际更替。</span></p>
+<p><span>C++, JavaScript, Python, Java, C# all have roughly equivalent </span><code>throw</code><span>, </span><code>catch</code><span>, </span><code>finally</code><span> constructs with roughly similar runtime semantics and typing rules. Even functional languages like Haskell, OCaml, and Scala feature exceptions prominently in their grammar, even if their usage is frowned upon by parts of the community.</span></p>
+<p><span>C++、JavaScript、Python、Java 和 C# 都拥有大致相同的 </span><code>throw</code><span>、</span><code>catch</code><span>、</span><code>finally</code><span> 结构，其运行时语义和类型规则也基本相似。甚至像 Haskell、OCaml 和 Scala 这样的函数式语言，也在语法中给予了“异常”突出的地位，尽管社区的一部分人并不推崇这种做法。</span></p>
+<p><span>But the same can be said about Go, Rust, Swift, and Zig! Their error handling is similar to each other, and quite distinct from the previous bunch, with Kotlin and Dart being notable, ahem, exceptions. Here are some commonalities of modern error handling:</span></p>
+<p><span>但同样的情况也出现在了 Go、Rust、Swift 和 Zig 身上！它们的错误处理方式彼此相似，却与前述的那一派语言截然不同（当然，Kotlin 和 Dart 是比较明显的……呃，例外）。以下是现代错误处理方式的一些共同点：</span></p>
+<p><strong><span>First</span></strong><span>, and most notably, functions that can fail are annotated at the call side. While the old way looked like this:</span></p>
+<p><strong><strong><span>第一点，也是最显著的一点：可能失败的函数在调用处必须进行标注。</span></strong></strong><span> 过去的方式是这样的：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-type">Widget</span> <span class="hl-variable">widget</span> <span class="hl-operator">=</span> make_widget();</span></code></pre>
+
+</figure>
+<p><span>the new way is</span></p>
+<p><span>而现在的方式变成了这样：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">let</span> <span class="hl-variable">widget</span> = <span class="hl-title function_ invoke__">make_widget</span>()?;</span></code></pre>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">const</span> widget = <span class="hl-keyword">try</span> make_widget();</span></code></pre>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">let</span> widget <span class="hl-operator">=</span> <span class="hl-keyword">try</span> makeWidget()</span></code></pre>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">widget, err := makeWidget()</span>
+<span class="line"><span class="hl-keyword">if</span> err != <span class="hl-literal">nil</span> {</span>
+<span class="line">    <span class="hl-keyword">return</span> err</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>There</span>&rsquo;<span>s a syntactic marker alerting the reader that a particular operation is fallible, though the verbosity of the marker varies. For the writer, the marker ensures that changing the function contract from infallible to fallible (or vice versa) requires changing not only the function definition itself, but the entire call chain. On the other hand, adding a new error condition to a set of possible errors of a fallible function generally </span><strong><span>doesn</span>&rsquo;<span>t</span></strong><span> require reconsidering rethrowing call-sites.</span></p>
+<p><span>虽然标注的繁简程度各异，但都存在某种语法标记来提醒读者：该特定操作是可能出错的。对于开发者来说，这种标记确保了如果将函数从“永不失败”改为“可能失败”（反之亦然），不仅需要修改函数定义，还必须修改整个调用链。另一方面，为一个本就会失败的函数增加一种新的错误类型，通常并不需要重新审视那些负责“转发错误”的调用处是否要调整代码。</span></p>
+<p><strong><span>Second</span></strong><span>, there</span>&rsquo;<span>s a separate, distinct mechanism that is invoked in case of a detectable bug. In Java, index out of bounds or null pointer dereference (examples of programming errors) use the same language machinery as operational errors. Rust, Go, Swift, and Zig use a separate panic path.</span></p>
+<p><strong><strong><span>第二点，对于可检测到的 Bug，拥有一套独立且不同的处理机制。</span></strong></strong><span> 在 Java 中，数组越界或空指针解引用（这些属于编程错误）与业务逻辑错误使用的是同一套语言机制。而 Rust、Go、Swift 和 Zig 则使用了独立的 Panic 路径。</span></p>
+<p><span>In Go and Rust, panics unwind the stack, and they are recoverable via a library function. In Swift and Zig, panic aborts the entire process. Operational error of a lower layer can be classified as a programming error by the layer above, so there</span>&rsquo;<span>s generally a mechanism to escalate an erroneous result value to a panic. But the opposite is more important: a function which does only </span>&ldquo;<span>ordinary</span>&rdquo;<span> computations </span><strong><span>can</span></strong><span> be buggy, and </span><strong><span>can</span></strong><span> fail, but such failures are considered </span><strong><span>catastrophic</span></strong><span> and are invisible in the type system, and sufficiently transparent at runtime.</span></p>
+<p><span>在 Go 和 Rust 中，Panic 会引起调用栈回溯（Unwind），并且可以通过库函数进行恢复。在 Swift 和 Zig 中，Panic 会直接终止整个进程。底层产生的业务错误可以被上层定义为编程错误，因此通常存在一种机制将“错误结果值”升级为 Panic。但反过来的一点更为重要：一个只进行“常规”计算的函数也可能存在 Bug 并导致失败，但此类失败被视为“灾难性”的，它们在类型系统中是不可见的，在运行时则表现得足够透明（直接崩溃而非被隐式捕获）。</span></p>
+<p><strong><span>Third</span></strong><span>, results of fallible computation are first-class values, as in Rust</span>&rsquo;<span>s </span><code>Result&lt;T, E&gt;</code><span>. There</span>&rsquo;<span>s generally little type system machinery dedicated exclusively to errors and </span><code>try</code><span> expressions are just a little more than syntax sugar for that little Go spell. This isn</span>&rsquo;<span>t true for Swift, which does treat errors specially. For example, the generic </span><a href="https://www.google.com/search?q=%5Bhttps://developer.apple.com/documentation/swift/sequence/map%5D(https://developer.apple.com/documentation/swift/sequence/map)(_:)"><code>map</code></a><span> function has to explicitly care about errors, and hard-codes the decision to bail early:</span></p>
+<p><strong><strong><span>第三点，可能失败的计算结果是一等公民（First-class values），</span></strong></strong><span> 比如 Rust 中的 </span><code>Result&lt;T, E&gt;</code><span>。通常情况下，类型系统中专门用于错误的机制并不多，</span><code>try</code><span> 表达式往往只是针对那段 Go 语言式模板代码的语法糖。不过 Swift 是个例外，它确实对错误进行了特殊处理。例如，泛型的 </span><code>map</code><span> 函数必须显式处理错误，并硬编码了“一旦出错立即退出”的逻辑：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">func</span> <span class="hl-title function_">map</span>&lt;<span class="hl-type">T</span>, <span class="hl-type">E</span>&gt;(</span>
+<span class="line">    <span class="hl-keyword">_</span> <span class="hl-params">transform</span>: (<span class="hl-keyword">Self</span>.<span class="hl-type">Element</span>) <span class="hl-keyword">throws</span>(<span class="hl-type">E</span>) -&gt; <span class="hl-type">T</span></span>
+<span class="line">) <span class="hl-keyword">throws</span>(<span class="hl-type">E</span>) -&gt; [<span class="hl-type">T</span>] <span class="hl-keyword">where</span> <span class="hl-type">E</span> : <span class="hl-type">Error</span></span></code></pre>
+
+</figure>
+<p><span>Swift does provide </span><a href="https://developer.apple.com/documentation/swift/result"><span>first-classifier type</span></a><span> for errors.</span></p>
+<p><span>不过，Swift 确实也为错误提供了</span><a href="https://developer.apple.com/documentation/swift/result"><span>一等公民类型</span></a><span>。</span></p>
+<p><span>Should you want to handle an exception, rather than propagate it, the handling is localized to a single throwing expression to deal with a single specific errors, rather than with any error from a block of statements:</span></p>
+<p><span>如果你想处理异常而不是传递它，处理逻辑通常局限在单个可能抛出异常的表达式上，针对某个具体的错误进行处理，而不是去捕获一整块语句中可能出现的任何错误：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">let</span> <span class="hl-variable">widget</span> = <span class="hl-keyword">match</span> <span class="hl-title function_ invoke__">make_widget</span>() {</span>
+<span class="line">    <span class="hl-title function_ invoke__">Ok</span>(it) =&gt; it,</span>
+<span class="line">    <span class="hl-title function_ invoke__">Err</span>(WidgetError::NotFound) =&gt; <span class="hl-title function_ invoke__">default_widget</span>(),</span>
+<span class="line">};</span></code></pre>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">let widget = make_widget() <span class="hl-keyword">catch</span> <span class="hl-operator">|</span>err<span class="hl-operator">|</span> <span class="hl-keyword">switch</span> (err) {</span>
+<span class="line">    <span class="hl-keyword">error</span>.NotFound =&gt; default_widget(),</span>
+<span class="line">};</span></code></pre>
+
+</figure>
+<p><span>Swift again sticks to more traditional try catch, but, interestingly, Kotlin does have </span><code>try</code><span> expressions.</span></p>
+<p><span>Swift 在这一点上再次回归了较传统的 try-catch，但有趣的是，Kotlin 确实支持 </span><code>try</code><span> 表达式。</span></p>
+<hr>
+<p><span>The largest remaining variance is in what the error value looks like. This still feels like a research area. This is a hard problem due to a fundamental tension:</span></p>
+<p><span>目前剩下的最大差异在于“错误值”的具体形态。这看起来仍处于探索阶段。这是一个难题，源于一种根本性的张力：</span></p>
+<ul>
+<li>
+<span>On the one hand, at lower-levels you want to exhaustively enumerate errors to make sure that:</span>
+<ul>
+<li>
+<span>internal error handling logic is complete and doesn</span>&rsquo;<span>t miss a case,</span>
+</li>
+<li>
+<span>public API doesn</span>&rsquo;<span>t leak any extra surprise error conditions.</span>
+</li>
+</ul>
+</li>
+<li>
+<span>On the other hand, at higher-levels, you want to string together widely different functionality from many separate subsystems without worrying about specific errors, other than:</span>
+<ul>
+<li>
+<span>separating fallible functions from infallible,</span>
+</li>
+<li>
+<span>ensuring that there is some top-level handler to show a 500 error or an equivalent.</span>
+</li>
+</ul>
+</li>
+<li>
+<span>一方面，在底层逻辑中，你希望穷举所有错误，以确保：</span>
+<ul>
+<li>
+<span>内部错误处理逻辑是完备的，没有遗漏任何情况；</span>
+</li>
+<li>
+<span>公开 API 不会泄露任何意料之外的错误状态。</span>
+</li>
+</ul>
+</li>
+<li>
+<span>另一方面，在高层逻辑中，你希望将来自多个独立子系统的、功能迥异的部分串联在一起，而不需要关心具体的错误细节，除了：</span>
+<ul>
+<li>
+<span>区分可能失败的函数和永不失败的函数；</span>
+</li>
+<li>
+<span>确保存在某种顶层处理程序来显示 500 错误或类似的反馈。</span>
+</li>
+</ul>
+</li>
+</ul>
+<p><span>The two extremes are well understood. For exhaustiveness, nothing beats sum types (</span><code>enum</code><span>s in Rust). This I think is one of the key pieces which explains why the pendulum seemingly swung back on checked exceptions.</span></p>
+<p><span>这两个极端已经得到了很好的解决。为了实现完备性，没有什么比“和类型”（Sum types，如 Rust 中的 </span><code>enum</code><span>）更有效了。我认为这是解释为什么“钟摆”似乎又荡回“受检异常（Checked Exceptions）”的关键原因之一。</span></p>
+<p><span>In Java, a method can throw one of the several exceptions:</span></p>
+<p><span>在 Java 中，一个方法可以抛出几种异常：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">void</span> <span class="hl-title function_">f</span><span class="hl-params">()</span> <span class="hl-keyword">throws</span> FooException, BarException;</span></code></pre>
+
+</figure>
+<p><span>Critically, you </span><strong><span>can</span>&rsquo;<span>t</span></strong><span> abstract over this pair. The call chain has to either repeat the two cases, or type-erase them into a superclass, losing information. The former has a nasty side-effect that the entire chain needs updating if a third variant is added. Java-style checked exceptions are sensitive to </span>&ldquo;<span>N to N + 1</span>&rdquo;<span> transitions. Modern value-oriented error management is only sensitive to </span>&ldquo;<span>0 to 1</span>&rdquo;<span> transition.</span></p>
+<p><span>关键在于，你无法对这一对异常进行抽象。调用链要么必须重复这两个案例，要么将它们类型擦除（Type-erase）为一个父类，从而丢失信息。前者的副作用很糟糕：如果增加第三种异常，整个调用链都需要更新。Java 式的受检异常对“从 N 到 N+1”的变化非常敏感；现代基于值的错误管理只对‘从无到有’（即函数</span><strong><strong><span>是否</span></strong></strong><span>会失败）的变化敏感。</span></p>
+<p><span>Still, if I am back to writing Java at any point, I</span>&rsquo;<span>d be </span><strong><span>very</span></strong><span> tempted to standardize on coarse-grained </span><code>throws Exception</code><span> signature for all throwing methods. This is exactly the </span><strong><span>second</span></strong><span> well understood extreme: there</span>&rsquo;<span>s a type-erased universal error type, and the </span>&ldquo;<span>throwableness</span>&rdquo;<span> of a function contains one bit of information. We only care </span><strong><span>if</span></strong><span> the function can throw, and the error itself can be whatever. You still can downcast dynamic error value handle specific conditions, but the downcasting is not checked by the compiler. That is, downcasting is </span>&ldquo;<span>save</span>&rdquo;<span> and nothing will panic in the error handling mechanism itself, but you</span>&rsquo;<span>ll never be sure if the errors you are handling can actually arise, and whether some errors </span><strong><span>should</span></strong><span> be handled, but aren</span>&rsquo;<span>t.</span></p>
+<p><span>尽管如此，如果我以后还要写 Java，我会非常想为所有可能抛出异常的方法统一使用粗粒度的 </span><code>throws Exception</code><span> 签名。这正是第二个已经被摸透的极端：存在一种被类型擦除的通用错误类型，函数的“可抛出性”只包含 1 比特的信息——我们只关心这个函数“是否”会抛出异常，至于错误本身是什么并不重要。你仍然可以通过向下转型（Downcast）动态错误值来处理特定情况，但这种转型不受编译器检查。也就是说，转型过程本身是“安全”的，错误处理机制不会引发 Panic，但你永远无法确定你正在处理的错误是否真的会出现，或者某些本该处理的错误是否被遗漏了。</span></p>
+<p><span>Go and Swift provide first-class universal errors, like Midori. Starting with Swift 4, you can also narrow the type down. Rust doesn</span>&rsquo;<span>t really have super strong conventions about the errors, but it started with mostly enums, and then </span><code>failure</code><span> and </span><code>anyhow</code><span> shone spotlight on the universal error type.</span></p>
+<p><span>Go 和 Swift 提供了一等公民级别的通用错误类型，就像 Midori 项目一样。从 Swift 4 开始，你还可以缩小类型的范围。Rust 在错误约定上并不是特别强势，它最初主要使用枚举，后来 </span><code>failure</code><span> 和 </span><code>anyhow</code><span> 等库让通用错误类型受到了关注。</span></p>
+<p><span>But overall, it feels like </span>&ldquo;<span>midpoint</span>&rdquo;<span> error handling is poorly served by either extreme. In larger applications, you sorta care about error kinds, and there are usually a few place where it is pretty important to be exhaustive in your handling, but threading necessary types to those few places infects the rest of the codebases, and ultimately leads to </span>&ldquo;<span>a bag of everything</span>&rdquo;<span> error types with many </span>&ldquo;<span>dead</span>&rdquo;<span> variants.</span></p>
+<p><span>但总的来说，对于‘中等复杂度’的错误处理场景，这两个极端方案都显得有些力不从心。在大型应用中，你或多或少会关心错误的种类，通常有那么几个地方，完备的处理逻辑非常重要。然而，为了将必要的类型传递到这几个地方，往往会污染整个代码库，最终导致产生一个包含所有可能性的“全家桶”错误类型，其中充斥着许多“死代码”变体。</span></p>
+<p><span>Zig makes an interesting choice of assuming mostly closed-world compilation model, and relying on cross-function inference to learn who can throw what.</span></p>
+<p><span>Zig 做出了一个有趣的抉择：它主要假设一种“闭合世界”的编译模型，并依赖跨函数推导（自动错误集推导）来了解哪个函数可能抛出什么错误。</span></p>
+<hr>
+<p><span>What I find the most fascinating about the story is the generational aspect. There really was a strong consensus about exceptions, and then </span><a href="https://www.artima.com/articles/the-trouble-with-checked-exceptions"><span>an agreement that checked exceptions are a failure</span></a><span>, and now, suddenly, we are back to </span>&ldquo;<span>checked exceptions</span>&rdquo;<span> with a twist, in the form of </span>&ldquo;<span>errors are values</span>&rdquo;<span> philosophy. What happened between the lull of the naughts and the past decade industrial PLT renaissance?</span></p>
+<p><span>在这个故事中，最令我着迷的是其代际特征。曾经，人们对“异常”有着强大的共识；随后，大家又一致认为“受检异常是一个失败的设计”；而现在，突然之间，我们又以“错误即值”的哲学形式，回到了“受检异常”的道路上，只是多了一点新花样。在 21 世纪初的沉寂期与过去十年间工业级编程语言理论（PLT）的复兴之间，究竟发生了什么？</span></p>
+<section id="Midori">
+
+    <h2>
+    <a href="#Midori"><span>译注：关于 Midori</span> </a>
+    </h2>
+<p><a href="https://en.wikipedia.org/wiki/Midori_(operating_system%29"><span>Midori</span></a><span> 是微软在 2008 年开始研发的一个实验性操作系统项目，旨在探索基于托管代码和现代编程语言的操作系统设计。Midori 的设计理念强调安全性、可靠性和高效性，采用了许多创新的技术和概念，包括一种独特的错误处理模型。</span></p>
+<p><span>虽然 Midori 最终没有成为商业产品，但它沉淀出的技术思想直接影响了后来的 C#、Rust、Swift 和 Zig。</span></p>
+<p><strong><strong><span>Joe Duffy 在 Midori 中确立的核心原则：</span></strong></strong></p>
+<ol>
+<li>
+<p><strong><strong><span>区分“编程错误”与“运行错误”：</span></strong></strong><span> 这是 Midori 最伟大的贡献之一。</span>
+<span>* </span><strong><strong><span>编程错误（Bugs）：</span></strong></strong><span> 如数组越界、空指针。这些是逻辑错误，应该通过 </span><strong><strong><span>Panic/Abandonment</span></strong></strong><span> 让程序立即崩溃，而不是尝试捕获它。</span>
+<span>* </span><strong><strong><span>可恢复错误（Recoverable Errors）：</span></strong></strong><span> 如网络连接失败、文件未找到。这些是正常的业务逻辑，必须在类型系统中显式表现出来。</span></p>
+</li>
+<li>
+<p><strong><strong><span>性能必须等同于返回整数：</span></strong></strong><span> 传统的异常机制（抛出、堆栈回溯）太慢。Midori 提出错误处理应该像返回一个整数或指针一样高效，这也是为什么现代语言倾向于使用 </span><code>Result&lt;T, E&gt;</code><span> 这种基于值的模型。</span></p>
+</li>
+<li>
+<p><strong><strong><span>强迫显式性：</span></strong></strong><span> 在 Midori 语言中，任何可能抛出异常的函数调用都必须标记 </span><code>try</code><span> 或 </span><code>?</code><span>。这种做法被后来的 Rust 和 Zig 完美继承，终结了 Java 式“隐式异常”带来的不确定性。</span></p>
+</li>
+</ol>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">git move files to new repo with history</title>
+<link href="https://eluvk.github.io/2026/01/19/git-subtree.html" rel="alternate" type="text/html" title="git move files to new repo with history" />
+<published>2026-01-19T00:00:00+00:00</published>
+<updated>2026-01-19T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2026/01/19/git-subtree</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[使用 git subtree 拆分文件到新仓库并保留文件历史修改记录：]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2026/01/19/git-subtree.html"><![CDATA[
+    <h1>
+    <a href="#git-move-files-to-new-repo-with-history"><span>git move files to new repo with history</span> <time datetime="2026-01-19">Jan 19, 2026</time></a>
+    </h1>
+<p><span>使用 git subtree 拆分文件到新仓库并保留文件历史修改记录：</span></p>
+<p><span>假设你需要对现存的大仓库 A 进行功能拆分，把其中的某一个模块代码完全迁移出来单独维护，但是同时你又想要保留这些文件的历史修改记录：操作方式如下：</span></p>
+<p><span>比如需要从 A 仓库里抽出 sub 模块的所有代码单独用新仓库维护：</span></p>
+<p><span>1.首先进入到 A 仓库，通过这个 subtree 命令把 src/sub 目录下的代码提取出来，生成一个新的分支 drain_sub：</span></p>
+<p><code>git subtree split --prefix=src/sub -b drain_sub</code></p>
+<p><span>这个过程会比较慢，因为需要遍历整个提交历史，1000+的commit，把和 src/sub 目录相关的提交都提取出来，建立了一个新的子树分支，里面只包含 src/sub 目录下的代码和相关的提交记录。</span></p>
+<p><span>耗时7min运行完成后，可以通过以下命令看出来这个分支有200多个提交</span></p>
+<p><code>git log drain_sub --oneline | wc -l</code></p>
+<p><span>2.切换目录去在新仓库里：</span></p>
+<p><span>把这个抽出来的分支当作一个远程分支拉取进来，因为没有任何共同历史，所以需要加上 </span><code>--allow-unrelated-histories</code><span> 参数：</span></p>
+<p><code>git pull ../A drain_sub --allow-unrelated-histories</code></p>
+<p><span>你就得到了一个包含所有提交历史的sub merge结果分支。</span></p>
+<p><span>3.但是这些文件大概率还不在你需要它们在的位置上，需要把它们移动到 sub/src 目录下，用 git mv 移动一下单独再提交一个提交来尽可能让git维持文件历史：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-built_in">mkdir</span> -p sub/src</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># 记得过滤掉不相关的文件，只移动需要的</span></span>
+<span class="line">find . -maxdepth 1 ! -name <span class="hl-string">&#x27;sub&#x27;</span> ! -name <span class="hl-string">&#x27;.git&#x27;</span> ! -name <span class="hl-string">&#x27;.&#x27;</span> ! -name <span class="hl-string">&#x27;README.md&#x27;</span> -<span class="hl-built_in">exec</span> git <span class="hl-built_in">mv</span> {} ./sub/src/ \;</span>
+<span class="line">git commit -m <span class="hl-string">&quot;Move sub files to sub/src directory&quot;</span></span></code></pre>
+
+</figure>
+<section id="s-1">
+
+    <h2>
+    <a href="#s-1"><span>参考</span> </a>
+    </h2>
+<p><span>体会到了 git 分布式的真正含义，其它非同源仓库的分支也可以视作远程仓库来进行代码的合并和迁移，这是之前没有意识到的。</span></p>
+<p><span>如果直接把这个“拆分 git ”的问题抛给AI，得到的大概率是包含 git filter-branch / git filter-repo 的方案，猜测是因为吃了这篇 </span><a href="https://kokkonisd.github.io/2021/06/23/import-git-history"><span>blog</span></a><span> 生成的：</span>
+<span>然而这两个需要三方工具又或是已废弃，不如上述的 subtree 方式简单易行。所以在先行简单搜索后，指定 AI 用 subtree 的方式来完成这个任务，就得到了上述的步骤。</span></p>
+<p><span>当然，保留三方工具可能性能更好的一点可能，因为我实际感受下来，subtree 执行的速度方式很像是用基础来逐个命令来遍历所有历史，过滤掉不相关的文件，生成的新分支，整个过程和你写了一个三方脚本来一个个 git commit reset/amend/commit 这样一样，并没有什么更内部/高效的实现。</span></p>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">Optimize zsh startup time</title>
+<link href="https://eluvk.github.io/2025/11/18/opt-zsh-startup-time.html" rel="alternate" type="text/html" title="Optimize zsh startup time" />
+<published>2025-11-18T00:00:00+00:00</published>
+<updated>2025-11-18T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2025/11/18/opt-zsh-startup-time</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[最近发现zsh启动越来越慢，最终定位到一个很奇妙的原因。]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2025/11/18/opt-zsh-startup-time.html"><![CDATA[
+    <h1>
+    <a href="#Optimize-zsh-startup-time"><span>Optimize zsh startup time</span> <time datetime="2025-11-18">Nov 18, 2025</time></a>
+    </h1>
+<p><span>最近发现zsh启动越来越慢，最终定位到一个很奇妙的原因。</span></p>
+<p><span>TLDR: fpath 更新导致 zsh 会重做 compinit 的缓存，从而拖慢启动速度。</span></p>
+<p><span>因为一些原因，最近在频繁修改一些环境变量，每次在文件里修改完我习惯是在当前终端执行 </span><code>source ~/.zshrc</code><span> 来加载最新的配置而不是重新打开一个终端。然鹅这个过程会再次加载 zsh 的所有插件到 fpath 变量中，导致 fpath 里出现了重复的路径。而每次 fpath 变化，zsh 都会认为需要重新生成 compinit 的缓存文件，而你下一次打开一个新的终端时，fpath又恢复正常（也变化了），zsh 就又会重新执行 compinit 的过程。</span></p>
+<p><span>quote from Mr.GPT</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>🚨 你的 fpath 被重复注入了同样的目录 4 次以上 </span>&hellip;</p>
+</blockquote>
+
+</figure>
+<p><span>解决方法也很简单，就是在加载插件前，先用 </span><code>typeset -U fpath</code><span> 来去重 fpath 变量即可。</span></p>
+<p><span>最终的 ~/.zshrc 相关部分内容如下，展示启动时间耗时的命令 </span><code>zmodload zsh/zprof</code><span> / </span><code>zprof</code><span> 取消注释就可以看到启动时每个步骤的耗时。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment"># --- file start</span></span>
+<span class="line"><span class="hl-comment"># perf start</span></span>
+<span class="line"><span class="hl-comment"># zmodload zsh/zprof</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Disable compinit security check &amp;&amp; disable auto update</span></span>
+<span class="line">ZSH_DISABLE_COMPFIX=<span class="hl-string">&quot;true&quot;</span></span>
+<span class="line">DISABLE_AUTO_UPDATE=<span class="hl-string">&quot;true&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># ....everything else...</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-built_in">typeset</span> -U fpath</span>
+<span class="line"></span>
+<span class="line">plugins=(git virtualenv zsh-autosuggestions zsh-syntax-highlighting)</span>
+<span class="line"></span>
+<span class="line"><span class="hl-built_in">source</span> <span class="hl-variable">$ZSH</span>/oh-my-zsh.sh</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># perf end</span></span>
+<span class="line"><span class="hl-comment"># zprof</span></span></code></pre>
+
+</figure>
+<p><span>注：compinit 缓存文件在 </span><code>~/.zcompdump*</code><span>，可以手动删除它来强制 zsh 重新生成缓存文件。</span></p>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">Try Mobile Development</title>
+<link href="https://eluvk.github.io/2025/08/13/try-mobile-development.html" rel="alternate" type="text/html" title="Try Mobile Development" />
+<published>2025-08-13T00:00:00+00:00</published>
+<updated>2025-08-13T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2025/08/13/try-mobile-development</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[一段业余尝试移动开发的经历。]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2025/08/13/try-mobile-development.html"><![CDATA[
+    <h1>
+    <a href="#Try-Mobile-Development"><span>Try Mobile Development</span> <time datetime="2025-08-13">Aug 13, 2025</time></a>
+    </h1>
+<p><span>一段业余尝试移动开发的经历。</span></p>
+<p><span>大概是24年8月，也就是去年的这个时候，为了对抗目标缺失感（goalless），强迫自己去学点什么。从点开一个有点印度口音老哥的 Flutter 入门视频一个个拖进度条看完，到动手做出了几个简单的 APP, 再到今年5月后基本没有再投入精力，历时大半年的时间。最近经常在回想这些事情，干脆总结一下，可能会比较乱想到哪里写到哪里。</span></p>
+<section id="s-1">
+
+    <h2>
+    <a href="#s-1"><span>项目概要</span> </a>
+    </h2>
+<p><span>按时间顺序。</span></p>
+<section id="AI-Client-Yaaa-Yet-Another-AI-Assistant">
+
+    <h3>
+    <a href="#AI-Client-Yaaa-Yet-Another-AI-Assistant"><span>AI Client - </span><a href="https://github.com/EluvK/yaaa"><span>Yaaa(Yet Another AI Assistant)</span></a> </a>
+    </h3>
+<p><span>第一个做的是一个 Chat Client APP, 封装 API 调用各大模型，能够调 prompt，本地保存数据。其实这个想法在 23 年初就冒出来了过，当时也没有任何移动开发经验，在疫情放开后的短暂 gap 期间尝试了一下 iced / dioxus 这样的 Rust GUI 框架，还是太年轻，这些框架太不成熟，再加上我还是菜鸟，不说 markdown 编辑器了，连一个能用的多行输入框都很难搓出来，最后又上班了就不了了之。</span></p>
+<p><span>当年关注到一个开源的 ChatBox 项目后面也是大火。但是开源社区运营了一段时间开始实际闭源 + 卖付费订阅了，诱惑很大可以理解但不太认同。</span></p>
+<p><span>还是想要做一个属于自己的，能用就行，搜了下也没有用 Flutter 写的。正值 DeepSeek 发布了 V2，随后 V3 也出来，整合 chat/code 了，大模型的 API 价格被国内厂商打下来了，正好来做做。</span></p>
+<p><span>实现了一个完全本地数据的 Chat Client，配置自己的提供商和 key（deepseek接口和openai一样，大多数都还是在follow openai的，这点很好），编辑保存不同的 prompt/参数 作为 Assistant，基于 Assistant 创建对话，能够搜索历史，对话重置，win端还做了一些常用的快捷键。</span></p>
+<p><span>第一个项目第一次遇到打包和发布问题，windows 端用 inno setup 打包成 exe 安装包，很简洁好用配置一次就好了。android 端 </span><code>flutter build apk</code><span> 看着很简单，但是安装了就会遇到了诸如证书问题、正式版本的应用权限问题、SDK 版本问题等一堆故障。配置文件也是五花八门，印象深刻国内还有连 oracle 的网络问题。从没写过 Java 的我也是淌了不少坑，最终也没完全理解 sdk/gradle 的许多问题，也是能打包分发了。感觉商业包袱历史包袱太重了，整个过程体感极差，个人很不喜欢。但为了能在手机上用原生应用，不得不配合这套规则。</span></p>
+<p><span>用上了 AI 生成 APP Icon，白嫖大善人的 r2 做图床放了一些静态资源，不快但是能用。学了一点字体的基础知识，用上了一个名字也很美的中文开源字体，叫 </span><a href="https://github.com/lxgw"><span>lxgw</span></a><span>，落霞与孤鹜齐飞。</span></p>
+<p><span>初学做 APP 真的很有意思也很有成就感。</span></p>
+</section>
+<section id="xbb">
+
+    <h3>
+    <a href="#xbb"><span>笔记 - </span><a href="https://github.com/EluvK/xbb"><span>xbb</span></a> </a>
+    </h3>
+<p><span>第二个做了一个笔记应用，Markdown 编辑渲染，按仓库分类保存，支持分享仓库给他人订阅，并写了一个配套的服务端来实现云存储和多端数据同步。</span></p>
+<p><span>后端 web 框架用了一个国人开发的 </span><a href="https://salvo.rs/"><span>salvo</span></a><span>，很喜欢其表达的简洁性，适合这种小项目。</span></p>
+<p><span>数据库继续用 sqlite，dart/rust 都有很好用的库支持。</span></p>
+</section>
+<section id="daydayup">
+
+    <h3>
+    <a href="#daydayup"><span>课表记录 - </span><a href="https://github.com/EluvK/daydayup"><span>daydayup</span></a> </a>
+    </h3>
+<p><span>这个需求是年后跟姐姐聊天时提出来的，她说她们宝妈们根本找不到一个好用的 APP 给孩子补习班做记录，弄不清楚机构到底有没有多扣除课时费用。跟“客户”沟通了个把小时，梳理清楚了她们的需求，花了大概三周开发出来了。</span></p>
+<p><span>场景是填入课程的上课，软件自动排列出后续的课程，支持日历/列表/范围查看等。如果实际缺课再手动标注。</span></p>
+<p><span>日历组件、选择器这些组件找到了十分好用的三方库，丝滑流畅，感谢开源社区。</span></p>
+<p><span>记得最让我头疼的问题有两个，一个是时间的处理，区分日期和时间，时区的处理，每周几、每双周这种间隔逻辑，不难但是有些费脑。另一个就是动态排课逻辑，身兼产品设计和开发，在这里陷入了一段没有明确需求就开发的泥潭，我记得有个周末的下午我左右脑互搏了很久。也是这个项目结果里自己对自己最不满意的一部分，定义好边界和用户场景再开发是很重要的。</span></p>
+</section>
+<section id="planetx">
+
+    <h3>
+    <a href="#planetx"><span>桌游复刻 - </span><a href="https://github.com/EluvK/planetx_client"><span>planetx</span></a> </a>
+    </h3>
+<p><span>这是一个今年玩的一个</span><a href="https://boardgamegeek.com/boardgame/279537/the-search-for-planet-x"><span>桌游 The Search for Planet X</span></a><span> 的复刻线上项目。玩家需要在一片随机生成但有一定规律的星图里，使用各种手段获取线索和信息，获取分数并逐步缩小范围定位到那个神秘的目标行星 X。猜测其它玩家的行动和意图也是游戏很有意思的一部分。记得线下玩了三四把保持着 100% 首猜且正确（虽然总分上可能没赢），那段时间有点上头。</span></p>
+<p><span>线下需要纸笔同时也需要一个网站来做后台的地图生成和猜测验证，这太适合做一个在线版本了。于是就有了这个项目。</span></p>
+<p><span>先快速验证了一下地图生成的算法（类似开放世界种子生成）是可以写出来。然后研究了下前面项目都没接触过的 socketio，因为必须要实现服务端到客户端的通信，需要自动更新状态。</span></p>
+<p><span>扇形分块的星图在AI帮助下很快就能把坐标计算代码撸出来，好像也没花两周就弄出来了第一个可对战版本。前端用 github page 部署了 Web 版本，买了个域名研究了下 cf 的后端转发功能。</span></p>
+<p><span>上线 Web 版本还有个加载大小问题，比如静态的字体文件太大了、找了个python工具挑选出其中的常用字集，减少了 90%+ 的大小。（冷知识，彗星的彗字，不在3500常用汉字里）</span></p>
+<p><span>后面想着开发一个bot来和人对战，bot 依据最简单的贪心逻辑，穷举所有可能的行动和预期结果，根据预期结果对降低当前可能总数的效果进行评价，选择平均每动最优的那个。这个算法需要遍历所有可能的星图，在困难模式18个扇区的情况下，总数是百万级别的可能数（中间甚至发现了发行商写的博客资料里，这个可能数是错误的），所有可能数在后端需要占用 20 MB内存，不过会在一两步之后就快速下降到忽略不计了。</span></p>
+<p><span>就这么一个完全不考虑其它玩家行动，仅根据客观事实挑选一个依据我随手写的评价函数里最优的行动，在我假装不知道它的行动逻辑以此获取额外信息的情况下，bot 大多数情况下都能赢过我，在绝对的算力压制面前，人类直觉的评价函数确实太弱了。</span></p>
+<p><span>虽然整体玩的时间 &lt;&lt; 开发时间。后端现在大概也挂了（好像是 cf 转发的 proxy 问题，换了个服务器后不记得咋配置了就没折腾）</span></p>
+</section>
+</section>
+<section id="s-2">
+
+    <h2>
+    <a href="#s-2"><span>收获感受</span> </a>
+    </h2>
+<p><span>AI Client 帮助我加速了日常工作里的重复性工作，调教好一些 assistant(prompt)，轻度使用的API花费几乎忽略不计，效果比开一个网页端也好很多，还自带分类归档效果。</span></p>
+<p><span>XBB 用来记录分享日常生活，不同于即时通讯工具，这种订阅分享和无需明确回复的方式，让我和异地伴侣的分享变得更多，记录下生活的点滴。</span></p>
+<p><span>想把这些项目再打磨一下，不过目前还找不太到动力，最后一个可以作罢，前两个日常每天用，之前还有个想法时是结合起来，笔记可以变成 RAG，再加上一个智能剪贴板的功能自动归档每日剪贴板内容。</span>
+<span>课表也有想法做成一个 Web 版本，解决打包发布更新的问题，也能支持更多平台（有浏览器就行），但是就需要长期持续的维护成本了。</span></p>
+<section id="vs-Web">
+
+    <h3>
+    <a href="#vs-Web"><span>原生应用 vs Web</span> </a>
+    </h3>
+<p><span>Flutter 跨平台支持得还是很好，一套代码主体，写少量平台特定的代码就可以实现不同平台的适配。</span></p>
+<p><span>但是！能写出来到能给用户用之间还隔了很远。真的想让普通人能随时下载你的 APP，就不得不玩苹果谷歌微软以及国内应用商店它们的游戏。对于一个早期学习的开发者，直接被苹果一年99美元的开发者账号劝退（买一年 Copilot 也才这个价格）。</span></p>
+<p><span>好在除了 Apple 家的根本无法分享，其它平台还是可以通过各种方式打包出来，自己分发</span>&ldquo;<span>包含不被信任的证书</span>&rdquo;<span>的应用。虽然存在不方便，但至少可以让自己和身边人用上，开源在 Github Release Pages 上也能分享，项目本身代码开源再用 action 打包也是一种足够被“信任”的方式了。</span></p>
+<p><span>所以后面的项目尝试了下 Web 版本，完全没有这些证书、发布更新的问题，版本可以全部由服务端控制来更新。但是会存在的缺点是性能和用户体验可能不如原生应用那么好；以及如果是有状态且业务上并不需要联网的 APP，也不得新增一个后端服务来存储，你总不能依靠不靠谱的本地缓存来实现；同时也还是需要购买一些域名和服务器来部署。</span></p>
+<p><span>所以后续如果继续做些独立小项目，如果可以肯定会更加倾向于先只做 Web 版本。不过 flutter 的 web 性能问题如果不解决，可能还是需要切换到其它语言/框架。</span></p>
+</section>
+<section id="s-3">
+
+    <h3>
+    <a href="#s-3"><span>不要重复造轮子</span> </a>
+    </h3>
+<p><span>可以造轮子，但是不要重复造轮子。我始终相信任何“新”的尝试都是有意义的，弯路只是让到达目标的路程远了，后续不断优化迭代工具链就好。</span></p>
+<p><span>体验过手搓一个 picker 才能更好地用上现存的三方库。</span></p>
+</section>
+<section id="AI">
+
+    <h3>
+    <a href="#AI"><span>AI</span> </a>
+    </h3>
+<p><span>在 AI 的帮助下，能力可以很快速的外延到新的领域，对特定领域的熟练度的壁垒很容易被打破，一些通用的工程思维反而更加重要。</span></p>
+</section>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">Best Enum</title>
+<link href="https://eluvk.github.io/2025/08/06/best-enum.html" rel="alternate" type="text/html" title="Best Enum" />
+<published>2025-08-06T00:00:00+00:00</published>
+<updated>2025-08-06T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2025/08/06/best-enum</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[在 Rust 吸引人的诸多优点中，Enum 肯定十分值得一提。对于从 C/C++ 转过来的开发者来说，看到这种自带 namespace 的枚举，不仅可以在一个枚举值里存储其他类型的值，甚至每个枚举值都可以有不同类型的值，实在令人耳目一新。]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2025/08/06/best-enum.html"><![CDATA[
+    <h1>
+    <a href="#Best-Enum"><span>Best Enum</span> <time datetime="2025-08-06">Aug 6, 2025</time></a>
+    </h1>
+<p><span>在 Rust 吸引人的诸多优点中，Enum 肯定十分值得一提。对于从 C/C++ 转过来的开发者来说，看到这种自带 namespace 的枚举，不仅可以在一个枚举值里存储其他类型的值，甚至每个枚举值都可以有不同类型的值，实在令人耳目一新。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">Message</span> {</span>
+<span class="line">    Join { id: <span class="hl-type">u32</span>, name: <span class="hl-type">String</span> },</span>
+<span class="line">    <span class="hl-title function_ invoke__">Move</span>(Point),</span>
+<span class="line">    Quit,</span>
+<span class="line">}</span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    x: <span class="hl-type">i32</span>,</span>
+<span class="line">    y: <span class="hl-type">i32</span>,</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>作为 Rust 的一等公民，也是完全融入到语言的类型系统里，最最基础的 </span><code>Option</code><span> 和 </span><code>Result</code><span> 类型都基于 Enum 实现：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">Option</span>&lt;T&gt; {</span>
+<span class="line">    <span class="hl-literal">None</span>,</span>
+<span class="line">    <span class="hl-title function_ invoke__">Some</span>(T),</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>诸如模式匹配、穷尽性检查等特性都能用上，写出的代码的抽象层度高、可读性和简洁性都很不错。</span></p>
+<section id="Algebraic-data-type-ADT">
+
+    <h2>
+    <a href="#Algebraic-data-type-ADT"><span>代数数据类型（Algebraic data type，缩写：ADT）</span> </a>
+    </h2>
+<p><span>包括 </span><strong><strong><span>和类型</span></strong></strong><span> 和 </span><strong><strong><span>积类型</span></strong></strong><span>两种。</span></p>
+<ul>
+<li>
+<span>积类型（Product Type）：表示由多种类型组合而成，总可能数等于包含的每种类型的每种可能数的乘积。</span>
+</li>
+<li>
+<span>和类型（Sum Type）：表示可以是多种类型中的一种，总可能数等于包含的每种类型的可能数之和。</span>
+</li>
+</ul>
+<p><span>如果一个语言的设计里提到了 ADT，那么通常它都会包含能覆盖这两种类型的实现。</span></p>
+<p><span>能看出 Rust 的 Enum 是和类型的，Tuple/Struct 是积类型的。</span></p>
+<section id="Product-Type-And">
+
+    <h3>
+    <a href="#Product-Type-And"><span>Product Type | And | </span><code>+</code> </a>
+    </h3>
+<p><span>比如一个 </span><code>Point</code><span> 结构体，它由两个 i32 组成，我们可以说这个 Point 包含一个 i32 </span><strong><span>和(And)</span></strong><span> 另一个 i32</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Point</span> {</span>
+<span class="line">    x: <span class="hl-type">i32</span>,</span>
+<span class="line">    y: <span class="hl-type">i32</span>,</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>所有 Point 的集合会包含所有可能的 (x, y) 对。</span></p>
+</section>
+<section id="Sum-Type-Or">
+
+    <h3>
+    <a href="#Sum-Type-Or"><span>Sum Type | Or | </span><code>*</code> </a>
+    </h3>
+<p><span>比如 </span><code>Option&lt;T&gt;</code><span> 可以是 </span><code>None</code><span> </span><strong><span>或者(Or)</span></strong><span> </span><code>Some(T)</code><span>，总可能数为 1 + N（其中 N 为 </span><code>T</code><span> 的可能数）。</span></p>
+<p><span>因此通常会说 Enum 是 Sum Type 在 Rust 中的实现方式，也可以称 Enum 为 </span><a href="https://en.wikipedia.org/wiki/Tagged_union"><span>Tagged Union</span></a></p>
+<ul>
+<li>
+<span>tag (Discriminant) 表明这是哪一类枚举成员，编译器会最小化其大小，甚至一些情况下可以做到 0 大小。（niche optimization， e.g. </span><code>Option&lt;&amp;T&gt;</code><span> ）</span>
+</li>
+<li>
+<span>union (Payload) 保存枚举值的实例, 根据 tag 的不同而解释不同</span>
+</li>
+</ul>
+<p><span>Tagged Union 有很多类似含义的术语 variant/discriminated union/disjoint union/sum type/coproduct 等。</span></p>
+<p><span>这在函数式编程语言里很常见，Rust 也是从 Haskell 等语言中借鉴了这个思想。</span></p>
+</section>
+<section id="Exponential-Type-Function">
+
+    <h3>
+    <a href="#Exponential-Type-Function"><span>Exponential Type | Function | </span><code>^</code> </a>
+    </h3>
+<p><span>我们其实可以用代数的方式来表示这些类型，这里的 </span><code>×</code><span> 表示积，</span><code>+</code><span> 表示和，所有类型都可以类比成一个多项式：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">type</span> <span class="hl-title class_">Point</span> = <span class="hl-type">i32</span> * <span class="hl-type">i32</span>;</span>
+<span class="line"><span class="hl-keyword">type</span> <span class="hl-title class_">OptionT</span> = <span class="hl-number">1</span> + T;</span></code></pre>
+
+</figure>
+<p><span>实际上还有 Exponential Type（指数类型），</span><span class="math inline">\(A^B\)</span><span> 表示从 </span><span class="math inline">\(B\)</span><span> 到 </span><span class="math inline">\(A\)</span><span> 的函数类型。其可能的数为 </span><span class="math inline">\(A^{B}\)</span><span>，即 </span><span class="math inline">\(A\)</span><span> 的可能数的 </span><span class="math inline">\(B\)</span><span> 次方。那么自然我们可以把一个从 </span><span class="math inline">\(B\)</span><span> 到 </span><span class="math inline">\(A\)</span><span> 的函数认为是一个 Exponential Type。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">func</span>(b: B) <span class="hl-punctuation">-&gt;</span> A;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// 如果我们认为 func 是一个类型，那么它的类型可以表示为如下：</span></span>
+<span class="line"><span class="hl-comment">// 其包含 B 的所有可能值的个数个成员，每个成员对应一个 A 的可能值的结果</span></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">func</span> {</span>
+<span class="line">    b1: A,</span>
+<span class="line">    b2: A,</span>
+<span class="line">    <span class="hl-comment">// ...</span></span>
+<span class="line">    bn: A,</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>自然这个类型 </span><code>func</code><span> 的可能数就是 </span><span class="math inline">\(A^{B}\)</span><span>。</span></p>
+</section>
+</section>
+<section id="More-in-Enum">
+
+    <h2>
+    <a href="#More-in-Enum"><span>More in Enum</span> </a>
+    </h2>
+<section id="FixPoint">
+
+    <h3>
+    <a href="#FixPoint"><span>FixPoint</span> </a>
+    </h3>
+<p><span>如果尝试写过 Rust 里的链表，一定会对这个递归结构很熟悉：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">List</span>&lt;T&gt; {</span>
+<span class="line">    <span class="hl-title function_ invoke__">Nil</span>(),</span>
+<span class="line">    <span class="hl-title function_ invoke__">Cons</span>(T, <span class="hl-type">Box</span>&lt;List&lt;T&gt;&gt;),</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>仅作类型分析，我们稍作简化，去掉因为递归无限大小引入的 </span><code>Box</code><span>，同时假定类型 </span><code>T</code><span> 是 </span><code>i32</code><span>，那么这个链表的类型可以写成：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">IntList</span> {</span>
+<span class="line">    <span class="hl-title function_ invoke__">Nil</span>(),</span>
+<span class="line">    <span class="hl-title function_ invoke__">Cons</span>(<span class="hl-type">i32</span>, IntList), <span class="hl-comment">// missing Box, won&#x27;t compile</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><code>IntList</code><span> 类型就可以代数地表示为：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">type</span> <span class="hl-title class_">IntList</span> = <span class="hl-number">1</span> + (<span class="hl-type">i32</span> * IntList)</span></code></pre>
+
+</figure>
+<p><code>IntList</code><span> 在等式左右两边都出现了，所以这里其实是一个递归定义，实际上 </span><code>IntList</code><span> 刚好是</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">type</span> <span class="hl-title class_">IntListF</span>&lt;X&gt; = <span class="hl-number">1</span> + (<span class="hl-type">i32</span> * X)</span></code></pre>
+
+</figure>
+<p><span>的不动点，即 </span><code>IntList = IntListF(IntList)</code><span>。</span></p>
+</section>
+<section id="s-1">
+
+    <h3>
+    <a href="#s-1"><span>递归表达集合</span> </a>
+    </h3>
+<p><span>上面的递归定义，也可以让一个 Enum 表达出某个集合的所有可能值。比如所有的自然数的集合就可以用下面这个枚举来表达：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">Nat</span> {</span>
+<span class="line">    Zero,</span>
+<span class="line">    <span class="hl-title function_ invoke__">Succ</span>(<span class="hl-type">Box</span>&lt;Nat&gt;),</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><code>Nat</code><span> 的可能值就可以是所有的自然数：0, 1, 2, 3, </span>&hellip;</p>
+<p><span>如果在 </span><code>Succ</code><span> 里增加一些内容，就会演变成链表。所以可以把链表看成是自然数的一个泛化。</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>lists are natural numbers which carry content.</span></p>
+</blockquote>
+
+</figure>
+</section>
+</section>
+<section id="Enum-in-API">
+
+    <h2>
+    <a href="#Enum-in-API"><span>Enum in API</span> </a>
+    </h2>
+<p><span>其实写这篇 blog 的最最出发点是实践里多次遇到了一个问题，然后在查找相关资料时发现了一些有趣的思想记录在上面。</span></p>
+<p><span>遇到的问题就是，当我们以这种 和类型 的思想来设计了一个 API 的 schema 后，如何能让它更好用。</span></p>
+<p><span>举个例子你有一个 API </span><code>POST /action</code><span> 需要在 reqbody 里填入 </span><code>Action</code><span>，它可以是 </span><code>Move</code><span>, </span><code>Attack</code><span>, </span><code>Heal</code><span> 等等，且不同的 </span><code>Action</code><span> 会有不同的参数。那么很自然可以用类似这样的 Enum 来表达：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">Action</span> {</span>
+<span class="line">    <span class="hl-title function_ invoke__">Move</span>(Direction),</span>
+<span class="line">    <span class="hl-title function_ invoke__">Attack</span>(Target),</span>
+<span class="line">    <span class="hl-title function_ invoke__">Heal</span>(Amount),</span>
+<span class="line">}</span>
+<span class="line"><span class="hl-comment">// ... Direction, Target, Amount 等类型定义</span></span></code></pre>
+
+</figure>
+<p><span>尽管 OpenAPI 3.0 支持 </span><a href="https://swagger.io/docs/specification/v3_0/data-models/oneof-anyof-allof-not/"><code>oneOf</code><span> 语法</span></a><span>，可以写出这样的 schema：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-attr">Action:</span></span>
+<span class="line">  <span class="hl-attr">oneOf:</span></span>
+<span class="line">    <span class="hl-bullet">-</span> <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Move&#x27;</span></span>
+<span class="line">    <span class="hl-bullet">-</span> <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Attack&#x27;</span></span>
+<span class="line">    <span class="hl-bullet">-</span> <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Heal&#x27;</span></span></code></pre>
+
+</figure>
+<p><span>但是这个 </span><code>oneOf</code><span> 没有 tag name，且现时情况下还有检查工具支持不完善、语言代码生成工具不识别等问题，会导致不得不使用退化成 object 的方式来表达：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-attr">Action:</span></span>
+<span class="line">  <span class="hl-attr">type:</span> <span class="hl-string">object</span></span>
+<span class="line">  <span class="hl-attr">properties:</span></span>
+<span class="line">    <span class="hl-attr">move:</span></span>
+<span class="line">      <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Move&#x27;</span></span>
+<span class="line">    <span class="hl-attr">attack:</span></span>
+<span class="line">      <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Attack&#x27;</span></span>
+<span class="line">    <span class="hl-attr">heal:</span></span>
+<span class="line">      <span class="hl-string">$ref:</span> <span class="hl-string">&#x27;#/components/schemas/Heal&#x27;</span></span></code></pre>
+
+</figure>
+<p><span>这种方式虽然可以表达出 Action 的所有可能值，但是却失去了 Enum 的语义。所以成员都只能定义成可选的，但业务又要求</span><strong><strong><span>有且仅有一个</span></strong></strong><span>成员存在。于是就会出现许多小问题：</span></p>
+<ul>
+<li>
+<span>在接收到请求的时候不得不额外的做唯一性检查，这本该是生成工具自动完成的内容，不应该混杂在业务逻辑里</span>
+</li>
+<li>
+<span>不同语言的 SDK 代码、前端调用时都需要理解这个约束。因为它们不一定有 sum type 的概念</span>
+</li>
+</ul>
+<p><span>Not a perfect world.</span></p>
+</section>
+<section id="References-Further-Reading">
+
+    <h2>
+    <a href="#References-Further-Reading"><span>References &amp;&amp; Further Reading</span> </a>
+    </h2>
+<p><a href="https://manishearth.github.io/blog/2017/03/04/what-are-sum-product-and-pi-types/"><span>What Are Sum, Product, and Pi Types?</span></a></p>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">Practical Git</title>
+<link href="https://eluvk.github.io/2025/07/24/pratical-git.html" rel="alternate" type="text/html" title="Practical Git" />
+<published>2025-07-24T00:00:00+00:00</published>
+<updated>2025-07-24T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2025/07/24/pratical-git</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[TL;DR 一些自以为是的 Git 经验和实践建议，有感而发，慎重参考。]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2025/07/24/pratical-git.html"><![CDATA[
+    <h1>
+    <a href="#Practical-Git"><span>Practical Git</span> <time datetime="2025-07-24">Jul 24, 2025</time></a>
+    </h1>
+<p><span>TL;DR 一些自以为是的 Git 经验和实践建议，有感而发，慎重参考。</span></p>
+<section id="Merge-vs-Rebase">
+
+    <h2>
+    <a href="#Merge-vs-Rebase"><span>Merge vs Rebase</span> </a>
+    </h2>
+<p><span>建议：</span><strong><strong><span>Merge into main, but rebase feature branches</span></strong></strong></p>
+<p><span>不建议：自己执行任何一句 git merge 命令，（起码我想不到某一个场景是必须这么做的）。让你的 CI 工具来做这件事（把特性分支最终合入主干）。</span></p>
+<p><span>如果你需要解决多个特性之间的冲突，梳理清楚其先后顺序，让后来的特性分支 rebase 到前面的特性分支上。或者更好的，提取出稳定的公共的部分作为共同前缀。</span>
+<span>如果冲突多到你难以处理 rebase 命令，且不是因为你自己的 commit 历史过于复杂上，那必定是需求拆解的问题。</span></p>
+<p><span>最终在主干上的所有的 merge 节点的集合就是你二分查找问题的截点。</span></p>
+</section>
+<section id="Commit-Message">
+
+    <h2>
+    <a href="#Commit-Message"><span>Commit Message</span> </a>
+    </h2>
+<p><span>如果你的组织有规范，遵守它。不过如果规范形式主义远大于实际意义，不妨试试那个神奇的 </span><a href="https://code.visualstudio.com/docs/copilot/copilot-smart-actions#_generate-a-commit-message-and-pr-information"><span>✨ 按钮</span></a><span>来减少心智负担。</span></p>
+<p><span>有种我赞同的说法是：如果你的项目里所有的 commit message 都有着简短的总结和无比详细的描述，那通常说明这里的 CI 和 Review 流程太差劲了。</span></p>
+<p><span>开发过程中不是所有 commit 都需要有意义，你可以在第一个 commit 里写下特性包含的内容和方向。完成一点就可以提交保存下来，甚至可以直接 </span><code>--allow-empty</code><span> 来提交一个空的 commit 梳理自己的思路。后续 commit 随时提交，写个 </span><code>.</code><span> 就行。当你差不多满意了，rebase -i 全部 fixup 到第一个就行，优美一点还可以 amend date 让时间戳更正确。</span></p>
+<p><span>个人可能是有些奇妙的羞耻感，对于一些“愚蠢”的中间错误，不想留下痕迹给后人看，所以我会倾向于继续合并掉这些中间过程。也可以合理地解释为 Git 历史是用来回溯的，冗余甚至错误的信息只会增加负面影响，所以没有必要保留。</span></p>
+</section>
+<section id="gitignoreinclude">
+
+    <h2>
+    <a href="#gitignoreinclude"><span>.git</span><sub><sub><span>ignore</span></sub></sub><span>include</span> </a>
+    </h2>
+<p><span>看到的一篇</span><a href="https://rgbcu.be/blog/gitignore/"><span>文章</span></a><span>讲如何把你的 .gitignore 文件用成只允许特定文件的白名单，其他的都不允许提交。之前知道这种 </span><code>!</code><span> 的用法，但从来没想过要这么做。</span></p>
+<p><span>感觉是有趣的一个实践，保持了我喜欢的“默认拒绝”，“保证知道你在做什么的”特点。</span></p>
+<p><span>还能顺便解决你没用过的各种 IDE 的配置文件、不同操作系统平台的特别文件（点名批评 .DS_Store）被其它人失误提交的问题。</span></p>
+<p><span>具体执行大概可以这么写：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">*</span>
+<span class="line"></span>
+<span class="line">!.gitignore</span>
+<span class="line"></span>
+<span class="line"># whitelist `src` directories and their children, regardless of place</span>
+<span class="line">!src/</span>
+<span class="line">!src/**/</span>
+<span class="line">!src/**/*.rs</span>
+<span class="line">!Cargo.{toml,lock}</span>
+<span class="line"></span>
+<span class="line">!/docs/</span>
+<span class="line">!/docs/*.md</span></code></pre>
+
+</figure>
+<p><span>tradeoff 是你需要手动维护这个白名单，添加的任何新模块都要注明一下。</span></p>
+</section>
+<section id="Looking-forward">
+
+    <h2>
+    <a href="#Looking-forward"><span>Looking forward</span> </a>
+    </h2>
+<p><span>受限于环境，自己还没享受到但是期望的流程：</span></p>
+<ol>
+<li>
+<span>所有改动是小且明确的，且并不是所有变动都需要完整的真实环境验证才能合入主干。很多时候只需要 CI 跑通就行了。</span>
+</li>
+<li>
+<span>CI 和 CI 后操作是无需手动干预的，如设置好检视OK + CI 全部通过以后可自动执行合入操作。</span>
+</li>
+<li>
+<span>成熟的团队，代码检视工作甚至都可以是后置的，不阻塞合入。检视意见完全可以在后续用新的 patch 继续处理。</span>
+</li>
+</ol>
+<p><span>在开发之后，CI、检视、合入、发布这些步骤都不应该是完全同步阻塞的。</span></p>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">LLM Agent Projects</title>
+<link href="https://eluvk.github.io/2025/05/08/llm-agent-projects.html" rel="alternate" type="text/html" title="LLM Agent Projects" />
+<published>2025-05-08T00:00:00+00:00</published>
+<updated>2025-05-08T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2025/05/08/llm-agent-projects</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[汇总一些最近感兴趣的项目信息。]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2025/05/08/llm-agent-projects.html"><![CDATA[
+    <h1>
+    <a href="#LLM-Agent-Projects"><span>LLM Agent Projects</span> <time datetime="2025-05-08">May 8, 2025</time></a>
+    </h1>
+<p><span>汇总一些最近感兴趣的项目信息。</span></p>
+<section id="MCP">
+
+    <h2>
+    <a href="#MCP"><a href="https://github.com/modelcontextprotocol"><span>MCP</span></a> </a>
+    </h2>
+<p><span>MCP（Model Context Protocol，即模型上下文协议）是由 Anthropic（Claude 的母公司）提出的一个协议，旨在为 LLM（大型语言模型）通过一套标准化的协议提供拓展功能工具箱。赋予 LLM 访问外部数据，使用特定工具和 API 的能力。</span></p>
+<p><span>Latest MCP 版本为 </span><a href="https://modelcontextprotocol.io/specification/2025-03-26"><span>2025-03-26</span></a><span>，最新这一版本引入了对 </span><code>Streamable HTTP</code><span> 的支持，允许 LLM 通过 HTTP 流式传输数据。</span></p>
+<section id="MCP-Transport">
+
+    <h3>
+    <a href="#MCP-Transport"><span>MCP - Transport</span> </a>
+    </h3>
+<p><span>编码：所有消息均采用 </span><strong><strong><span>JSON-RPC 2.0</span></strong></strong><span> 格式，必须使用 </span><strong><strong><span>UTF-8</span></strong></strong><span> 编码。</span>
+<span>传输： </span><strong><strong><code>stdio</code></strong></strong><span>（优先支持）：通过标准输入/输出流通信。/ </span><strong><strong><code>Streamable HTTP</code></strong></strong><span>（新版推荐）：基于 HTTP 的增强传输，支持流式交互。</span></p>
+<section id="Streamable-HTTP">
+
+    <h4>
+    <a href="#Streamable-HTTP"><span>Streamable HTTP</span> </a>
+    </h4>
+<ul>
+<li>
+<strong><strong><span>统一端点</span></strong></strong><span>：单个 HTTP 路径（如 </span><code>/mcp</code><span>）同时处理 </span><code>POST</code><span>（客户端→服务端）和 </span><code>GET</code><span>（服务端→客户端）。</span>
+</li>
+</ul>
+<table>
+<tr>
+<th><strong><strong><span>方向</span></strong></strong><span></span></th>
+<th><strong><strong><span>HTTP 方法</span></strong></strong><span></span></th>
+<th><strong><strong><span>Content-Type</span></strong></strong><span></span></th>
+<th><strong><strong><span>消息类型</span></strong></strong><span></span></th>
+<th><strong><strong><span>响应逻辑</span></strong></strong><span></span></th>
+</tr>
+<tr>
+<td><span>客户端 → 服务端</span></td>
+<td><span>POST</span></td>
+<td><code>application/json</code><span></span></td>
+<td><span>请求/通知/响应（或批量）</span></td>
+<td><span>- 纯响应/通知：返回 </span><code>202 Accepted</code><span>&lt;br&gt;- 含请求：返回 </span><code>application/json</code><span> 或 SSE 流</span></td>
+</tr>
+<tr>
+<td><span>服务端 → 客户端（推送）</span></td>
+<td><span>GET</span></td>
+<td><code>text/event-stream</code><span> (SSE)</span></td>
+<td><span>服务端主动发起的请求/通知（可批量）</span></td>
+<td><span>客户端需持续监听 SSE 流</span></td>
+</tr>
+</table>
+</section>
+</section>
+<section id="Feature">
+
+    <h3>
+    <a href="#Feature"><span>Feature</span> </a>
+    </h3>
+<p><span>MCP 区分服务端和客户端。客户端包括 Root 和 Sampling 两种功能。服务端包括 Prompts、Resources 和 Tools 三种功能。</span></p>
+<p><strong><strong><span>Root</span></strong></strong><span>: MCP 客户端通过 roots 特性向服务端暴露文件系统的可访问根目录，明确服务端能操作的文件范围边界。</span></p>
+<p><strong><strong><span>Sampling</span></strong></strong><span>: 允许服务端通过客户端请求 LLM 生成内容。服务端无需直接管理 API 密钥，通过客户端代理实现。</span></p>
+<p><strong><strong><span>Prompts</span></strong></strong><span>: 服务端提供结构化提示词模板，客户端可动态获取并填充参数生成最终提示。</span></p>
+<p><strong><strong><span>Resources</span></strong></strong><span>: 服务端暴露结构化数据（如文件、API 结果），供 LLM 获取上下文。</span></p>
+<p><strong><strong><span>Tools</span></strong></strong><span>: 服务端提供可执行工具（如 API 调用），由 LLM 按需触发。</span></p>
+</section>
+</section>
+<section id="PocketFlow">
+
+    <h2>
+    <a href="#PocketFlow"><a href="https://github.com/The-Pocket/PocketFlow"><span>PocketFlow</span></a> </a>
+    </h2>
+<p><span>一个极其精炼的 LLM 框架，100 行 python 代码，概况了一个简单有效的大模型工作流，利用这些最基本的原语，可以构建出复杂的工作流。</span></p>
+<section id="s-1">
+
+    <h3>
+    <a href="#s-1"><span>核心概念</span> </a>
+    </h3>
+<section id="Node">
+
+    <h4>
+    <a href="#Node"><a href="https://the-pocket.github.io/PocketFlow/core_abstraction/node.html"><span>Node</span></a> </a>
+    </h4>
+
+<figure>
+
+<img alt="node" src="https://github.com/the-pocket/.github/raw/main/assets/node.png?raw=true">
+</figure>
+<p><span>node 是一个执行任务的最小单元，整体流程会分为 prep, exec, post 三个阶段。prep 阶段可能从shared store 里获取数据，exec 阶段执行任务，post 阶段将结果存入 shared store。</span></p>
+<p><span>exec 部分支持失败后间隔重试，还可以再使用最终 fallback。</span></p>
+</section>
+<section id="Flow">
+
+    <h4>
+    <a href="#Flow"><a href="https://the-pocket.github.io/PocketFlow/core_abstraction/flow.html"><span>Flow</span></a> </a>
+    </h4>
+<p><span>Flow 定义了 node 之间的执行顺序，每个 node 的执行结果可能影响下一个是哪一个 node。</span></p>
+<p><span>简单来说就是 node 作为顶点，flow 是边，构成一个有向图。</span></p>
+<p><span>定义里 Flow 也是继承自 Node，不过我感觉这部分的设计有点奇怪，还没体会到这种设计的好处</span>&hellip;</p>
+</section>
+<section id="Communication">
+
+    <h4>
+    <a href="#Communication"><a href="https://the-pocket.github.io/PocketFlow/core_abstraction/communication.html"><span>Communication</span></a> </a>
+    </h4>
+<p><span>Nodes 和 Flow 之间的主要通过 shared store 来进行数据传递（通常是一个 dict）。</span></p>
+</section>
+<section id="Batch-Async">
+
+    <h4>
+    <a href="#Batch-Async"><span>Batch &amp;&amp; Async</span> </a>
+    </h4>
+<p><span>还有一些批量的异步的概念，比较好理解。</span></p>
+</section>
+</section>
+<section id="Patterns">
+
+    <h3>
+    <a href="#Patterns"><span>Patterns</span> </a>
+    </h3>
+<p><span>官方给出的示意图，可以基于此设计实现的流行的模式。</span></p>
+
+<figure>
+
+<img alt="pattern" src="https://github.com/The-Pocket/.github/raw/main/assets/design.png">
+</figure>
+</section>
+</section>
+<section id="RAG-Retrieval-Augmented-Generation">
+
+    <h2>
+    <a href="#RAG-Retrieval-Augmented-Generation"><span>[</span><a href="https://github.com/FareedKhan-dev/all-rag-techniques"><span>RAG (Retrieval-Augmented Generation)] 技术介绍</span></a> </a>
+    </h2>
+<p><span>必备特性：长文档预处理、实时索引、嵌入模型质量（特定领域可能需要微调）</span></p>
+<p><span>核心难点：如何调整分块策略、相似度阈值，引入动态权重（根据使用频率）、反馈循环机制（根据是否采纳结果）来增强检索的相关性和准确性。</span></p>
+<p><span>概念汇总：</span></p>
+<ul>
+<li>
+<span>嵌入模型（Embedding Models）：将文本转换为向量表示，可以用向量相似度来检索相关性。</span>
+</li>
+</ul>
+<p><span>实践上以下的这些操作需要根据实际场景自由组合。</span></p>
+<p><span>感受：</span>
+<span>这个项目的文档真的读起来，比它看起来的样子更无趣，各种优化手段和思路都很好理解，但是原文似乎像是AI批量生成的内容一样冗余，为了写而写。</span>
+<span>技术上无论怎么操作最后的落脚点还是向量相似度检索/LLM回答、中间套上用 LLM 处理马上要喂给 LLM 的内容的各种手段实在不好评价。因为感觉这种方式十分不精确，也无法证明其完善性，实践上如果使用的（理论最佳）策略强依赖于原始材料的质量、完整性，也很难落地通用些的项目。</span>
+<span>后面一些引入了意图检测，加上一些合适的步骤来避免没法答硬回答的想法很好。</span></p>
+<section id="01-simple-rag">
+
+    <h3>
+    <a href="#01-simple-rag"><span>01 simple rag</span> </a>
+    </h3>
+<p><span>基础的 RAG 实现：将全文分割成一个个chunk，按照相似度检索出 top k 相关的 chunk，拼接成一个 Context prompt 传入 LLM。</span></p>
+</section>
+<section id="02-semantic-chunking">
+
+    <h3>
+    <a href="#02-semantic-chunking"><span>02 semantic chunking</span> </a>
+    </h3>
+<p><span>提出一种分块策略：将大段落按照其中句子的语义进行分块，相比于固定段落/长度的分块策略，可以更好的精炼每个 chunk 的内容。也能提高检索的相关性准确性。具体有多种方法：</span></p>
+<ul>
+<li>
+<span>百分位数法：计算所有相似性差异的 X 分位数，并在相似性下降超过该值的地方进行分块。</span>
+</li>
+<li>
+<span>标准差法：在相似性下降超过平均值减去 X 个标准差时进行分块。</span>
+</li>
+<li>
+<span>四分位距法（IQR）：使用四分位距（Q3 - Q1）来确定分块点。</span>
+</li>
+</ul>
+<p><span>执行的时候都是：先按照一句句话分开，计算每句的嵌入向量，然后计算每两句之间的相似度，选择一种分块策略来决定分块点，按照分块点重新拼接成 chunk。最后将 chunk 计算嵌入向量。回归到 RAG 的基本流程。</span></p>
+</section>
+<section id="03-chunk-size-selector">
+
+    <h3>
+    <a href="#03-chunk-size-selector"><span>03 chunk size selector</span> </a>
+    </h3>
+<p><span>提出了一种分块策略：按照不同的 length，再叠加一些 overlap 来分块。将不同长度的 chunk 都计算嵌入向量相似度选择最相关的 top k 个 chunk。回归到 RAG 的基本流程。</span></p>
+</section>
+<section id="04-context-enriched-rag">
+
+    <h3>
+    <a href="#04-context-enriched-rag"><span>04 context enriched rag</span> </a>
+    </h3>
+<p><span>Context-Enriched Retrieval: 在分块检索到最相关的 chunk 后，传入附近的上下文（如前后几句话）来丰富 chunk 的内容。可以提高检索的相关性准确性。</span></p>
+</section>
+<section id="05-contextual-chunk-headers-rag">
+
+    <h3>
+    <a href="#05-contextual-chunk-headers-rag"><span>05 contextual chunk headers rag</span> </a>
+    </h3>
+<p><span>标准的文本分块（chunking）可能丢失重要的上下文信息，导致检索效果较差。</span>
+<span>Contextual Chunk Headers (CCH) 方法通过为每个文本块生成高层次的上下文（如标题或章节名称），增强检索的准确性和回答的连贯性。</span></p>
+<p><span>通过为每个文本块生成标题并结合标题和内容进行检索。（个人评论：感觉如果最终的评价标准还是用向量相关性的话，对于原文内容的质量还是有很高的要求，在个人知识库里，一些不够完善的内容还是会影响检索效果。）</span></p>
+</section>
+<section id="06-augmentation-rag">
+
+    <h3>
+    <a href="#06-augmentation-rag"><span>06 augmentation rag</span> </a>
+    </h3>
+<p><span>引入了 问题生成（Question Generation），给定文本段落，让AI生成相关问题，然后将这些问题也作为查询来检索相关的文本段落。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_prompt = <span class="hl-string">&quot;You are an expert at generating relevant questions from text. Create concise questions that can be answered using only the provided text. Focus on key information and concepts.&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Define the user prompt with the text chunk and the number of questions to generate</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-string">Based on the following text, generate <span class="hl-subst">{num_questions}</span> different questions that can be answered using only this text:</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string"><span class="hl-subst">{text_chunk}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Format your response as a numbered list of questions only, with no additional text.</span></span>
+<span class="line"><span class="hl-string">&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="07-query-transform">
+
+    <h3>
+    <a href="#07-query-transform"><span>07 query transform</span> </a>
+    </h3>
+<p><span>引入了查询转换（Query Transformation），在检索之前对查询进行转换或增强，以提高检索的相关性和准确性。</span>
+<span>包括三种方法：</span></p>
+<ol>
+<li>
+<span>Rewrite 重写查询，用AI重写查询，使其更清晰或更具体。</span>
+</li>
+<li>
+<span>Step-back 回退提示，用AI生成更一般化的查询。</span>
+</li>
+<li>
+<span>Sub-query Decomposition 将复杂查询分解为多个子查询。</span>
+</li>
+</ol>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_prompt = <span class="hl-string">&quot;You are an AI assistant specialized in improving search queries. Your task is to rewrite user queries to be more specific, detailed, and likely to retrieve relevant information.&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Define the user prompt with the original query to be rewritten</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-string">Rewrite the following query to make it more specific and detailed. Include relevant terms and concepts that might help in retrieving accurate information.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Original query: <span class="hl-subst">{original_query}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Rewritten query:</span></span>
+<span class="line"><span class="hl-string">&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_prompt = <span class="hl-string">&quot;You are an AI assistant specialized in search strategies. Your task is to generate broader, more general versions of specific queries to retrieve relevant background information.&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Define the user prompt with the original query to be generalized</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-string">Generate a broader, more general version of the following query that could help retrieve useful background information.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Original query: <span class="hl-subst">{original_query}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Step-back query:</span></span>
+<span class="line"><span class="hl-string">&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_prompt = <span class="hl-string">&quot;You are an AI assistant specialized in breaking down complex questions. Your task is to decompose complex queries into simpler sub-questions that, when answered together, address the original query.&quot;</span></span>
+<span class="line">    </span>
+<span class="line"><span class="hl-comment"># Define the user prompt with the original query to be decomposed</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-string">Break down the following complex query into <span class="hl-subst">{num_subqueries}</span> simpler sub-queries. Each sub-query should focus on a different aspect of the original question.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Original query: <span class="hl-subst">{original_query}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Generate <span class="hl-subst">{num_subqueries}</span> sub-queries, one per line, in this format:</span></span>
+<span class="line"><span class="hl-string">1. [First sub-query]</span></span>
+<span class="line"><span class="hl-string">2. [Second sub-query]</span></span>
+<span class="line"><span class="hl-string">And so on...</span></span>
+<span class="line"><span class="hl-string">&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="08-reranker">
+
+    <h3>
+    <a href="#08-reranker"><span>08 reranker</span> </a>
+    </h3>
+<p><span>重排序核心概念：</span></p>
+<p><span>首先使用基本的检索方法（如向量相似度）获取初步的相关文档或段落。</span>
+<span>对初步检索到的文档进行评分，继续用AI模型对每个文档进行分析，计算其相关性分数。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment"># Define the system prompt for the LLM</span></span>
+<span class="line">system_prompt = <span class="hl-string">&quot;&quot;&quot;You are an expert at evaluating document relevance for search queries.</span></span>
+<span class="line"><span class="hl-string">Your task is to rate documents on a scale from 0 to 10 based on how well they answer the given query.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Guidelines:</span></span>
+<span class="line"><span class="hl-string">- Score 0-2: Document is completely irrelevant</span></span>
+<span class="line"><span class="hl-string">- Score 3-5: Document has some relevant information but doesn&#x27;t directly answer the query</span></span>
+<span class="line"><span class="hl-string">- Score 6-8: Document is relevant and partially answers the query</span></span>
+<span class="line"><span class="hl-string">- Score 9-10: Document is highly relevant and directly answers the query</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">You MUST respond with ONLY a single integer score between 0 and 10. Do not include ANY other text.&quot;&quot;&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Define the user prompt for the LLM</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;&quot;&quot;Query: <span class="hl-subst">{query}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Document:</span></span>
+<span class="line"><span class="hl-string"><span class="hl-subst">{result[<span class="hl-string">&#x27;text&#x27;</span>]}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Rate this document&#x27;s relevance to the query on a scale from 0 to 10:&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+<p><span>根据评分结果对文档进行重排序，选择最相关的文档作为最终结果。</span></p>
+</section>
+<section id="09-rse">
+
+    <h3>
+    <a href="#09-rse"><span>09 rse</span> </a>
+    </h3>
+<p><span>Relevant Segment Extraction (RSE) 技术，通过识别文档中更连续的相关片段作为相关性排序依据，原理是倾向于认为相关性强的片段一般都是连续的，所以用区间片段的相关性累计值来作为选取片段的依据。</span></p>
+</section>
+<section id="10-contextual-compression">
+
+    <h3>
+    <a href="#10-contextual-compression"><span>10 contextual compression</span> </a>
+    </h3>
+<p><span>在检索到的文本块中，过滤掉和查询无关的内容，仅保留最相关的部分；通过压缩上下文来减少噪声，提高语言模型生成的质量。</span></p>
+<p><span>选择性压缩（Selective）、摘要压缩（Summary）、提取压缩（Extraction）</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment"># Define system prompts for different compression approaches</span></span>
+<span class="line"><span class="hl-keyword">if</span> compression_type == <span class="hl-string">&quot;selective&quot;</span>:</span>
+<span class="line">    system_prompt = <span class="hl-string">&quot;&quot;&quot;You are an expert at information filtering. </span></span>
+<span class="line"><span class="hl-string">    Your task is to analyze a document chunk and extract ONLY the sentences or paragraphs that are directly </span></span>
+<span class="line"><span class="hl-string">    relevant to the user&#x27;s query. Remove all irrelevant content.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Your output should:</span></span>
+<span class="line"><span class="hl-string">    1. ONLY include text that helps answer the query</span></span>
+<span class="line"><span class="hl-string">    2. Preserve the exact wording of relevant sentences (do not paraphrase)</span></span>
+<span class="line"><span class="hl-string">    3. Maintain the original order of the text</span></span>
+<span class="line"><span class="hl-string">    4. Include ALL relevant content, even if it seems redundant</span></span>
+<span class="line"><span class="hl-string">    5. EXCLUDE any text that isn&#x27;t relevant to the query</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Format your response as plain text with no additional comments.&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-keyword">elif</span> compression_type == <span class="hl-string">&quot;summary&quot;</span>:</span>
+<span class="line">    system_prompt = <span class="hl-string">&quot;&quot;&quot;You are an expert at summarization. </span></span>
+<span class="line"><span class="hl-string">    Your task is to create a concise summary of the provided chunk that focuses ONLY on </span></span>
+<span class="line"><span class="hl-string">    information relevant to the user&#x27;s query.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Your output should:</span></span>
+<span class="line"><span class="hl-string">    1. Be brief but comprehensive regarding query-relevant information</span></span>
+<span class="line"><span class="hl-string">    2. Focus exclusively on information related to the query</span></span>
+<span class="line"><span class="hl-string">    3. Omit irrelevant details</span></span>
+<span class="line"><span class="hl-string">    4. Be written in a neutral, factual tone</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Format your response as plain text with no additional comments.&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-keyword">else</span>:  <span class="hl-comment"># extraction</span></span>
+<span class="line">    system_prompt = <span class="hl-string">&quot;&quot;&quot;You are an expert at information extraction.</span></span>
+<span class="line"><span class="hl-string">    Your task is to extract ONLY the exact sentences from the document chunk that contain information relevant </span></span>
+<span class="line"><span class="hl-string">    to answering the user&#x27;s query.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Your output should:</span></span>
+<span class="line"><span class="hl-string">    1. Include ONLY direct quotes of relevant sentences from the original text</span></span>
+<span class="line"><span class="hl-string">    2. Preserve the original wording (do not modify the text)</span></span>
+<span class="line"><span class="hl-string">    3. Include ONLY sentences that directly relate to the query</span></span>
+<span class="line"><span class="hl-string">    4. Separate extracted sentences with newlines</span></span>
+<span class="line"><span class="hl-string">    5. Do not add any commentary or additional text</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Format your response as plain text with no additional comments.&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="11-feedback-loop-rag">
+
+    <h3>
+    <a href="#11-feedback-loop-rag"><span>11 feedback loop rag</span> </a>
+    </h3>
+<p><span>动态的根据用户反馈来调整相关性评分。</span><strong><strong><span>将成功的问答纳入知识库</span></strong></strong><span>，增强长期的学习能力。</span></p>
+<p><span>思路很自然，实现比较玩具。这并不是一个仅在 RAG 场景下才需要的能力。</span></p>
+</section>
+<section id="12-adaptive-rag">
+
+    <h3>
+    <a href="#12-adaptive-rag"><span>12 adaptive rag</span> </a>
+    </h3>
+<p><span>用AI将用户查询的分类，再配合不同的检索策略来处理不同类型的查询。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment"># Define the system prompt to guide the AI&#x27;s classification</span></span>
+<span class="line">system_prompt = <span class="hl-string">&quot;&quot;&quot;You are an expert at classifying questions. </span></span>
+<span class="line"><span class="hl-string">    Classify the given query into exactly one of these categories:</span></span>
+<span class="line"><span class="hl-string">    - Factual: Queries seeking specific, verifiable information.</span></span>
+<span class="line"><span class="hl-string">    - Analytical: Queries requiring comprehensive analysis or explanation.</span></span>
+<span class="line"><span class="hl-string">    - Opinion: Queries about subjective matters or seeking diverse viewpoints.</span></span>
+<span class="line"><span class="hl-string">    - Contextual: Queries that depend on user-specific context.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Return ONLY the category name, without any explanation or additional text.</span></span>
+<span class="line"><span class="hl-string">&quot;&quot;&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Create the user prompt with the query to be classified</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;Classify this query: <span class="hl-subst">{query}</span>&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="13-self-rag">
+
+    <h3>
+    <a href="#13-self-rag"><span>13 self rag</span> </a>
+    </h3>
+<p><span>自反式 RAG，特点：</span></p>
+<ul>
+<li>
+<span>动态的（用LLM）决定是否要检索（在此前的 RAG 实现中，检索都是固定的步骤）。</span>
+</li>
+<li>
+<span>评估检索结果的相关性和准确性，如果不实用，不如直接使用 LLM 生成答案 / 反馈无法回答。</span>
+</li>
+</ul>
+</section>
+<section id="14-proposition-chunking">
+
+    <h3>
+    <a href="#14-proposition-chunking"><span>14 proposition chunking</span> </a>
+    </h3>
+<p><span>命题分块（Proposition Chunking），将文本分割成更小的命题单元（propositions），对生成的命题进行质量检查，包括准确性、清晰度、完整性和简洁性。</span></p>
+</section>
+<section id="15-multimodel-rag">
+
+    <h3>
+    <a href="#15-multimodel-rag"><span>15 multimodel rag</span> </a>
+    </h3>
+<p><span>使用视觉模型来对图像内容进行描述和提取，覆盖依赖图像数据的问题。</span></p>
+</section>
+<section id="16-fusion-rag">
+
+    <h3>
+    <a href="#16-fusion-rag"><span>16 fusion rag</span> </a>
+    </h3>
+<p><span>融合检索，结合语义检索和关键词检索两种方式，补全可能遗漏的关键词精确匹配的场景，来提高检索质量。</span></p>
+<p><span>把向量检索和 BM25 关键词检索的结果融合加权计算综合分数。</span></p>
+</section>
+<section id="17-graph-rag">
+
+    <h3>
+    <a href="#17-graph-rag"><span>17 graph rag</span> </a>
+    </h3>
+<p><span>基于图的 RAG，将知识组织成连接图而非平面文档集合。根据相似度和概念重合度来定义边权，查询时图遍历来找到相关上下文内容。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_message = <span class="hl-string">&quot;&quot;&quot;Extract key concepts and entities from the provided text.</span></span>
+<span class="line"><span class="hl-string">Return ONLY a list of 5-10 key terms, entities, or concepts that are most important in this text.</span></span>
+<span class="line"><span class="hl-string">Format your response as a JSON array of strings.&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="18-hierarchy-rag">
+
+    <h3>
+    <a href="#18-hierarchy-rag"><span>18 hierarchy rag</span> </a>
+    </h3>
+<p><span>解决传统 RAG 在处理大规模知识库时，如果对所有文本块一视同仁，可能上下文丢失或者检索效率低的问题。</span></p>
+<p><span>层次化索引的 RAG，先通过摘要识别相关文档主要内容，再对内容进行分开嵌入，分为两个向量存储。</span></p>
+</section>
+<section id="19-HyDE-rag">
+
+    <h3>
+    <a href="#19-HyDE-rag"><span>19 HyDE rag</span> </a>
+    </h3>
+<p><span>Hypothetical Document Embedding，假设文档嵌入，通过生成能回答用户问题的假设文档来作为嵌入搜索的参照对象。(看到这里真的笑出声了</span>&hellip;<span>)</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_prompt = <span class="hl-string">f&quot;&quot;&quot;You are an expert document creator. </span></span>
+<span class="line"><span class="hl-string">Given a question, generate a detailed document that would directly answer this question.</span></span>
+<span class="line"><span class="hl-string">The document should be approximately <span class="hl-subst">{desired_length}</span> characters long and provide an in-depth, </span></span>
+<span class="line"><span class="hl-string">informative answer to the question. Write as if this document is from an authoritative source</span></span>
+<span class="line"><span class="hl-string">on the subject. Include specific details, facts, and explanations.</span></span>
+<span class="line"><span class="hl-string">Do not mention that this is a hypothetical document - just write the content directly.&quot;&quot;&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Define the user prompt with the query</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;Question: <span class="hl-subst">{query}</span>\n\nGenerate a document that fully answers this question:&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="20-crag">
+
+    <h3>
+    <a href="#20-crag"><span>20 crag</span> </a>
+    </h3>
+<p><span>Corrective RAG，评估检索结果的相关性，当本地检索结果不足时，通过网络搜索来补充，结合多个来源的结果生成答案。</span></p>
+</section>
+<section id="21-rag-with-rl">
+
+    <h3>
+    <a href="#21-rag-with-rl"><span>21 rag with rl</span> </a>
+    </h3>
+<p><span>使用 Reinforcement Learning (强化学习) 来优化。</span></p>
+<p><span>定义学习的核心组件：状态、动作空间和奖励：</span>
+<span>动作逻辑包括：重写查询、扩展上下文、过滤上下文、生成答案。</span>
+<span>使用奖励函数基于余弦相似度评估生成答案的质量。</span></p>
+</section>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">Rust Dispatch</title>
+<link href="https://eluvk.github.io/2023/08/18/rust-dispatch.html" rel="alternate" type="text/html" title="Rust Dispatch" />
+<published>2023-08-18T00:00:00+00:00</published>
+<updated>2023-08-18T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2023/08/18/rust-dispatch</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[学习的过程总是 无数个一知半解 + 一个恍然大悟的循环，两者的重要性难分伯仲。]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2023/08/18/rust-dispatch.html"><![CDATA[
+    <h1>
+    <a href="#Rust-Dispatch"><span>Rust Dispatch</span> <time datetime="2023-08-18">Aug 18, 2023</time></a>
+    </h1>
+
+<figure class="blockquote">
+<blockquote><p><span>学习的过程总是 无数个一知半解 + 一个恍然大悟的循环，两者的重要性难分伯仲。</span></p>
+</blockquote>
+
+</figure>
+<section id="Dispatch">
+
+    <h2>
+    <a href="#Dispatch"><span>分发（Dispatch）</span> </a>
+    </h2>
+<p><span>当代码涉及到多态(polymorphism)时，需要机制判断最终执行的代码到底是哪一个具体的实现版本。这个过程就叫分发。</span></p>
+<p><span>首先定义一点基础代码，作为后续内容的代码示例的默认前提：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Show</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">print</span>(&amp;<span class="hl-keyword">self</span>);</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Show</span> <span class="hl-keyword">for</span> <span class="hl-title class_">usize</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">print</span>(&amp;<span class="hl-keyword">self</span>) {</span>
+<span class="line">        <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;usize show: {:?}&quot;</span>, &amp;<span class="hl-keyword">self</span>);</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Show</span> <span class="hl-keyword">for</span> <span class="hl-title class_">String</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">print</span>(&amp;<span class="hl-keyword">self</span>) {</span>
+<span class="line">        <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;string show: {:?}&quot;</span>, &amp;<span class="hl-keyword">self</span>);</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="Static-Dispatch">
+
+    <h2>
+    <a href="#Static-Dispatch"><span>静态分发（Static Dispatch）</span> </a>
+    </h2>
+<section id="s-1">
+
+    <h3>
+    <a href="#s-1"><span>泛型</span> </a>
+    </h3>
+<p><span>类似于 C++ 里的模板，Rust 里的泛型(generic)包括加上 traits bounds 的泛型都是静态分发。具体实现是单态化(</span><a href="https://en.wikipedia.org/wiki/Monomorphization"><span>monomorphization</span></a><span>)：</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>In programming languages, monomorphization is a compile-time process where polymorphic functions are replaced by many monomorphic functions for each unique instantiation.</span></p>
+</blockquote>
+
+</figure>
+<p><span>即代码在编译期间 多态方法 被多个单独的 单态方法 替换。</span></p>
+<p><span>比如以下实现：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">do_print</span>&lt;T&gt;(x: T)</span>
+<span class="line"><span class="hl-keyword">where</span></span>
+<span class="line">    T: Show,</span>
+<span class="line">{</span>
+<span class="line">    x.<span class="hl-title function_ invoke__">print</span>();</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">number</span> = <span class="hl-number">42usize</span>;</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">string</span> = <span class="hl-string">&quot;Dispatch&quot;</span>.<span class="hl-title function_ invoke__">to_string</span>();</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-title function_ invoke__">do_print</span>(number); <span class="hl-comment">// usize show: 42</span></span>
+<span class="line">    <span class="hl-title function_ invoke__">do_print</span>(string); <span class="hl-comment">// string show: &quot;Dispatch&quot;</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>实际会被展开成类似：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">do_print_for_usize</span>(x: <span class="hl-type">usize</span>) {</span>
+<span class="line">    x.<span class="hl-title function_ invoke__">print</span>();</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">do_print_for_string</span>(x: <span class="hl-type">String</span>) {</span>
+<span class="line">    x.<span class="hl-title function_ invoke__">print</span>();</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">number</span> = <span class="hl-number">42usize</span>;</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">string</span> = <span class="hl-string">&quot;Dispatch&quot;</span>.<span class="hl-title function_ invoke__">to_string</span>();</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-title function_ invoke__">do_print_for_usize</span>(number); <span class="hl-comment">// usize show: 42</span></span>
+<span class="line">    <span class="hl-title function_ invoke__">do_print_for_string</span>(string); <span class="hl-comment">// string show: &quot;Dispatch&quot;</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>通过编译期间的单态化，编译器去除了泛型的概念，优点是在运行期间无性能损耗，缺点是滥用泛型会导致生成的单态化代码变多，编译时间增加，生成的二进制文件体积变大。这和 C++ 模板是一致的。</span></p>
+</section>
+<section id="impl-Trait">
+
+    <h3>
+    <a href="#impl-Trait"><span>impl Trait</span> </a>
+    </h3>
+<p><span>除了泛型之外，</span><code>impl Trait</code><span> 也用作静态分发，</span><code>impl Trait</code><span> 可以用在参数类型和返回值类型里。比如上述的 </span><code>fn do_print&lt;T: Show&gt;(x: T);</code><span> 也可以用 </span><code>impl Trait</code><span> 的形式写成：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">do_print</span>(x: <span class="hl-keyword">impl</span> <span class="hl-title class_">Show</span>) {</span>
+<span class="line">    x.<span class="hl-title function_ invoke__">print</span>()</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>当 </span><code>impl Trait</code><span> 作为返回值类型时，需要注意编译器需要推导出返回值的具体类型来实现单态化，因此无法写出 </span><code>if - else</code><span> 等不同分支下返回不同类型（虽然它们都实现了这个 Trait ）的代码。编译器无法推导出单态化的目标类型，一般会在后一种类型的返回处报错：</span><code>expect A but get B...</code></p>
+<p><span>实际编码中作为返回值写 </span><code>impl Trait</code><span> 的形式有两种用途：</span></p>
+<ol>
+<li>
+<span>让编译器推导类型，避免写特别长的类型</span>
+</li>
+<li>
+<span>用在返回闭包的场景</span>
+</li>
+</ol>
+<p><span>第一个场景：看下面这个例子，实现了一个连接两个 Vector 的函数</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">combine_vec</span>&lt;T&gt;(v: <span class="hl-type">Vec</span>&lt;T&gt;, u: <span class="hl-type">Vec</span>&lt;T&gt;) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">impl</span> <span class="hl-title class_">Iterator</span>&lt;Item = T&gt;</span>
+<span class="line"><span class="hl-keyword">where</span></span>
+<span class="line">    T: <span class="hl-built_in">Clone</span>,</span>
+<span class="line">{</span>
+<span class="line">    v.<span class="hl-title function_ invoke__">into_iter</span>().<span class="hl-title function_ invoke__">chain</span>(u.<span class="hl-title function_ invoke__">into_iter</span>()).<span class="hl-title function_ invoke__">cycle</span>()</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main___</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">v1</span> = <span class="hl-built_in">vec!</span>[<span class="hl-number">1</span>, <span class="hl-number">2</span>, <span class="hl-number">3</span>];</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">v2</span> = <span class="hl-built_in">vec!</span>[<span class="hl-number">5</span>, <span class="hl-number">6</span>, <span class="hl-number">7</span>];</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">v3</span> = <span class="hl-title function_ invoke__">combine_vec</span>(v1, v2);</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">1</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">2</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">3</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">5</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">6</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">7</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">1</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>泛型函数 </span><code>combine_vec</code><span> 的真实返回值是 </span><code>std::iter::Cycle&lt;std::iter::Chain&lt;std::vec::IntoIter&lt;T&gt;, std::vec::IntoIter&lt;T&gt;&gt;&gt;</code><span>，这里编译的时候会推导出返回值的类型和泛型 </span><code>T</code><span> 的类型，实际上会生成类似如下代码：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">combine_vec_for_i32_with_explicit_return_type</span>(</span>
+<span class="line">    v: <span class="hl-type">Vec</span>&lt;<span class="hl-type">i32</span>&gt;,</span>
+<span class="line">    u: <span class="hl-type">Vec</span>&lt;<span class="hl-type">i32</span>&gt;,</span>
+<span class="line">) <span class="hl-punctuation">-&gt;</span> std::iter::Cycle&lt;std::iter::Chain&lt;std::vec::IntoIter&lt;<span class="hl-type">i32</span>&gt;, std::vec::IntoIter&lt;<span class="hl-type">i32</span>&gt;&gt;&gt; {</span>
+<span class="line">    v.<span class="hl-title function_ invoke__">into_iter</span>().<span class="hl-title function_ invoke__">chain</span>(u.<span class="hl-title function_ invoke__">into_iter</span>()).<span class="hl-title function_ invoke__">cycle</span>()</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>很明显我们的这个函数的意图是利用迭代器的 </span><code>chain</code><span> 方法连接两个 </span><code>Vec</code><span>，因此返回的类型一定还是原先泛型 </span><code>T</code><span> 的迭代器，因此简单的写上 </span><code>impl Iterator&lt;...&gt;</code><span>，剩下的工作让编译器去做就好了。</span></p>
+<p><span>因为即使我们写成确切的类型，也不会给对读代码的人提供更多有帮助的信息，徒增阅读负担而已。</span></p>
+<p><span>第二个场景：Rust 里闭包类型是匿名的，无法显示的写出来，这种情况下我们只能只用 </span><code>impl Trait</code><span> 的形式来写：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">adder_function</span>(y: <span class="hl-type">i32</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">impl</span> <span class="hl-title class_">Fn</span>(<span class="hl-type">i32</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">i32</span> {</span>
+<span class="line">    <span class="hl-keyword">move</span> |x: <span class="hl-type">i32</span>| x + y</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">double_positive</span>&lt;<span class="hl-symbol">&#x27;a</span>&gt;(numbers: &amp;<span class="hl-symbol">&#x27;a</span> <span class="hl-type">Vec</span>&lt;<span class="hl-type">i32</span>&gt;) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">impl</span> <span class="hl-title class_">Iterator</span>&lt;Item = <span class="hl-type">i32</span>&gt; + <span class="hl-symbol">&#x27;a</span> {</span>
+<span class="line">    numbers.<span class="hl-title function_ invoke__">iter</span>().<span class="hl-title function_ invoke__">filter</span>(|x| x &gt; &amp;&amp;<span class="hl-number">0</span>).<span class="hl-title function_ invoke__">map</span>(|x| x * <span class="hl-number">2</span>)</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">add_one</span> = <span class="hl-title function_ invoke__">adder_function</span>(<span class="hl-number">1</span>);</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">3</span>, <span class="hl-title function_ invoke__">add_one</span>(<span class="hl-number">2</span>));</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">v</span> = <span class="hl-built_in">vec!</span>[-<span class="hl-number">3</span>, <span class="hl-number">2</span>, -<span class="hl-number">4</span>, <span class="hl-number">1</span>];</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">v2</span> = <span class="hl-title function_ invoke__">double_positive</span>(&amp;v).collect::&lt;<span class="hl-type">Vec</span>&lt;<span class="hl-type">i32</span>&gt;&gt;();</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(v2, <span class="hl-built_in">vec!</span>[<span class="hl-number">4</span>, <span class="hl-number">2</span>]);</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="Dynamic-Dispatch">
+
+    <h2>
+    <a href="#Dynamic-Dispatch"><span>动态分发（Dynamic Dispatch）</span> </a>
+    </h2>
+<p><span>静态分发的缺点：无法返回多种类型 正是动态分发要解决的问题。使用 Trait Object 表达 </span><strong><strong><span>实现了某种 Trait 的类型(的集合)</span></strong></strong><span> 这种类型，这种类型有点像 OOP 语言里的基类/抽象类，本身无法实例化出对象。</span></p>
+<section id="Trait-Object">
+
+    <h3>
+    <a href="#Trait-Object"><span>Trait Object</span> </a>
+    </h3>
+<p><span>Trait Object 本身可以理解为有固定大小的类型，其包含两个指针，一个指向其实际的类型，一个指向实现了 TraitObject 的这个 Trait 的虚表，可以理解为如下表达：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">pub</span> <span class="hl-keyword">struct</span> <span class="hl-title class_">TraitObject</span> {</span>
+<span class="line">    <span class="hl-keyword">pub</span> data: *<span class="hl-title function_ invoke__">mut</span> (),</span>
+<span class="line">    <span class="hl-keyword">pub</span> vtable: *<span class="hl-title function_ invoke__">mut</span> (),</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>虽然 Trait Object 大小是确定，但是并不能写出形如 </span><code>fn x() -&gt; Trait Object</code><span> 的代码，你会得到编译器的警告：</span></p>
+
+<figure class="blockquote">
+<blockquote><p><code>return type cannot have an unboxed trait object, doesn't have a size known at compile-time</code></p>
+</blockquote>
+
+</figure>
+<p><span>嗯？这是因为 Trait Object 所表达的实现了该 Trait 的类型的集合，其中的元素的大小是不确定的。Trait Object 本身是无法实例化的，作为返回值自然是没有意义的，真正要作为返回值的是某个实现了该 Trait 的类型的实例。因此要明确并不是因为 Trait Object 本身大小不固定，大小就是宽指针是固定的。</span></p>
+</section>
+<section id="dyn-Trait">
+
+    <h3>
+    <a href="#dyn-Trait"><span>dyn Trait</span> </a>
+    </h3>
+<p><span>明白了 Trait Object 的概念，代码中要表示一个 Trait Object，需要使用 </span><code>dyn</code><span> 关键字：</span><code>dyn SomeTrait</code><span> 表示 </span><code>SomeTrait</code><span> 的 Trait Object</span></p>
+<p><span>这里有些历史，在 2016 年之前还没有 </span><code>dyn</code><span> 这个关键字，</span><a href="https://github.com/rust-lang/rfcs/blob/master/text/2113-dyn-trait-syntax.md"><span>RFC-2113</span></a><span> 中引入了这个关键字语法，并在 rust 1.26/2021 edition 后必须使用 </span><code>dyn</code><span> 才能表示 Trait Object</span></p>
+<p><span>要求使用 </span><code>dyn</code><span> 就是为了清晰表达含义，区分 Trait 和 TraitObject。提案里给出了几个实例：比如下面代码：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">SomeTrait</span> <span class="hl-keyword">for</span> <span class="hl-title class_">AnotherTrait</span> {...}</span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">SomeTrait</span> {...}</span></code></pre>
+
+</figure>
+<p><span>这在引入 dyn 关键字之前都是合法的代码（现在会提示了），能分清楚这里的几个 xxxTrait，哪个是 Trait ，哪个是 Trait Object 么 :）</span></p>
+<p><span>第一条按照 </span><code>impl trait for type</code><span> 的语法，</span><code>SomeTrait</code><span> 是 Trait, </span><code>AnotherTrait</code><span> 应该是 Trait Object；</span></p>
+<p><span>第二条很容易理解为给 </span><code>SomeTrait</code><span> 实现一些默认方法，但是应该在定义处 </span><code>trait SomeTrait {...}</code><span> 里实现默认方法，这里其实是表达给 </span><code>SomeTrait</code><span> 的 Trait Object 实现方法。</span></p>
+<p><span>当然如今这样写已经会被编译器警告了，正确的写法是：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">SomeTrait</span> <span class="hl-keyword">for</span> <span class="hl-title class_">dyn</span> AnotherTrait {...}</span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">dyn</span> SomeTrait {...}</span></code></pre>
+
+</figure>
+
+<figure class="blockquote">
+<blockquote><p><span>拓展知识: Trait Object 都是 unsized ，所以 Trait 在设计的时候都是默认 </span><code>?Sized</code><span> 来支持 Trait Object：</span><a href="https://blog.eluvk.cn/?p=836#toc-head-16"><span>Trait Object Sizeness</span></a></p>
+<p><span>因此如果定义 </span><code>trait SomeTrait : Sized</code><span> ，那么这个 Trait 就不能使用 Trait Object 了。换句话说，Trait Object 要求不能包含 </span><code>Sized</code><span> Bounds。</span></p>
+<p><a href="https://doc.rust-lang.org/reference/items/traits.html#object-safety"><span>traits#object-safety</span></a></p>
+<ul>
+<li>
+<span>All supertraits must also be object safe.</span>
+</li>
+<li>
+<code>Sized</code><span> must not be a supertrait. In other words, it must not require </span><code>Self: Sized</code><span>.</span>
+</li>
+</ul>
+</blockquote>
+
+</figure>
+</section>
+<section id="vtable-in-Rust">
+
+    <h3>
+    <a href="#vtable-in-Rust"><span>vtable in Rust</span> </a>
+    </h3>
+<p><span>首先先看一下 C++ 里的虚表实现，对于一个子类对象，其内存布局包括：(注：这里只考虑继承包含虚函数父类的子类的情况，仅为和 Rust 虚表对比，不能完全代表真实内存布局实现)</span></p>
+<table>
+<tr>
+<th><span>子类内存布局</span></th>
+<th></th>
+<th><span>vtable</span></th>
+</tr>
+<tr>
+<td><span>虚表指针</span></td>
+<td>&mdash;<span>&gt;</span></td>
+<td><span>析构方法指针</span></td>
+</tr>
+<tr>
+<td><span>子类成员/数据</span></td>
+<td></td>
+<td><span>成员方法指针</span></td>
+</tr>
+</table>
+<p><span>指向虚表的指针和自身成员数据。</span></p>
+<p><span>对于多继承的情况，会有多个虚表指针：</span></p>
+<table>
+<tr>
+<th><span>vtable</span></th>
+<th></th>
+<th><span>子类内存布局</span></th>
+<th></th>
+<th><span>vtable</span></th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td><span>虚表指针</span></td>
+<td>&mdash;<span>&gt;</span></td>
+<td><span>析构方法指针</span></td>
+</tr>
+<tr>
+<td><span>析构方法指针</span></td>
+<td><span>&lt;</span>&mdash;<span></span></td>
+<td><span>虚表指针</span></td>
+<td></td>
+<td><span>成员方法指针</span></td>
+</tr>
+<tr>
+<td><span>成员方法指针</span></td>
+<td></td>
+<td><span>子类成员/数据</span></td>
+<td></td>
+<td></td>
+</tr>
+</table>
+<p><span>而 Rust 里，如上 TraitObject 的 raw code：很容易得出单 Trait 下的 TraitObject 布局：</span></p>
+<table>
+<tr>
+<th><span>子类布局</span></th>
+<th></th>
+<th><span>Trait Object</span></th>
+<th></th>
+<th><span>vtable</span></th>
+</tr>
+<tr>
+<td><span>成员数据</span></td>
+<td><span>&lt;</span>&mdash;<span></span></td>
+<td><span>数据指针</span></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td><span>虚表指针</span></td>
+<td>&mdash;<span>&gt;</span></td>
+<td><span>析构方法指针</span></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td><span>成员方法指针</span></td>
+</tr>
+</table>
+<p><span>那么如果我想写出多个 Trait Bounds 的 Trait Object 呢？如下代码：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">FirstTrait</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">first</span>(&amp;<span class="hl-keyword">self</span>);</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">SecondTrait</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">second</span>(&amp;<span class="hl-keyword">self</span>);</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Subject</span> {</span>
+<span class="line">    subjects: <span class="hl-keyword">dyn</span> FirstTrait + SecondTrait, <span class="hl-comment">// error: only auto traits can be used</span></span>
+<span class="line">                                            <span class="hl-comment">// as additional traits in a trait object</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>会在 </span><code>+ SecondTrait</code><span> 处得到如上提示，以及如下建议：</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>consider creating a new trait with all of these as supertraits and using that trait here instead: </span><code>trait NewTrait: FirstTrait + SecondTrait {}</code></p>
+</blockquote>
+
+</figure>
+<p><span>（rustc 真贴心地教你写代码）按照提示需要这样写：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">AllTrait</span>: FirstTrait + SecondTrait {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Subject</span> {</span>
+<span class="line">    subjects: <span class="hl-keyword">dyn</span> AllTrait,</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>很容易猜测到这是因为 TraitObject 的实现方式：仅包含两个指针，无法增加更多的 vtable 指针来达成类似 C++ </span><code>: public A, public B</code><span> 多继承的效果。</span></p>
+<p><span>拓展知识：目前 supertrait 下还不支持 upcasting coercion: </span><a href="https://github.com/rust-lang/rust/issues/65991"><span>issues</span></a></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">need_first_trait</span>(o: &amp;<span class="hl-keyword">dyn</span> FirstTrait) {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Subject</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">call_as_first_trait</span>(&amp;<span class="hl-keyword">self</span>) {</span>
+<span class="line">        <span class="hl-title function_ invoke__">need_first_trait</span>(&amp;<span class="hl-keyword">self</span>.subjects) <span class="hl-comment">// error: cannot cast `dyn AllTrait` to `dyn FirstTrait`,</span></span>
+<span class="line">                                         <span class="hl-comment">// trait upcasting coercion is experimental</span></span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>目前编译器还无法识别出应该放入哪个 </span><code>FirstTrait</code><span> 的 Trait Object 的虚表，可以用下面的方式手动补充实现：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">AllTrait</span>: FirstTrait + SecondTrait {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">as_first_trait</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> &amp;<span class="hl-keyword">dyn</span> FirstTrait;</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span>&lt;T: FirstTrait + SecondTrait&gt; AllTrait <span class="hl-keyword">for</span> <span class="hl-title class_">T</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">as_first_trait</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> &amp;<span class="hl-keyword">dyn</span> FirstTrait {</span>
+<span class="line">        <span class="hl-keyword">self</span></span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Subject</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">call_as_first_trait</span>(&amp;<span class="hl-keyword">self</span>) {</span>
+<span class="line">        <span class="hl-title function_ invoke__">need_first_trait</span>(<span class="hl-keyword">self</span>.subjects.<span class="hl-title function_ invoke__">as_first_trait</span>())</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="s-2">
+
+    <h2>
+    <a href="#s-2"><span>参考资料</span> </a>
+    </h2>
+<p><a href="https://doc.rust-lang.org/rust-by-example/trait/impl_trait.html"><span>rust example - impl Trait</span></a></p>
+</section>
+<section id="s-3">
+
+    <h2>
+    <a href="#s-3"><span>拓展阅读</span> </a>
+    </h2>
+<ul>
+<li>
+<a href="https://doc.rust-lang.org/reference/items/traits.html#object-safety"><span>Trait Object Safety</span></a>
+</li>
+<li>
+<a href="https://smallcultfollowing.com/babysteps/blog/2022/03/29/dyn-can-we-make-dyn-sized/"><span>dyn * can we make dyn sized?</span></a>
+</li>
+</ul>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">Blockchain VM</title>
+<link href="https://eluvk.github.io/2023/01/15/blockchain-vm.html" rel="alternate" type="text/html" title="Blockchain VM" />
+<published>2023-01-15T00:00:00+00:00</published>
+<updated>2023-01-15T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2023/01/15/blockchain-vm</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[这是22年5月份在我在公司内部分享的关于区块链虚拟机的基础介绍，整理资料的时候翻出来发到博客上。]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2023/01/15/blockchain-vm.html"><![CDATA[
+    <h1>
+    <a href="#Blockchain-VM"><span>Blockchain VM</span> <time datetime="2023-01-15">Jan 15, 2023</time></a>
+    </h1>
+<p><span>这是22年5月份在我在公司内部分享的关于区块链虚拟机的基础介绍，整理资料的时候翻出来发到博客上。</span></p>
+<section id="s-1">
+
+    <h2>
+    <a href="#s-1"><span>什么是区块链虚拟机</span> </a>
+    </h2>
+<section id="s-2">
+
+    <h3>
+    <a href="#s-2"><span>区块链</span> </a>
+    </h3>
+<ul>
+<li>
+<span>不可篡改的去中心化分布式账本</span>
+</li>
+<li>
+<span>运用密码学加密，把块（一些记录）连接起来形成链</span>
+</li>
+</ul>
+</section>
+<section id="s-3">
+
+    <h3>
+    <a href="#s-3"><span>虚拟机</span> </a>
+    </h3>
+<ul>
+<li>
+<span>用来模拟计算机的程序</span>
+</li>
+<li>
+<span>虚拟的 CPU、内存、存储</span>
+</li>
+<li>
+<span>使用起来和物理机器没有区别</span>
+</li>
+</ul>
+</section>
+</section>
+<section id="s-4">
+
+    <h2>
+    <a href="#s-4"><span>从比特币脚本到以太坊虚拟机</span> </a>
+    </h2>
+<section id="s-5">
+
+    <h3>
+    <a href="#s-5"><span>比特币脚本</span> </a>
+    </h3>
+<section id="UTXO">
+
+    <h4>
+    <a href="#UTXO"><span>UTXO 模型</span> </a>
+    </h4>
+<p><span>UTXO (Unspent Transaction Output) ，简单来说就是：</span></p>
+<ol>
+<li>
+<span>一个 UTXO 包含一个面额和一个当前的拥有者。</span>
+</li>
+<li>
+<span>某个一账户的余额 是由 当前区块链网络里，所有属于这个账户的 UTXO 组成的：</span>
+</li>
+</ol>
+
+<figure>
+
+<img alt="utxo_1" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/utxo_1.png">
+</figure>
+<p><span>一笔交易里可以包含多个 input \也可以有多个 output，只需要保证 </span><code>sum(inputs) &gt; sum(outputs) + fee</code><span> 即可。</span></p>
+<p><span>如果一个用户想要发送一笔交易，发送 X 个币到一个特定的地址，有时候，他们拥有的 UTXO 的一些子集组合起来面值恰好是 X，在这种情况下，他们可以创造一个交易：花费他们的 UTXO 并创造出一笔新的、价值 X 的 UTXO ，由目标地址占有。当这种完美的配对不可能的时候，用户就必须打包其和值 大于 X 的 UTXO 输入集合，并添加一笔拥有第二个目标地址的 UTXO ，称为“变更输出”，分配剩下的币到一个由他们自己控制的地址。</span></p>
+<section id="s-6">
+
+    <h5>
+    <a href="#s-6"><span>思考？</span> </a>
+    </h5>
+<p><span>账户模型和 UTXO 模型相比，有什么优势，有什么缺点？</span></p>
+<ul>
+<li>
+<span>账号模型特点：</span>
+<span>- 余额状态简单，绝大多数情况下，并不会关心自己的资产由哪些面值组成，一般只关心总额多少。而 UTXO 模型需要统计当前状态下的所有 UTXO。</span>
+<span>- 状态数据和用户数量正相关，不会随着时间增大而无限增加</span>
+<span>- 轻量级客户端更容易编写</span>
+</li>
+<li>
+<span>UTXO 模型特点：</span>
+<span>- 资产的可追溯性更强</span>
+<span>- UTXO 模型理论上来说可以并行地利用不同的 UTXO 签发多笔交易。但是如果双花，同一个 UTXO 最终也只会在一个交易里被确认。</span>
+</li>
+</ul>
+</section>
+</section>
+<section id="output">
+
+    <h4>
+    <a href="#output"><span>使用 output</span> </a>
+    </h4>
+
+<figure>
+
+<img alt="utxo_2" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/utxo_2.png">
+</figure>
+<p><span>这里涉及到的两个脚本：</span></p>
+<ul>
+<li>
+<span>锁定脚本 </span><code>scriptPubKey</code>
+</li>
+<li>
+<span>解锁脚本 </span><code>scriptSig</code>
+</li>
+</ul>
+<p><span>比特币虚拟机在执行交易时：需要验证解锁脚本能否解开锁定脚本，会把 </span><strong><strong><span>锁定脚本</span></strong></strong><span>( </span><code>scriptPubKey</code><span> )和对应索引的</span><strong><strong><span>解锁脚本</span></strong></strong><span>( </span><code>scriptSig</code><span> )拼接起来从左到右执行一遍。如果执行过程中</span><strong><strong><span>没有出现错误并且执行结果为真</span></strong></strong><span>，则验证通过，意味着钥匙打开了锁，这个 UTXO 可以被花费。</span></p>
+
+<figure>
+
+<img alt="utxo_3" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/utxo_3.png">
+</figure>
+<p><span>请注意，解锁脚本里不能出现 PUSHDATA 以外的任何操作码，否则会报错</span>
+<span>&gt; 16: mandatory-script-verify-flag-failed (Only non-push operators allowed in signatures)</span></p>
+<p><span>解锁脚本里只能有数据不能出现逻辑操作，否则任何 UTXO 都可以用 </span><code>OP_RETURN</code><span> 解锁:</span>
+<code>OP_TRUE OP_RETURN</code></p>
+</section>
+<section id="Script">
+
+    <h4>
+    <a href="#Script"><span>脚本 Script</span> </a>
+    </h4>
+<p><a href="https://github.com/bitcoin/bitcoin/blob/master/src/script/interpreter.cpp"><span>bitcoin-core 源码 interpreter.cpp</span></a><span>里的注释：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">/**</span></span>
+<span class="line"><span class="hl-comment"> * Script is a stack machine (like Forth) that evaluates a predicate</span></span>
+<span class="line"><span class="hl-comment"> * returning a bool indicating valid or not.  There are no loops.</span></span>
+<span class="line"><span class="hl-comment"> */</span></span></code></pre>
+
+</figure>
+<p><span>Script 是一种类 Forth、基于栈式模型、无状态的、非图灵完备的语言。</span>
+<span>opcodes 分为常量、流程控制、栈操作、算术运算、位运算、密码学运算、保留字等若干类，还包括3个内部使用的伪指令。</span></p>
+<section id="A-simple-example">
+
+    <h5>
+    <a href="#A-simple-example"><span>A simple example</span> </a>
+    </h5>
+<p><span>先看一个简单的例子，只需要用到几个简单的操作符：</span></p>
+<table>
+<tr>
+<th><span>Word</span></th>
+<th><span>Opcode</span></th>
+<th><span>Hex</span></th>
+<th><span>Input</span></th>
+<th><span>Output</span></th>
+<th><span>Description</span></th>
+</tr>
+<tr>
+<td><span>OP</span><em><span>1</span>&hellip;<span>OP</span></em><span>16</span></td>
+<td><span>81-96</span></td>
+<td><span>0x51-0x60</span></td>
+<td><span>Nothing</span></td>
+<td><span>1-16</span></td>
+<td><span>push the number into stack</span></td>
+</tr>
+<tr>
+<td><span>OP_ADD</span></td>
+<td><span>147</span></td>
+<td><span>0x93</span></td>
+<td><span>a b</span></td>
+<td><span>out</span></td>
+<td><span>a is added to b.</span></td>
+</tr>
+<tr>
+<td><span>OP_EQUAL</span></td>
+<td><span>135</span></td>
+<td><span>0x87</span></td>
+<td><span>x1 x2</span></td>
+<td><span>True/false</span></td>
+<td><span>Return True if x1 == x2, or false</span></td>
+</tr>
+</table>
+<p><span>比如 A 需要转账给 B 一笔钱，那么 B 就需要提供一个收款方式（锁定脚本模板），A 按照 B 提供的</span><strong><strong><span>锁定脚本</span></strong></strong><span>把钱锁定，就相当于完成了对 B 的转账。</span></p>
+<p><span>假如 B 提供的收款方式是：因为只有我知道 </span><code>x + 2 = 3</code><span> 的解是 </span><code>x = 1</code><span> ，所以告诉 A，你只需要把金额通过以下脚本锁定：</span>
+<code>OP_2 OP_ADD 3 OP_EQUAL</code></p>
+<p><span>当 B 需要使用这笔钱的时候：B 就可以使用</span><strong><strong><span>解锁脚本</span></strong></strong><span>：</span><code>OP_1</code><span> 来证明自己可以使用这笔钱了：</span>
+<span>因为：解锁脚本 + 锁定脚本: </span><code>OP_1 OP_2 OP_ADD 3 OP_EQUAL</code><span> 的执行结果是 True</span></p>
+<p><span>当然，这样提供锁定脚本的方法</span>&ldquo;<span>只能用一次</span>&rdquo;<span>，因为你的解锁方式使用过以后就相当于公开了。</span></p>
+</section>
+<section id="s-7">
+
+    <h5>
+    <a href="#s-7"><span>实际点的例子</span> </a>
+    </h5>
+<p><span>下面举几个在后面的脚本中会出现的指令，全部的指令可参考</span><a href="https://en.bitcoin.it/wiki/Script#Opcodes"><span>官方文档</span></a><span>和源码。</span></p>
+<p><span>举例几个：</span></p>
+<table>
+<tr>
+<th><span>Word</span></th>
+<th><span>Opcode</span></th>
+<th><span>Hex</span></th>
+<th><span>Input</span></th>
+<th><span>Output</span></th>
+<th><span>Description</span></th>
+</tr>
+<tr>
+<td><code>OP_DUP</code><span></span></td>
+<td><span>118</span></td>
+<td><span>0x76</span></td>
+<td><span>x</span></td>
+<td><span>x x</span></td>
+<td><span>Duplicates the top stack item.</span></td>
+</tr>
+<tr>
+<td><code>OP_HASH160</code><span></span></td>
+<td><span>169</span></td>
+<td><span>0xa9</span></td>
+<td><span>in</span></td>
+<td><span>hash</span></td>
+<td><span>The input is hashed twice: first with SHA-256 and then with RIPEMD-160.</span></td>
+</tr>
+<tr>
+<td><code>OP_EQUALVERIFY</code><span></span></td>
+<td><span>136</span></td>
+<td><span>0x88</span></td>
+<td><span>x1 x2</span></td>
+<td><span>Nothing / fail</span></td>
+<td><span>Same as OP</span><em><span>EQUAL, but runs OP</span></em><span>VERIFY afterward.</span></td>
+</tr>
+<tr>
+<td><code>OP_CHECKSIG</code><span></span></td>
+<td><span>172</span></td>
+<td><span>0xac</span></td>
+<td><span>sig pubkey</span></td>
+<td><span>True / false</span></td>
+<td><span>The entire transaction</span>&rsquo;<span>s outputs, inputs, and script (from the most recently-executed OP</span><em><span>CODESEPARATOR to the end) are hashed. The signature used by OP</span></em><span>CHECKSIG must be a valid signature for this hash and public key. If it is, 1 is returned, 0 otherwise.</span></td>
+</tr>
+</table>
+<p><span>B 给 A 提供了一个锁定脚本模板：</span><code>OP_DUP OP_HASH160 &lt;pubKeyHash&gt; OP_EQUALVERIFY OP_CHECKSIG</code><span>，告诉了 A 他的收款地址（等效于其中的公钥 hash），当 A 需要使用这笔钱的时候，在本地计算出相应的签名再附上公钥即可：</span></p>
+<p><strong><strong><span>解锁脚本</span></strong></strong><span>：</span><code>&lt;sig&gt; &lt;pubKey&gt;</code><span> +</span></p>
+<p><strong><strong><span>锁定脚本</span></strong></strong><span>：</span><code>OP_DUP OP_HASH160 &lt;pubKeyHash&gt; OP_EQUALVERIFY OP_CHECKSIG</code></p>
+<p><span>看一下执行过程 PPT:</span></p>
+
+<figure>
+
+<img alt="bitcoin-sig-scrpit" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/bitcoin-sig-script.gif">
+</figure>
+<p><span>注： 关于为什么使用公钥 hash,可以参考下面第一篇拓展阅读，介绍了“付款到公钥” 和 “付款到公钥哈希”的问题</span></p>
+</section>
+</section>
+<section id="s-8">
+
+    <h4>
+    <a href="#s-8"><span>比特币相关知识拓展阅读</span> </a>
+    </h4>
+<ul>
+<li>
+<a href="https://aaron67.cc/2018/12/28/bitcoin-transaction-p2pk-p2pkh/"><span>比特币公钥哈希</span></a>
+</li>
+<li>
+<a href="https://aaron67.cc/2018/12/23/bitcoin-keys/"><span>比特币公钥私钥</span></a>
+</li>
+<li>
+<a href="https://aaron67.cc/2019/01/04/bitcoin-address/"><span>比特币的地址</span></a>
+</li>
+<li>
+<a href="https://aaron67.cc/2019/01/22/bitcoin-wallet/"><span>比特币钱包</span></a>
+</li>
+<li>
+<a href="https://gist.github.com/gavinandresen/3966071"><span>比特币2-of-3多签</span></a>
+</li>
+</ul>
+</section>
+<section id="s-9">
+
+    <h4>
+    <a href="#s-9"><span>比特币的智能合约</span> </a>
+    </h4>
+<p><span>比特币也是支持有限的智能合约的，再</span><a href="https://github.com/bitcoin/bips/blob/master/bip-0011.mediawiki"><span>BIP-11</span></a><span>提出 M-of-N 多签交易后，也增加了 </span><code>OP_CHECKMULTISIG</code><span> 指令，也可以一定程度上实现多签功能，用在托管资产、多签钱包等场景。</span></p>
+</section>
+</section>
+<section id="s-10">
+
+    <h3>
+    <a href="#s-10"><span>以太坊虚拟机</span> </a>
+    </h3>
+<section id="s-11">
+
+    <h4>
+    <a href="#s-11"><span>账户模型</span> </a>
+    </h4>
+
+<figure>
+
+<img alt="eth-account-1" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/eth_account_1.png">
+</figure>
+<p><span>整个以太坊会保存所有账户的状态：</span></p>
+
+<figure>
+
+<img alt="eth-global-state" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/eth_global_state.jfif">
+</figure>
+</section>
+<section id="s-12">
+
+    <h4>
+    <a href="#s-12"><span>以太坊状态机</span> </a>
+    </h4>
+<p><code>(nonce, from, to, value, input)</code><span> 是一个 </span><code>Transaction</code><span> 包含的最重要的几个字段，通过 </span><code>nonce</code><span> 防止重放攻击， </span><code>from</code><span> 和 </span><code>to</code><span> 分别表示了当前交易的发出者和接受者， </span><code>value</code><span> 是当前交易包含的 </span><code>Ether</code><span> ， </span><code>input</code><span> 中包含了合约调用相关的二进制信息。</span></p>
+
+<figure>
+
+<img alt="eth-state-machine" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/eth_state_machine.png">
+</figure>
+<p><span>每当一个 </span><code>Transaction</code><span> 被 </span><code>Ethereum</code><span> 主网挖到后， </span><code>from</code><span> 和 </span><code>to</code><span> 账户的 </span><code>Ether</code><span> 余额就会变动， </span><code>Ethereum</code><span> 就像一个状态机，它接受一个又一个的 </span><code>Transaction</code><span> 并不停改变自己的状态。</span></p>
+</section>
+<section id="EVM">
+
+    <h4>
+    <a href="#EVM"><span>以太坊虚拟机 EVM</span> </a>
+    </h4>
+<p><span>EVM 准确来说是一个准图灵机，文法上它能够执行任意操作，但为了防止网络滥用、以及避免由于图灵完整性带来的安全问题，以太坊中所有操作都进行了经济学上的限制，也就是 gas 机制</span></p>
+<p><span>EVM 执行的过程：</span></p>
+<ul>
+<li>
+<span>从 </span><code>EVM code</code><span> 中取指令，所有的操作在 </span><code>Stack</code><span> 上进行，</span>
+</li>
+<li>
+<code>Memory</code><span> 作为临时的变量存储， </span><code>storage</code><span> 是账户状态。</span>
+</li>
+<li>
+<span>执行受到 </span><code>gas avail</code><span> 限制。</span>
+</li>
+</ul>
+
+<figure>
+
+<img alt="evm" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/evm1.jfif">
+</figure>
+<p><span>执行过程中的消息调用（CALL）：合约之间的调用，参数和返回值在 memory 中传递</span>
+<img alt="evm" src="https://github.com/EluvK/eluvk.github.io/raw/master/content/assets/2023-01/blockchain_vm_share/evm2.jfif"></p>
+</section>
+</section>
+</section>
+<section id="s-13">
+
+    <h2>
+    <a href="#s-13"><span>如何写一个简单堆栈虚拟机</span> </a>
+    </h2>
+<p><a href="https://github.com/CharlesLiu-TOPNetwork/ssvm/tree/demo/literal_instruction"><span>ssvm</span></a></p>
+</section>
+]]></content>
+</entry>
+
+<entry>
+<title type="text">Api Design Practices</title>
+<link href="https://eluvk.github.io/2022/12/14/api-design-practices.html" rel="alternate" type="text/html" title="Api Design Practices" />
+<published>2022-12-14T00:00:00+00:00</published>
+<updated>2022-12-14T00:00:00+00:00</updated>
+<id>https://eluvk.github.io/2022/12/14/api-design-practices</id>
+<author><name>EluvK</name></author>
+<summary type="html"><![CDATA[工作内容里，签名验签模块在重构后出现了一个偶现 bug，个别账号签名的数据验签失败。]]></summary>
+<content type="html" xml:base="https://eluvk.github.io/2022/12/14/api-design-practices.html"><![CDATA[
+    <h1>
+    <a href="#Api-Design-Practices"><span>Api Design Practices</span> <time datetime="2022-12-14">Dec 14, 2022</time></a>
+    </h1>
+<section id="0x00">
+
+    <h2>
+    <a href="#0x00"><span>0x00</span> </a>
+    </h2>
+<p><span>工作内容里，签名验签模块在重构后出现了一个偶现 bug，个别账号签名的数据验签失败。</span></p>
+<p><span>重构的时候单元测试覆盖过功能测试（私钥-公钥-签名-验签）是可以的，修改测试循环大量次数跑后，发现生成1万次随机私钥，会有60-80次会出现验签失败的问题。</span></p>
+<p><span>打印出来后出错的 case 后，发现共有的特点是，32 bytes 的私钥里，出错的都是第一个 byte 为 0 (hex: 0x00) 的私钥。一个随机账号出错的概率大概就是 </span><span class="math inline">\(\frac{1}{256}\)</span><span> 。</span></p>
+<p><span>所以原因大概率就是前置0 在存储使用的过程中丢失了的原因。进一步定位代码找到了出错的地方。</span></p>
+<p><span>先描述一下相关接口方法的使用。</span></p>
+</section>
+<section id="0x01">
+
+    <h2>
+    <a href="#0x01"><span>0x01</span> </a>
+    </h2>
+<p><span>签名验签使用的是 </span><code>openssl</code><span> 的库来实现其数学计算过程，其中私钥 32 bytes = 256 bit 是通过 </span><code>BigNumber</code><span> (简写为 </span><code>BN</code><span> ) 来保存的。在 </span><code>BN</code><span> 对象和其可读形式（无论是 hex 编码还是 base64编码）的转换过程中，第一步都要把 </span><code>BN</code><span> 转换成对应的 bytes 数据。</span></p>
+<p><span>openssl 在 </span><code>BN</code><span> 相关的接口里也提供了对应的转换方式：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">size_t</span> <span class="hl-title">BN_bn2bin</span><span class="hl-params">(<span class="hl-type">const</span> BIGNUM * in, <span class="hl-type">uint8_t</span> * out)</span></span>;</span></code></pre>
+
+</figure>
+<p><span>方法传入两个参数，第一个是入参 </span><code>BN *</code><span>，第二个是出参 </span><code>u8 *</code><span>，返回值表示转换的长度。</span></p>
+<p><span>非常的 C 风格，经验丰富的 coder 也会马上注意到，出参 to 指针指向的结果对象，其内存是由调用者来管理的，也就是说在调用之前我就需要明确申请好足够的空间来存放结果。但是我怎么知道 </span><code>BN * in</code><span> 会转换出多少 bytes 呢？</span></p>
+<p><span>对此 openssl 还提供了另外一个方法：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">size_t</span> <span class="hl-title">BN_num_bytes</span><span class="hl-params">(<span class="hl-type">const</span> BIGNUM *bn)</span></span></span>
+<span class="line"><span class="hl-function"></span></span></code></pre>
+
+</figure>
+<p><span>传入 </span><code>BN *</code><span>, 返回其对应的 bytes 长度。</span></p>
+</section>
+<section id="0x02">
+
+    <h2>
+    <a href="#0x02"><span>0x02</span> </a>
+    </h2>
+<p><span>所以使用方法大致如下：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-type">size_t</span> len = <span class="hl-built_in">BN_num_bytes</span>(bn);</span>
+<span class="line"></span>
+<span class="line"><span class="hl-type">uint8_t</span> * binary_result = (<span class="hl-type">uint8_t</span> *)<span class="hl-built_in">malloc</span>(len * <span class="hl-built_in">sizeof</span>(<span class="hl-type">uint8_t</span>)) <span class="hl-comment">// C malloc</span></span>
+<span class="line"><span class="hl-comment">// uint8_t * binary_result = new uint8_t[len] // or use C++ new</span></span>
+<span class="line"><span class="hl-built_in">memset</span>(binary_result, <span class="hl-number">0</span>, len * <span class="hl-built_in">sizeof</span>(<span class="hl-type">uint8_t</span>))</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">if</span> (<span class="hl-built_in">BN_bn2bin</span>(bn, binary_result) != len) {</span>
+<span class="line">    <span class="hl-comment">// TODO what?</span></span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// ...</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-built_in">free</span>(binary_result);</span>
+<span class="line"><span class="hl-comment">// delete[] binary_result // or use C++ delete</span></span></code></pre>
+
+</figure>
+<p><span>过程应该很简单清晰，获取长度 - 申请内存 - 调用转换方法。</span></p>
+<p><span>但是应该怎么处理 </span><code>BN_bn2bin</code><span> 方法的返回值呢？</span></p>
+</section>
+<section id="0x03">
+
+    <h2>
+    <a href="#0x03"><span>0x03</span> </a>
+    </h2>
+<p><span>这个返回的整数值，在某些类似场合下（比如读写文件）其含义或许是：实际写入的字节数。但是在这里，它一定是 </span><code>BN</code><span> 的实际 bytes 长度。其实现也就是如此：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">size_t</span> <span class="hl-title">BN_bn2bin</span><span class="hl-params">(<span class="hl-type">const</span> BIGNUM * in, <span class="hl-type">uint8_t</span> * out)</span> </span>{</span>
+<span class="line">  <span class="hl-type">size_t</span> n = <span class="hl-built_in">BN_num_bytes</span>(in);</span>
+<span class="line">  <span class="hl-built_in">bn_words_to_big_endian</span>(out, n, in-&gt;d, in-&gt;width);</span>
+<span class="line">  <span class="hl-keyword">return</span> n;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>返回值 </span><code>n</code><span> 也和我们调用 </span><code>BN_num_bytes</code><span> 获取长度得到的结果必定是一样的。那我们判断返回值 </span><code>if (BN_bn2bin(bn, binary_result) != len)</code><span> 的意义是什么？</span></p>
+<p><span>想要调用 </span><code>BN_bn2bin</code><span>，必定要先调用 </span><code>BN_num_bytes</code><span>，那 </span><code>BN_bn2bin</code><span> 的返回值我在使用前已经知道了。</span></p>
+<p><span>所以实践上可能还仅剩的意义大概是：在 debug 里多判断一次断言，release 下可以直接放过这个返回值了：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-type">size_t</span> len = <span class="hl-built_in">BN_num_bytes</span>(bn);</span>
+<span class="line"></span>
+<span class="line"><span class="hl-type">uint8_t</span> * binary_result = <span class="hl-keyword">new</span> <span class="hl-type">uint8_t</span>[len]</span>
+<span class="line"></span>
+<span class="line"><span class="hl-built_in">memset</span>(binary_result, <span class="hl-number">0</span>, len * <span class="hl-built_in">sizeof</span>(<span class="hl-type">uint8_t</span>))</span>
+<span class="line"></span>
+<span class="line">[[maybe_unused]] <span class="hl-type">size_t</span> ret = <span class="hl-built_in">BN_bn2bin</span>(bn, binary_result);</span>
+<span class="line"></span>
+<span class="line"><span class="hl-built_in">assert</span>(ret == len);</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment">// ... </span></span></code></pre>
+
+</figure>
+</section>
+<section id="0x04">
+
+    <h2>
+    <a href="#0x04"><span>0x04</span> </a>
+    </h2>
+<p><span>上面解释后也可以看出 </span><code>BN_bn2bin</code><span> 设计初衷就是一个通用的转换方式，所以按照上述的封装方式一定会得到一个通用的序列化方法。</span></p>
+<p><span>而对于私钥这种定长(32 bytes)的大整数，不可避免地出现有前置0的情况，比如 值为 </span><code>0x00ff..ffff</code><span>，经过上面的操作后得到的 </span><code>binary_result</code><span> 的长度是 31，如果在存储的时候没有考虑到这种情况，复制的时候就可能整体左移了一 bytes，变成了 </span><code>0xffff..ff00</code><span> 私钥的数值放大了256倍，都不是同一把私钥，自然无法验签了。这也就是最初遇到的 bug 的原因了。</span></p>
+<p><span>所以最好是把通用序列化和定长序列化区分开来。额外封装出能够自动补齐0的接口来。这里就不再展开了。</span></p>
+</section>
+<section id="0x05">
+
+    <h2>
+    <a href="#0x05"><span>0x05</span> </a>
+    </h2>
+<p><span>允许对内存的精确掌控也必然要求使用者足够仔细和周全。对于开发一个提供给他人使用的库来说，或许可以做的更好。例如这个例子里，通用的序列化方法和定长的序列化方式都可以提供出来，意义很弱的长度返回值也可以用现代语言里的容器取代。</span></p>
+<p><span>接口层面可能如下（随手写的举个例子，返回值 </span><code>Vec&lt;u8&gt;</code><span> 仅做表示意义）：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">pub</span> <span class="hl-keyword">enum</span> <span class="hl-title class_">PaddingScheme</span> {</span>
+<span class="line">    BigEndian,</span>
+<span class="line">    LittleEndian,</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">BigNum</span> {</span>
+<span class="line">    <span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">bn_to_bin</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;<span class="hl-type">Vec</span>&lt;<span class="hl-type">u8</span>&gt;, BnError&gt;;</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">pub</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">bn_to_fixed_bin</span>(&amp;<span class="hl-keyword">self</span>, len: <span class="hl-type">usize</span>, padding: PaddingScheme) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">Result</span>&lt;<span class="hl-type">Vec</span>&lt;<span class="hl-type">u8</span>&gt;, BnError&gt;;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="0x06">
+
+    <h2>
+    <a href="#0x06"><span>0x06</span> </a>
+    </h2>
+<p><span>原因相关但是跑题的感想：💩⛰ 代码重构起来，要么彻底了解前后背景设计原因，要么做好准备定位分析奇奇怪怪的问题。</span></p>
+</section>
+]]></content>
+</entry>
+
+</feed>

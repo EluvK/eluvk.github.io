@@ -1,0 +1,425 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RSA 加密算法原理</title>
+  <meta name="description" content="两个正整数，除了1之外没有公共因子，那么就称这两个数互为质数。互质关系">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2022/11/15/rsa.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#RSA"><span>RSA 加密算法原理</span> <time datetime="2022-11-15">Nov 15, 2022</time></a>
+    </h1>
+<section id="s-1">
+
+    <h2>
+    <a href="#s-1"><span>前置知识</span> </a>
+    </h2>
+<section id="s-2">
+
+    <h3>
+    <a href="#s-2"><span>互质</span> </a>
+    </h3>
+<p><span>两个正整数，除了1之外没有公共因子，那么就称这两个数互为质数。</span><a href="https://en.wikipedia.org/wiki/Coprime_integers"><span>互质关系</span></a></p>
+</section>
+<section id="s-3">
+
+    <h3>
+    <a href="#s-3"><span>欧拉函数</span> </a>
+    </h3>
+<p><span>对于正整数 </span><span class="math inline">\(n\)</span><span>, </span><span class="math inline">\(n\)</span><span> 的欧拉函数表示小于等于 </span><span class="math inline">\(n\)</span><span> 的正整数里，和 </span><span class="math inline">\(n\)</span><span> 互质的数的个数，用 </span><span class="math inline">\(\phi(n)\)</span><span> 表示。</span><a href="https://en.wikipedia.org/wiki/Euler%27s_totient_function"><span>欧拉函数</span></a></p>
+<p><span>比如 </span><span class="math inline">\(\phi(8) = 4\)</span><span>，因为符合条件的有 </span><span class="math inline">\(1,3,5,7\)</span></p>
+<p><span>欧拉函数的一些特性：</span></p>
+<ol>
+<li>
+<span class="math inline">\(n = 1\)</span><span> 时，</span><span class="math inline">\(\phi(1) = 1\)</span>
+</li>
+<li>
+<span class="math inline">\(n\)</span><span> 为质数时，</span><span class="math inline">\(\phi(n) = n-1\)</span>
+</li>
+<li>
+<span class="math inline">\(n\)</span><span> 为质数的幂时，比如 </span><span class="math inline">\(n = p^k (p 为质数)\)</span><span> 时有 </span><span class="math inline">\(\phi(p^k) = p^k - p^{k-1} = p^k(1 - \frac{1}{p})\)</span><span> 这是因为当前仅当此数不包含质数 </span><span class="math inline">\(p\)</span><span> 时，才互质，总数 </span><span class="math inline">\(p^k\)</span><span> 减包含质数的个数 </span><span class="math inline">\(p^{k-1}\)</span>
+</li>
+<li>
+<span>如果 </span><span class="math inline">\(n\)</span><span> 可以被分解为两个</span><strong><strong><span>互质</span></strong></strong><span>数 </span><span class="math inline">\(p_1,p_2\)</span><span> 的积，那么 </span><span class="math inline">\(\phi(n) = \phi(p_1) \cdot \phi(p_2)\)</span><span>，证明见 </span><a href="https://en.wikipedia.org/wiki/Chinese_remainder_theorem"><span>中国剩余定理</span></a>
+</li>
+</ol>
+</section>
+<section id="s-4">
+
+    <h3>
+    <a href="#s-4"><span>欧拉定理</span> </a>
+    </h3>
+<section id="s-5">
+
+    <h4>
+    <a href="#s-5"><span>欧拉函数计算通式</span> </a>
+    </h4>
+<p><span>因为任意一个正整数都可以写成一系列质数的积，所以对于</span></p>
+<p><span class="math display">\[n = p_1^{k1}  p_2^{k2}  p_3^{k3} ... p_r^{kr}\]</span></p>
+<p><span>根据特性4有</span></p>
+<p><span class="math display">\[\phi(n) = \phi(p_1^{k1})  \phi(p_2^{k2})  ...  \phi(p_r^{kr})\]</span></p>
+<p><span>使用上面的特性3，进一步等于</span></p>
+<p><span class="math display">\[\phi(n) = p_1^{k1}p_2^{k2}...p_r^{kr}(1 - \frac{1}{p_1})(1 - \frac{1}{p_2})...(1 - \frac{1}{p_r})\]</span></p>
+<p><span>也就是</span></p>
+<p><span class="math display">\[\phi(n) =  n \cdot (1 - \frac{1}{p_1})(1 - \frac{1}{p_2})...(1 - \frac{1}{p_r})\]</span></p>
+<p><span>这个就是计算欧拉函数的通用公式。比如</span></p>
+<p><span class="math display">\[\phi(200) = \phi(2^3 \cdot 5^2) = 200 \cdot (1 - \frac{1}{2})(1 - \frac{1}{5}) = 80\]</span></p>
+</section>
+</section>
+<section id="s-6">
+
+    <h3>
+    <a href="#s-6"><span>欧拉定理和应用</span> </a>
+    </h3>
+<p><a href="https://en.wikipedia.org/wiki/Euler%27s_theorem"><span>欧拉定理</span></a></p>
+<p><span>如果两个正整数 </span><span class="math inline">\(a\)</span><span> 和 </span><span class="math inline">\(n\)</span><span> 互质，那么有等式成立：</span></p>
+<p><span class="math display">\[a^{\phi(n)} \equiv 1 \pmod{n}\]</span></p>
+<p><span>即 </span><span class="math inline">\(a^{\phi(n)}\)</span><span> 被 </span><span class="math inline">\(n\)</span><span> 除的余数为 1， 或者 </span><span class="math inline">\(a^{\phi(n)} = 1+ kn\)</span></p>
+<p><span>证明比较复杂略过，应用上，欧拉定理可以简化一些特定的运算，比如求解 </span><span class="math inline">\(7^{222}\)</span><span> 的末位数：</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>因为 </span><span class="math inline">\(7\)</span><span> 和 </span><span class="math inline">\(10\)</span><span> 互质，所以有 </span><span class="math inline">\(7^\phi(10) \equiv 1 \pmod{10}\)</span><span>，</span>
+<span>而 </span><span class="math inline">\(\phi(10) = 4\)</span>
+<span>所以 </span><span class="math inline">\(7^{4k} \equiv 1 \pmod{10}\)</span><span>，</span></p>
+</blockquote>
+
+</figure>
+<p><span>特殊的，当欧拉定理里的 </span><span class="math inline">\(n\)</span><span> 是质数 </span><span class="math inline">\(p\)</span><span> 时，因为 </span><span class="math inline">\(\phi(p) = p-1\)</span><span>，所以有 </span><span class="math inline">\(a^{p-1} \equiv 1 \pmod{n}\)</span><span> , 这也是著名的 </span><a href="https://en.wikipedia.org/wiki/Fermat%27s_little_theorem"><span>费马小定理</span></a></p>
+</section>
+<section id="s-7">
+
+    <h3>
+    <a href="#s-7"><span>模反元素(模逆元)</span> </a>
+    </h3>
+<p><span>如果两个正整数 </span><span class="math inline">\(a\)</span><span> 和 </span><span class="math inline">\(n\)</span><span> 互质，那么一定可以找到整数 </span><span class="math inline">\(b\)</span><span>，使得 </span><span class="math inline">\(ab - 1\)</span><span> 被 </span><span class="math inline">\(n\)</span><span> 整除，即：</span></p>
+<p><span class="math display">\[ab \equiv 1 \pmod{n}\]</span></p>
+<p><span>or：</span></p>
+<p><span class="math display">\[ab \bmod{n} = 1\]</span></p>
+<p><span>此时就称 </span><span class="math inline">\(b\)</span><span> 为 </span><span class="math inline">\(a\)</span><span> 的</span><a href="https://en.wikipedia.org/wiki/Modular_multiplicative_inverse"><span>模反元素</span></a></p>
+<hr>
+<p><span>至此，所有需要了解的数学知识都在上面了，后面正式进入 RSA 算法的原理</span></p>
+</section>
+</section>
+<section id="s-8">
+
+    <h2>
+    <a href="#s-8"><span>公私钥生成过程</span> </a>
+    </h2>
+<section id="1-p-q">
+
+    <h3>
+    <a href="#1-p-q"><span>1. 随机生成两个质数 </span><span class="math inline">\(p\)</span><span> 和 </span><span class="math inline">\(q\)</span> </a>
+    </h3>
+<p><span>实际应用中，这两个质数是写成十进制都有几十位的非常大的质数，这里为了简单说明算法，我们挑选质数</span></p>
+<p><span class="math display">\[p = 37, q = 41\]</span></p>
+</section>
+<section id="2-p-q-n">
+
+    <h3>
+    <a href="#2-p-q-n"><span>2. 计算 </span><span class="math inline">\(p\)</span><span> 和 </span><span class="math inline">\(q\)</span><span> 的乘积 </span><span class="math inline">\(n\)</span> </a>
+    </h3>
+<p><span class="math display">\[n = pq = 1517\]</span></p>
+</section>
+<section id="3-e">
+
+    <h3>
+    <a href="#3-e"><span>3. 满足一定条件挑选一个随机整数 </span><span class="math inline">\(e\)</span> </a>
+    </h3>
+<p><span>需要有 </span><span class="math inline">\(1 &lt; e &lt; \phi(n)\)</span><span> 且 e 与 </span><span class="math inline">\(\phi(n)\)</span><span> 互质</span></p>
+<p><span>首先计算一下</span></p>
+<p><span class="math display">\[\phi(n) = \phi(1517) = \phi(37)\phi(41) = 36 \cdot 40 = 1440\]</span></p>
+<p><span>挑选了 </span><span class="math inline">\(e = 13 \)</span><span> （ </span><span class="math inline">\(13\)</span><span> 和 </span><span class="math inline">\(1440\)</span><span> 互质没问题）</span></p>
+</section>
+<section id="4-e-phi-n-d">
+
+    <h3>
+    <a href="#4-e-phi-n-d"><span>4. 计算 </span><span class="math inline">\(e\)</span><span> 对 </span><span class="math inline">\(\phi(n)\)</span><span> 的模反元素 </span><span class="math inline">\(d\)</span> </a>
+    </h3>
+<p><span>即满足</span></p>
+<p><span class="math display">\[ed \equiv 1 \pmod{\phi(n)}\]</span></p>
+<p><span>等价于 </span><span class="math inline">\(ed + k\phi(n) = 1\)</span><span> 的整数解，其中已知 </span><span class="math inline">\(e = 13，\phi(n) = 1440\)</span></p>
+<p><span>也就是二元一次方程 </span><span class="math inline">\(13d + 1440k = 1\)</span><span> 的整数解，这里</span><a href="https://de.wikipedia.org/wiki/Erweiterter_euklidischer_Algorithmus"><span>扩展欧几里得算法</span></a><span>可以证明一定存在整数解，省略过程我们算出了一组解 </span><span class="math inline">\(d = 997, k = -9\)</span><span> ，也就得到了模反元素 </span><span class="math inline">\(d = 997\)</span></p>
+</section>
+<section id="5">
+
+    <h3>
+    <a href="#5"><span>5. 封装公私钥</span> </a>
+    </h3>
+<p><span class="math inline">\(n = 1517, e = 13\)</span><span> 封装成公钥</span></p>
+<p><span class="math inline">\(n = 1517, d = 997\)</span><span> 封装成私钥</span></p>
+<p><span>实际情况中，公私钥的内容会按照 </span><a href="https://en.wikipedia.org/wiki/ASN.1"><span>ASN.1</span></a><span> 规范来编码。</span></p>
+</section>
+</section>
+<section id="s-9">
+
+    <h2>
+    <a href="#s-9"><span>公私钥安全证明</span> </a>
+    </h2>
+<p><span>上面的例子里一共出现了6个数字：</span></p>
+<ul>
+<li>
+<span class="math inline">\( p = 37, q = 41 \)</span>
+</li>
+<li>
+<span class="math inline">\( n = 1517 \)</span>
+</li>
+<li>
+<span class="math inline">\( \phi(n) = 1440 \)</span>
+</li>
+<li>
+<span class="math inline">\( e = 13, d = 997 \)</span>
+</li>
+</ul>
+<p><span>有无可能在知道公钥 </span><span class="math inline">\(n, e\)</span><span> 的情况下，推导出 </span><span class="math inline">\(d\)</span><span> ?</span></p>
+<p><span>因为 </span><span class="math inline">\(ed \equiv 1 \pmod{\phi(n)}\)</span><span> , 所以要知道 </span><span class="math inline">\(d\)</span><span> 需要先知道 </span><span class="math inline">\(\phi(n)\)</span></p>
+<p><span>而 想要算出欧拉函数 </span><span class="math inline">\(\phi(n)\)</span><span> 需要分解质因数 </span><span class="math inline">\(n = pq\)</span><span> 才能用 </span><span class="math inline">\(\phi(n) = (p-1)(q-1)\)</span><span> 计算出来。</span></p>
+<p><span>也就是说，能分解因数 </span><span class="math inline">\(n\)</span><span>，就可以破解私钥。</span></p>
+<p><span>这里举的简单例子里，</span><span class="math inline">\(n = 1517\)</span><span>，写成二进制是 10111101101 ，也就是11位的私钥，实际应用中，RSA密钥一般是1024位，甚至2048位以上，这时候想要分解质因数，目前可以认为是不可能的。</span></p>
+</section>
+<section id="s-10">
+
+    <h2>
+    <a href="#s-10"><span>加密解密举例</span> </a>
+    </h2>
+<section id="s-11">
+
+    <h3>
+    <a href="#s-11"><span>公钥加密</span> </a>
+    </h3>
+<p><span>假设有信息</span><span class="math inline">\(m\)</span><span>，需要用上面的公钥 </span><span class="math inline">\(n,e\)</span><span> 进行加密，这里对信息</span><span class="math inline">\(m\)</span><span>有两点限制：</span></p>
+<ol>
+<li>
+<span>必须是整数，字符串可以取 ascii 值等方法转换出数字表达</span>
+</li>
+<li>
+<span>值必须小于</span><span class="math inline">\(n\)</span><span>，虽然正式场合下的</span><span class="math inline">\(n\)</span><span>确实很大，但还是限制了加密的内容长度不能太长。</span>
+</li>
+</ol>
+<p><span>加密，实际上就是计算出满足下面式子的 </span><span class="math inline">\(c\)</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span class="math inline">\(m^e \equiv c \pmod{n}\)</span></p>
+</blockquote>
+
+</figure>
+<p><span>带入我们上面的例子：公钥</span><span class="math inline">\(n = 1517, e = 13\)</span><span>，假设我们要加密 </span><span class="math inline">\(m = 12\)</span><span>:</span></p>
+<p><span>也就是 </span><span class="math inline">\(12^{13} \equiv c \pmod{1517}\)</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-meta">&gt;&gt;&gt; </span><span class="hl-number">12</span>**<span class="hl-number">13</span> % <span class="hl-number">1517</span></span>
+<span class="line"><span class="hl-number">423</span></span></code></pre>
+
+</figure>
+<p><span>这里直接用 python 算出来 </span><span class="math inline">\(c = 423\)</span></p>
+</section>
+<section id="s-12">
+
+    <h3>
+    <a href="#s-12"><span>私钥解密</span> </a>
+    </h3>
+<p><span>加密使用私钥 </span><span class="math inline">\(n,d\)</span><span> 加上需要解密的密文 </span><span class="math inline">\(c\)</span><span>， 计算满足下式的 </span><span class="math inline">\(m\)</span><span> 就是原文</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span class="math inline">\(c^d \equiv m \pmod{n}\)</span></p>
+</blockquote>
+
+</figure>
+<p><span>带入上面例子里的：私钥 </span><span class="math inline">\(n = 1517, d = 997\)</span><span>，密文 </span><span class="math inline">\(c = 423\)</span><span>:</span></p>
+<p><span>也就是 </span><span class="math inline">\(423^{997} \equiv m \pmod{1517}\)</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-meta">&gt;&gt;&gt; </span><span class="hl-number">423</span>**<span class="hl-number">997</span>%<span class="hl-number">1517</span></span>
+<span class="line"><span class="hl-number">12L</span></span></code></pre>
+
+</figure>
+<p><span>解除原文 </span><span class="math inline">\(m = 12\)</span></p>
+<p><span>可以看出想要解密就需要知道 </span><span class="math inline">\(d\)</span><span> ，也就是上面说的大质数分解保护的安全性。</span></p>
+</section>
+<section id="s-13">
+
+    <h3>
+    <a href="#s-13"><span>实际应用：</span> </a>
+    </h3>
+<p><span>实际情况中因为只能加密小于 </span><span class="math inline">\(n\)</span><span> 的整数 </span><span class="math inline">\(m\)</span><span>，对加密数据的长度提出了限制。所以可以</span></p>
+<ol>
+<li>
+<span>把待加密消息分成若干段分别加密发送。</span>
+</li>
+<li>
+<span>或者使用对称加密（比如</span><a href="https://en.wikipedia.org/wiki/Advanced_Encryption_Standard"><span>AES</span></a><span>）来加密原消息，使用 RSA 来加密 对称加密 的密钥</span>
+</li>
+</ol>
+</section>
+</section>
+<section id="s-14">
+
+    <h2>
+    <a href="#s-14"><span>解密证明</span> </a>
+    </h2>
+<p><span>上面的信息汇总：</span></p>
+<ul>
+<li>
+<span>公钥: </span><span class="math inline">\(n, e\)</span>
+</li>
+<li>
+<span>私钥: </span><span class="math inline">\(n, d\)</span>
+</li>
+<li>
+<span>加密 </span><span class="math inline">\(m\)</span><span> 得到 </span><span class="math inline">\(c\)</span><span> ：</span><span class="math inline">\(m^e \equiv c \pmod{n}\)</span>
+</li>
+<li>
+<span>解密 </span><span class="math inline">\(c\)</span><span> 得到 </span><span class="math inline">\(m\)</span><span> ：</span><span class="math inline">\(c^d \equiv m \pmod{n}\)</span>
+</li>
+</ul>
+<p><span>来证明一下为什么解密公式 </span><span class="math inline">\(c^d \equiv m \pmod{n}\)</span><span> 可以得到正确的 </span><span class="math inline">\(m\)</span></p>
+<section id="s-15">
+
+    <h3>
+    <a href="#s-15"><span>证明过程</span> </a>
+    </h3>
+<p><span>证明：</span></p>
+<p><span class="math display">\[c^d \equiv m \pmod{n}\]</span></p>
+<hr>
+<p><span class="math display">\[\because m^e \equiv c \pmod{n}\]</span></p>
+<p><span class="math display">\[\Rightarrow c = m^e - kn\]</span></p>
+<p><span>带入证明式子</span></p>
+<p><span class="math display">\[\Leftarrow ((m^e - kn)^d \equiv m \pmod{n})\]</span>
+<span class="math display">\[\Leftarrow m^{ed} \equiv m \pmod{n}\]</span></p>
+<p><span>分类讨论:</span></p>
+<p><span>① 当 </span><span class="math inline">\(m\)</span><span> 和 </span><span class="math inline">\(n\)</span><span> 互质时，</span>
+<span class="math display">\[\because ed \equiv 1 \pmod{\phi(n)}\]</span>
+<span class="math display">\[\therefore ed = h\phi(n) + 1 \]</span></p>
+<p><span>带入上述待证明式：</span>
+<span class="math display">\[\Leftarrow m^{ed} \equiv m \pmod{n}\]</span>
+<span class="math display">\[\Leftarrow m^{h\phi(n) + 1} \equiv m \pmod{n}\]</span></p>
+<p><span class="math inline">\(\because m,n\)</span><span> 互质，根据欧拉定理有：</span>
+<span class="math display">\[\Rightarrow m^{\phi(n)} \equiv 1 \pmod{n} \]</span>
+<span class="math display">\[\Rightarrow (m^{\phi(n)})^h \cdot m \equiv m \pmod{n}\]</span>
+<span class="math display">\[\Rightarrow m^{h\phi(n)+1} \equiv m \pmod{n}\]</span>
+<span>原式得证。</span></p>
+<p><span>② 当 </span><span class="math inline">\(m\)</span><span> 和 </span><span class="math inline">\(n\)</span><span> 不互质时，</span>
+<span class="math display">\[\because n = pq , m &lt; n \]</span>
+<span class="math display">\[\therefore m = kp \]</span><span> 或者 </span><span class="math inline">\(m = kq\)</span></p>
+<p><span>以 </span><span class="math inline">\(m = kp\)</span><span> 为例，此时 </span><span class="math inline">\(kp,q\)</span><span> 必互质</span></p>
+<p><span>根据欧拉定理有 </span><span class="math inline">\((kp)^{\phi(q)} \equiv 1 \pmod{q}\)</span>
+<span class="math display">\[\Rightarrow (kp)^{q-1} \equiv 1 \pmod{q}\]</span>
+<span class="math display">\[\Rightarrow [(kp)^{q-1}]^{h(p-1)} \cdot kp \equiv kp \pmod{q}\]</span>
+<span class="math display">\[\Rightarrow (kp)^{h(p-1)(q-1)+1} \equiv kp \pmod{q}\]</span>
+<span class="math display">\[\Rightarrow (kp)^{ed} \equiv kp \pmod{q}\]</span>
+<span class="math display">\[\Rightarrow (kp)^{ed} = tq + kp \]</span></p>
+<p><span class="math inline">\(\because p,q 、 k,q\)</span><span> 互质，</span>
+<span class="math inline">\(\therefore\)</span><span> </span><span class="math inline">\(t\)</span><span> 必能被 </span><span class="math inline">\(p\)</span><span> 整除，</span>
+<span class="math display">\[\Rightarrow (kp)^{ed} = t'pq + kq\]</span></p>
+<p><span>带入 </span><span class="math inline">\(m = kp, n = pq\)</span>
+<span class="math display">\[\Rightarrow m^{ed} = t'n + m\]</span>
+<span class="math display">\[\Rightarrow m^{ed} \equiv m \pmod{n}\]</span></p>
+<p><span>原式得证。</span></p>
+</section>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2022-11-15-rsa.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>

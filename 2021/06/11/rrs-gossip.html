@@ -1,0 +1,498 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Randomized Rumor Spreading</title>
+  <meta name="description" content="论文 pdf 地址">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2021/06/11/rrs-gossip.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#Randomized-Rumor-Spreading"><span>Randomized Rumor Spreading</span> <time datetime="2021-06-11">Jun 11, 2021</time></a>
+    </h1>
+<p><a href="https://disco.ethz.ch/courses/ws0304/seminar/papers/randomized_rumor.pdf"><span>论文 pdf 地址</span></a></p>
+<section id="s-1">
+
+    <h2>
+    <a href="#s-1"><span>背景</span> </a>
+    </h2>
+<p><span>在一个总节点数为 n 的分布式数据库中，假定每个节点都按照统一个速度一轮轮演进（论文称为 round，如何保持同步不在文章考虑范围内），每一轮每一个节点可以和另外一个节点进行交互（双向传输信息），正常的广播算法至少需要 </span><span class="math inline">\(O(\ln n)\)</span><span> 轮以及消息传播 </span><span class="math inline">\(O(n\ln n)\)</span><span> 次，RRS 这篇论文给出的新的算法及证明，需要 </span><span class="math inline">\(O(\ln n)\)</span><span> 轮，把这条消息传播 </span><span class="math inline">\(O(n\ln \ln n)\)</span><span> 次，就可以在保证高概率所有节点都收到这条消息。</span></p>
+</section>
+<section id="s-2">
+
+    <h2>
+    <a href="#s-2"><span>核心思路</span> </a>
+    </h2>
+<p><span class="math inline">\(N\)</span><span> 个行为一致的节点构成的集群，分开分析两种行为：</span></p>
+<section id="1-push">
+
+    <h3>
+    <a href="#1-push"><span>1.指数级扩散(已收到节点主动 push)</span> </a>
+    </h3>
+<ul>
+<li>
+<span>只考虑 push 操作：由其中1个节点发出广播消息，假设每次会随机挑选</span><span class="math inline">\(t\)</span><span> 个节点转发出去。</span>
+</li>
+<li>
+<span>优点：最开始由于大多数节点都没有收到过消息，那么收到节点的数量(设为</span><span class="math inline">\(n\)</span><span>)和转发次数</span><span class="math inline">\(k\)</span><span> 的关系:</span><span class="math inline">\(n\le1+t+t^2...+t^k \)</span><span> 等比求和结果为</span><span class="math inline">\(n\le \frac{t^{k+1}-1}{t-1}\)</span><span>, </span><span class="math inline">\(n\)</span><span> 是</span><span class="math inline">\(t\)</span><span> 的指数函数，其中小于的部分是因为一层层转发后可能重复发送给已经收到的节点。</span>
+</li>
+<li>
+<span>缺点：当收到消息的节点数</span><span class="math inline">\(n\)</span><span> 已经占据大多数的时候(</span><span class="math inline">\(n \to N\)</span><span>)，剩余节点数量设为</span><span class="math inline">\(m=N-n\)</span><span>。此时的第 k+1次转发(目标节点数 </span><span class="math inline">\(t^{k+1}\)</span><span> 且 </span><span class="math inline">\(t^{k+1}&gt;\frac{t^{k+1}-1}{t-1}&gt;n&gt;&gt;m\)</span><span> )会造成大量的消息冗余，目标覆盖还未收到节点的比例也会越来越低。</span>
+</li>
+</ul>
+</section>
+<section id="2-pull">
+
+    <h3>
+    <a href="#2-pull"><span>2. 平方级收敛(未收到节点主动 pull)</span> </a>
+    </h3>
+<ul>
+<li>
+<span>只考虑 pull 操作：所有节点每一轮主动找其他节点 pull 消息，</span>
+</li>
+<li>
+<span>缺点：很明显，最开始直到有人找到了广播的源节点，这条消息都不会被传播。</span>
+<span>&gt; the palyer starting the rumor may have to wait some rounds until it is called for the fisrt time.</span>
+</li>
+<li>
+<span>假定已经经过一定轮次（证明结果：</span><span class="math inline">\(O(\ln n)\)</span><span> 轮）后，有一半的节点收到了这条消息，</span>
+</li>
+<li>
+<span>优点：从此时起，剩余的未收到消息的节点数量（设为</span><span class="math inline">\(m\)</span><span>）会以平方级下降(quadratic-shrinking)</span>
+<span>- 证明：假设现在有</span><span class="math inline">\(m=\epsilon N\)</span><span>（即未收到节点占</span><span class="math inline">\(\epsilon\)</span><span> (</span><span class="math inline">\(0 \lt \epsilon \lt 1\)</span><span>)），下一轮中，这些节点主动 pull 查到一个已收到节点的概率为</span><span class="math inline">\(1-\epsilon\)</span><span>，查询到未收到节点的概率为</span><span class="math inline">\(\epsilon\)</span><span>，那么下一轮过后，还是未收到的节点变为</span><span class="math inline">\(m=\epsilon^2N\)</span><span>，所以可得在随后的</span><span class="math inline">\(O(\ln\ln n)\)</span><span> 轮后，消息转发</span><span class="math inline">\(O(n\ln\ln n)\)</span><span> 次后会结束。</span>
+</li>
+</ul>
+</section>
+</section>
+<section id="ABCD">
+
+    <h2>
+    <a href="#ABCD"><span>状态 ABCD</span> </a>
+    </h2>
+<p><span>每个节点对于每一条消息都有一个自己的状态</span></p>
+<ul>
+<li>
+<span>状态 A：这个节点不知道这条消息，如果此时收到了来自状态 B 的消息，切换到状态 </span><code>B-1</code><span>，如果收到来自状态 C 的消息，切换到状态 C</span>
+</li>
+<li>
+<span>状态 B：这个节点直到了这条消息，且内部计数器为 </span><code>m</code><span>，记为状态 </span><code>B-m</code><span>。如果在一轮中该节点收到来自于 </span><code>B-m1 (m1&gt;=m)</code><span> 的消息多于来自于 </span><code>B-m2(m2&lt;m)</code><span> 的消息，那么计数器 </span><code>m=m+1</code><span>，特殊的，如果收到了来自状态 C 的消息，则直接切换到状态 C</span>
+</li>
+<li>
+<span>状态 C：节点直到这条消息，且在这个状态至多存在</span><span class="math inline">\(O\ln\ln n\)</span><span> 轮后切换到状态 D：不再处理这条消息相关内容</span>
+</li>
+</ul>
+<p><span>简单来说就是，状态 B 是在指数扩散的过程，状态 C 是平方收敛。</span></p>
+</section>
+<section id="s-3">
+
+    <h2>
+    <a href="#s-3"><span>临界点的理论最优</span> </a>
+    </h2>
+<p><span>论文在已知全局</span><span class="math inline">\(N\)</span><span> 个节点状态，所有节点行为一致且认为没有消息丢失的情况下，计算得出的理论最优解：</span></p>
+<p><strong><strong><span>指数级扩散（主动 push）应该在有至少</span><span class="math inline">\(\frac{N}{\ln N}\)</span><span> 个节点会得知这个消息的这一轮后结束。</span></strong></strong></p>
+</section>
+<section id="s-4">
+
+    <h2>
+    <a href="#s-4"><span>工程实现上的问题</span> </a>
+    </h2>
+<section id="1-round">
+
+    <h3>
+    <a href="#1-round"><span>1. round</span> </a>
+    </h3>
+<ul>
+<li>
+<span>翻了几个参照这篇论文实现的开源工程，（</span><a href="https://github.com/Zilliqa/Zilliqa"><span>Zilliqa</span></a><span> 链用的也是这个），里面都按照 round 的概念，每个节点内部一个定时器来推动 round 进行，这个和我们的现状实现差距比较大，我个人也是觉得这样节点间 round 同步不好做，消息的准时性也得不到保证。</span>
+</li>
+</ul>
+</section>
+<section id="2">
+
+    <h3>
+    <a href="#2"><span>2. 交互个数</span> </a>
+    </h3>
+<ul>
+<li>
+<span>论文并没有考虑一个节点一次可以和多个节点交互。论文里的思路是每轮每个已有消息的人和其他人交互（源节点每一轮都会挑一个新节点交互），不考虑重复时相当于</span><span class="math inline">\(n=2^{k}\)</span><span>，且对源节点个人而言的冗余度为轮次数倍。</span>
+</li>
+<li>
+<span>工程中的 startup phare，完全可以由源节点广播给多个节点，多个节点每个再广播给多个节点来加快速度。实现上如果让每个节点发</span><span class="math inline">\(t=3\)</span><span> 个人，收到的节点也转发3个人，可以达到</span><span class="math inline">\(n=\frac{3^{k+1}}{2}\)</span><span>，而且源节点的输出流量为3倍而不是轮次倍。</span>
+</li>
+</ul>
+</section>
+</section>
+<section id="rrs_gossip">
+
+    <h2>
+    <a href="#rrs_gossip"><span>rrs_gossip 设计方案</span> </a>
+    </h2>
+<p><span>新增一种全网广播的 gossip 算法类型，主要参数定义如下：</span></p>
+<ul>
+<li>
+<span>集群总节点数</span><span class="math inline">\(N\)</span><span>（这个数量自然是不确定的，这个问题下面再说）</span>
+</li>
+<li>
+<span>广播全量包的轮次数</span><span class="math inline">\(k\)</span><span> ：在前</span><span class="math inline">\(k\)</span><span> 跳内，收到消息的节点，转发完整包</span>
+</li>
+<li>
+<span>广播全量包时每次转发目标集群数</span><span class="math inline">\(t\)</span><span> ：在前</span><span class="math inline">\(k\)</span><span> 跳内，收到消息的节点，转发完整包给</span><span class="math inline">\(t\)</span><span> 个节点</span>
+</li>
+</ul>
+<p><span>源节点要广播一条消息，在前</span><span class="math inline">\(k\)</span><span> 跳内，收到消息的节点都会转发给另外</span><span class="math inline">\(t\)</span><span> 个节点。后续的转发里，把消息内的数据去除，只保留一个 hash。继续进行广播（相当于按照目前的广播逻辑走，只不过后面变成了 hash）。收到 hash 的节点如果本地没有消息数据本体，则会主动向其他节点确认对端是否有这条消息的完整内容，如果有则向其发起 </span><code>pull</code><span> 请求拉取这条内容。</span></p>
+<p><span>计算一下可以得到，理论上，前</span><span class="math inline">\(k\)</span><span> 跳里总共会发送给</span><span class="math inline">\(n=1+t+t^2+..+t^k = \frac{t^{k+1}-1}{t-1}\)</span><span> 个节点。实际上随着跳数的增加，后面的节点里肯定会和前面的节点有重复的，这里带上布隆过滤器可以优化一点。</span></p>
+<p><span>后续的广播内容都是 hash，按照以前10倍冗余度计算，hash 会在网络里传播约 </span><span class="math inline">\(10N\)</span><span> 次，不过消息本身只会传播</span><span class="math inline">\(\frac{t^{k+1}-1}{t-1}-1\)</span><span> 次+</span><code>pull</code><span> 次（也就是没有收到的节点数）</span></p>
+</section>
+<section id="s-5">
+
+    <h2>
+    <a href="#s-5"><span>简单测试结果&amp;&amp;分析</span> </a>
+    </h2>
+<p><span>修改更新了上述策略后，本地组网简单测试了下：</span></p>
+<p><span>参数说明：</span></p>
+<ul>
+<li>
+<span class="math inline">\(N\)</span><span>:节点总个数</span>
+</li>
+<li>
+<span class="math inline">\(t\)</span><span>:每个节点转发个数</span>
+</li>
+<li>
+<span class="math inline">\(k\)</span><span>:广播全量包的轮次数</span>
+</li>
+<li>
+<span class="math inline">\(\frac{t^{k+1}-1}{t-1}\)</span><span>:理论预计发送完整消息节点数</span>
+</li>
+</ul>
+<table>
+<tr>
+<th><span>N</span></th>
+<th><span>t</span></th>
+<th><span>k</span></th>
+<th><span class="math inline">\(\frac{t^{k+1}-1}{t-1}\)</span><span></span></th>
+<th><span>实际完整消息发送总次数</span></th>
+<th><span>pull 拉取消息次数</span></th>
+<th><span>hash 发送总次数</span></th>
+<th><span>达到率</span></th>
+</tr>
+<tr>
+<td><span>32</span></td>
+<td><span>3</span></td>
+<td><span>3</span></td>
+<td><span>1+3+9+27=40</span></td>
+<td><span>36~39</span></td>
+<td><span>10</span></td>
+<td><span>352</span></td>
+<td><span>100%</span></td>
+</tr>
+<tr>
+<td><span>96</span></td>
+<td><span>6</span></td>
+<td><span>3</span></td>
+<td><span>1+6+36+216=259</span></td>
+<td><span>220</span></td>
+<td><span>25</span></td>
+<td><span>2420</span></td>
+<td><span>100%</span></td>
+</tr>
+<tr>
+<td><span>96</span></td>
+<td><span>5</span></td>
+<td><span>3</span></td>
+<td><span>1+5+25+125=156</span></td>
+<td><span>150</span></td>
+<td><span>33</span></td>
+<td><span>1900</span></td>
+<td><span>100%</span></td>
+</tr>
+<tr>
+<td><span>96</span></td>
+<td><span>4</span></td>
+<td><span>3</span></td>
+<td><span>1+4+16+64=85</span></td>
+<td><span>82</span></td>
+<td><span>48</span></td>
+<td><span>1360</span></td>
+<td><span>100%</span></td>
+</tr>
+<tr>
+<td><span>96</span></td>
+<td><span>6</span></td>
+<td><span>4</span></td>
+<td><span>1+6+36+216+1296=1555</span></td>
+<td><span>610</span></td>
+<td><span>2</span></td>
+<td><span>2600</span></td>
+<td><span>100%</span></td>
+</tr>
+<tr>
+<td><span>96</span></td>
+<td><span>5</span></td>
+<td><span>4</span></td>
+<td><span>1+5+25+125+625=781</span></td>
+<td><span>410</span></td>
+<td><span>8</span></td>
+<td><span>2100</span></td>
+<td><span>100%</span></td>
+</tr>
+<tr>
+<td><span>96</span></td>
+<td><span>4</span></td>
+<td><span>4</span></td>
+<td><span>1+4+16+64+256=341</span></td>
+<td><span>250</span></td>
+<td><span>17</span></td>
+<td><span>1600</span></td>
+<td><span>100%</span></td>
+</tr>
+<tr>
+<td><span>96</span></td>
+<td><span>3</span></td>
+<td><span>4</span></td>
+<td><span>1+3+9+27+81=121</span></td>
+<td><span>116</span></td>
+<td><span>37</span></td>
+<td><span>1020</span></td>
+<td><span>100%</span></td>
+</tr>
+</table>
+<ul>
+<li>
+<span>布隆过滤器的存在: </span><span class="math inline">\(实际完整发送消息总次数\le\frac{t^{k+1}-1}{t-1}\)</span>
+</li>
+<li>
+<span>小概率同时得到两个节点的 pull 结果: </span><span class="math inline">\(pull 拉去消息的次数 \ge 未直接收到消息的节点个数\)</span>
+</li>
+<li>
+<span>多发出的完整消息次数: </span><span class="math inline">\(冗余发送完整消息次数=实际完整消息发送次数 - pull 拉去消息的次数-实际节点数\)</span>
+</li>
+<li>
+<span>消息冗余度的计算: </span><span class="math inline">\(消息冗余率=\frac{(实际完整消息发送次数 + pull 拉去消息次数)*消息 size + hash 发送次数 * hashsize}{N*消息 size}-1\)</span>
+</li>
+<li>
+<span class="math inline">\(t\)</span><span> 和 </span><span class="math inline">\(k\)</span><span> 的值很重要：</span>
+</li>
+<li>
+<span>可以很容易得出的结论：</span>
+<span>1. </span><span class="math inline">\(\frac{t^{k+1}-1}{t-1}\)</span><span> 太大了会导致消息冗余度飙升，太小了会让 pull 拉去的次数变多</span>
+<span>2. 结合论文的理论最优，工程上只需要使得 </span><span class="math inline">\(\frac{t^{k+1}-1}{t-1}\)</span><span> 的值位于在 </span><span class="math inline">\(N\)</span><span> 附近即可，按照文章结论，其值越接近 </span><span class="math inline">\(\frac{N}{\ln N}\)</span><span>，冗余度(不考虑 hash 冗余)越接近 </span><span class="math inline">\(N\ln \ln n\)</span>
+</li>
+<li>
+<span>同样是 </span><span class="math inline">\(N=96\)</span><span> 节点的对比数据再看一遍</span>
+</li>
+</ul>
+<table>
+<tr>
+<th><span>N</span></th>
+<th><span>t</span></th>
+<th><span>k</span></th>
+<th><span class="math inline">\(\frac{t^{k+1}-1}{t-1}\)</span><span></span></th>
+<th><span>实际完整消息发送总次数</span></th>
+<th><span>pull 拉取消息次数</span></th>
+<th><span>hash 发送总次数</span></th>
+</tr>
+<tr>
+<td><span>96</span></td>
+<td><span>5</span></td>
+<td><span>3</span></td>
+<td><span>1+5+25+125=156</span></td>
+<td><span>150</span></td>
+<td><span>33</span></td>
+<td><span>1900</span></td>
+</tr>
+<tr>
+<td><span>96</span></td>
+<td><span>4</span></td>
+<td><span>3</span></td>
+<td><span>1+4+16+64=85</span></td>
+<td><span>82</span></td>
+<td><span>48</span></td>
+<td><span>1360</span></td>
+</tr>
+<tr>
+<td><span>96</span></td>
+<td><span>3</span></td>
+<td><span>4</span></td>
+<td><span>1+3+9+27+81=121</span></td>
+<td><span>116</span></td>
+<td><span>37</span></td>
+<td><span>1020</span></td>
+</tr>
+</table>
+<p><span>参数 </span><span class="math inline">\(t=4,k=3\)</span><span> 和 </span><span class="math inline">\(t=3,k=4\)</span><span> 比起来，前者实际冗余度更低，但是 pull 拉取的次数变多风险相对更大。</span></p>
+</section>
+<section id="s-6">
+
+    <h2>
+    <a href="#s-6"><span>一些计算说明</span> </a>
+    </h2>
+<p><span class="math inline">\(t\)</span><span> 值越大，对于源节点以及前几跳的节点来说，流量出口倍数越大 (至少 </span><span class="math inline">\(t\)</span><span> 倍)。</span></p>
+<p><span class="math inline">\(k\)</span><span> 值越大，bloomfilter 效率越低（预计效果，还没测试）</span></p>
+<p><span>我们的期望是让</span><span class="math inline">\(\frac{t^{k+1}-1}{t-1}\)</span><span> 保持在 </span><span class="math inline">\(\frac{N}{\ln N}\)</span><span> 以上，或者保守一点保持在</span><span class="math inline">\(N\)</span><span> 以上，可以得到</span><span class="math inline">\(k\)</span><span> 的取值:</span></p>
+<ul>
+<li>
+<span class="math inline">\(k=(int)\log_{t}{[(t-1)N+1]}\)</span>
+</li>
+</ul>
+<p><span>由于</span><span class="math inline">\(t\)</span><span> 值太大对前几跳节点来说不那么公平（出口流量大），我们若希望</span><span class="math inline">\(t\le5\)</span><span>，分别取值3,4,5做计算：</span></p>
+<ul>
+<li>
+<span>t = 5: </span><span class="math inline">\(k=(int) \frac{\ln(4N+1)}{\ln5} =(int) \frac{\ln(4N+1)}{1.609}\)</span>
+</li>
+<li>
+<span>t = 4: </span><span class="math inline">\(k=(int) \frac{\ln(3N+1)}{\ln4} =(int) \frac{\ln(3N+1)}{1.386}\)</span>
+</li>
+<li>
+<span>t = 3: </span><span class="math inline">\(k=(int) \frac{\ln(2N+1)}{\ln3} =(int) \frac{\ln(2N+1)}{1.099}\)</span>
+</li>
+</ul>
+<p><span>当然如果 </span><span class="math inline">\(N\)</span><span> 值特别大了，比如十万节点，此时 </span><span class="math inline">\(t\)</span><span> 取5, </span><span class="math inline">\(k\)</span><span> 需要取8,此时的冗余度可能不如 </span><span class="math inline">\(t\)</span><span> 取6或者7（预计效果，还没测试）</span></p>
+<ul>
+<li>
+<span class="math inline">\(t=5,k=5\)</span><span> 最多可以满足节点数 </span><span class="math inline">\(N=3906\)</span>
+</li>
+</ul>
+</section>
+<section id="N">
+
+    <h2>
+    <a href="#N"><span class="math inline">\(N\)</span><span> 的获取思路</span> </a>
+    </h2>
+<ul>
+<li>
+<span>上面的理论值都依赖 N 的确切值，实际情况下，出了选举网络的集群个数是已知的，总 root 网络里的节点个数是随着节点入网退网动态变化的。</span>
+</li>
+<li>
+<span>但是也可以看出来</span><span class="math inline">\(N\)</span><span> 值在比较大的范围内变化时，</span><span class="math inline">\(k\)</span><span> 和</span><span class="math inline">\(t\)</span><span> 的值都可以不用变，可能不是最优的，但是也差不多了。</span>
+</li>
+<li>
+<span>所以一个比较简单的思路就是，增加一个 rec 合约，定时，比如每24h，全网广播一次当前备选池节点总数量，所有节点就依据这个 N 和固定的算法，得到相对较优的</span><span class="math inline">\(k\)</span><span> 和 </span><span class="math inline">\(t\)</span><span> 即可。</span>
+</li>
+</ul>
+</section>
+<section id="s-7">
+
+    <h2>
+    <a href="#s-7"><span>其他</span> </a>
+    </h2>
+<p><span>主动 pull 的 ask-ack-request-response</span></p>
+<ul>
+<li>
+<span>参照目前已有的大小包机制实现（但是实际正在跑的主网里这部分逻辑未启用），收到 hash 的节点检查自己没有消息本体后，会放入一个队列，定时1s 去像其他节点（随机3个）发送 ask 消息</span>
+</li>
+<li>
+<span>收到 ask 消息的节点检查自己是否有此包，有则返回 ack 消息，没有则不管</span>
+</li>
+<li>
+<span>收到 ack 消息的节点再次检查自己是否有此包，有则不管了，还是没有则返回发送 request 消息</span>
+</li>
+<li>
+<span>收到 request 消息的节点返回包含此消息完整内容的 response 消息</span>
+</li>
+<li>
+<span>收到 response 消息的节点解开内容，删除队列里的 hash</span>
+</li>
+</ul>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2021-06-11-rrs-gossip.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>

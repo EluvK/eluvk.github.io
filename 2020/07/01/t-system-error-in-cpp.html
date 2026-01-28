@@ -1,0 +1,1294 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>[Translation] System error support in C++0x</title>
+  <meta name="description" content="本文翻译自 http://blog.think-async.com/">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2020/07/01/t-system-error-in-cpp.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#Translation-System-error-support-in-C-0x"><span>[Translation] System error support in C++0x</span> <time datetime="2020-07-01">Jul 1, 2020</time></a>
+    </h1>
+<ol>
+<li>
+<span>本文翻译自 </span><a href="http://blog.think-async.com/"><span>http://blog.think-async.com/</span></a>
+</li>
+<li>
+<span>基于原文和自己的理解，如有错误欢迎指出。</span>
+</li>
+</ol>
+<hr>
+<section id="1-part1">
+
+    <h2>
+    <a href="#1-part1"><span>1. part1</span> </a>
+    </h2>
+<p><span>在 C++的众多新特性里，有一个小部分叫</span><code>&lt;system_error&gt;</code><span>，它提供了一个管理系统错误的程序方法。</span>
+<span>其中定义的组件主要有：</span></p>
+<ul>
+<li>
+<code>class error_category</code>
+</li>
+<li>
+<code>class error_code</code>
+</li>
+<li>
+<code>class error_condition</code>
+</li>
+<li>
+<code>class system_error</code>
+</li>
+<li>
+<code>enum class errc</code>
+</li>
+</ul>
+<p><span>我（原作者）曾参与过设计这一部分组件，所以在这个系列里我会尽力展现这个组件的原理、历史和预期的使用方式</span></p>
+<section id="1-1">
+
+    <h3>
+    <a href="#1-1"><span>1.1. 如何调用</span> </a>
+    </h3>
+<p><span>Boost 库中包含了完整的实现，支持 C++03，在目前（原文撰写于 April 07, 2010）可能是经过测试的可移植性最强的实现。当然使用的时候需要带上命令空间 </span><code>boost::system::</code><span>而不是 </span><code>std::</code></p>
+<p><span>在 GCC4.4以及更高的版本上，通过-std=c++0x 编译选项即可使用 </span><code>std::system_error</code></p>
+<p><span>另外，在 Microsoft Visual Studio 2010上会附带类的实现，其主要问题是 </span><code>system_category()</code><span>无法正确的表示出 WIN32 errors，后续会说明</span></p>
+<p><span>请注意这只是我知道的实现方法，可能还有别的方式。</span></p>
+</section>
+<section id="1-2">
+
+    <h3>
+    <a href="#1-2"><span>1.2. 概述</span> </a>
+    </h3>
+<p><span>以下是</span><code>&lt;system_error&gt;</code><span>定义的类型</span></p>
+<ul>
+<li>
+<code>class error_category</code><span> 作为基类，区分错误码(</span><code>error_code</code><span>)或错误情况(</span><code>error_condition</code><span>)的来源或者类别</span>
+</li>
+<li>
+<code>class error_code</code><span> 代表了一种特定的操作返回的错误值</span>
+</li>
+<li>
+<code>class error_condition</code><span> 你希望在代码中进行测试的一种情况</span>
+</li>
+<li>
+<code>class system_error</code><span> 当异常情况通过 throw / catch 抛出的时候，用来包装 </span><code>error_codes</code><span> 的异常</span>
+</li>
+<li>
+<code>enum class errc</code><span> 一系列一般情形下的错误情况值，继承自 POSIX</span>
+</li>
+<li>
+<code>is_error_code_enum&lt;&gt;</code><span>, </span><code>is_error_condition_enum&lt;&gt;</code><span>, </span><code>make_error_code</code><span>, </span><code>make_error_condition</code><span> 把枚举类转换为 </span><code>error_code</code><span> / </span><code>error_condition</code><span> 的方法</span>
+</li>
+<li>
+<code>generic_category()</code><span> 返回一个类对象用来区分 </span><code>errc</code>
+</li>
+<li>
+<code>errc</code><span> 基本错误码(</span><code>error codes</code><span>)和错误情况(</span><code>error conditions</code><span>)</span>
+</li>
+<li>
+<code>system_category()</code><span> 返回一个操作系统错误码的类对象</span>
+</li>
+</ul>
+</section>
+<section id="1-3">
+
+    <h3>
+    <a href="#1-3"><span>1.3. 原则</span> </a>
+    </h3>
+<p><span>这一节列出了我在设计这部分模块的时候考虑到的一些原则，和大多数项目意义，其中一些是一开始就当作目标，还有一部分则是在开发过程中逐渐加上的。</span></p>
+<section id="1-3-1">
+
+    <h4>
+    <a href="#1-3-1"><span>1.3.1. 不是所有的错误都是异常</span> </a>
+    </h4>
+<p><span>简单来说就是，抛异常并不总是解决错误的最好方法，在某些圈子里，这甚至是一个有争议的话题（虽然我并不懂为什么</span>&hellip;<span>）</span>
+<span>比如说，在网络编程里，会经常遇见的错误：</span></p>
+<ol>
+<li>
+<span>你无法连接到目标远程 IP</span>
+</li>
+<li>
+<span>你的连接中断了</span>
+</li>
+<li>
+<span>你尝试使用 IPV6连接但是没有可用的 IPV6接口</span>
+</li>
+</ol>
+<p><span>当然这里面可能有异常情况，但是同时它们也可能是正常情况的一部分，如果你考虑周全，它们就不是异常：</span></p>
+<ol>
+<li>
+<span>这个 IP 地址是一个主机名的一系列 IP 地址之一，应该考虑尝试下一个</span>
+</li>
+<li>
+<span>当前网络不可用，应该在尝试重新连接 N 次失败以后再放弃</span>
+</li>
+<li>
+<span>程序在没有 IPV6接口时重新使用 IPV4接口</span>
+</li>
+</ol>
+<p><span>在 Asio 编程的情况下，另一个需求是将异步操作的结果传递给其完成处理程序的方法。这种情况，我希望操作的错误代码作为处理程序回调的参数。(另一种方法是提供在处理程序内重新抛出异常的方法，例如. net 的 BeginXYZ/EndXYZ 异步模式。在我看来，这种设计增加了复杂性，使 API 更容易出错。)</span></p>
+<p><span>最后同样重要的一点时，由于代码大小和性能限制，一些情况下将无法或不愿意使用异常。</span></p>
+<p><span>简而言之:要务实，不要教条。考虑好清晰度、正确性、约束条件，甚至个人品味后，使用任何最适合的错误机制。通常，在异常和错误代码之间做选择时是在使用的时候。这意味着项目里的系统错误工具应该同时支持这两种方法。</span></p>
+</section>
+<section id="1-3-2">
+
+    <h4>
+    <a href="#1-3-2"><span>1.3.2. 多种来源的错误</span> </a>
+    </h4>
+<p><span>C++03标准里把 errno 作为错误码的来源，也被用到了 stdio 函数、一些数学函数等里</span></p>
+<p><span>在 POSIX 平台，许多系统操作都使用 errno 来传递错误，POSIX 定义了额外的 errno 错误码来覆盖这些情况。</span></p>
+<p><span>另一方面在 Windows 下除了 C 标准库，没有使用 errno，Windows 的 API 调用通常通过 GetLastError 报告错误。</span></p>
+<p><span>当考虑网络编程的时候，</span><code>getaddrinfo</code><span> 函数家族在 POSIX 上使用它自己的一组错误代码（</span><code>EAI_...</code><span>）,但是和 Windows 下的 </span><code>GetLastError()</code><span> 命令空间一样。整合了其他库(ssl,</span>&hellip;<span>)的程序会遇到其他类型的错误码。</span></p>
+<p><span>程序应该能够统一的管理这些错误码，我特别关注的是如何通过组合来创建更高层次的抽象。把系统调用、</span><code>getaddrinfo</code><span>、SSL 和普通库等等整合进一个统一的 API 来使得用户使用错误码不需要包含各种其他类型的错误码。给这个 API 添加新的错误码源也不应该改变接口。</span></p>
+<p><span>[注：] 这部分描述历史原因和想要实现的目标，能力有限了解不深可能翻译不太准确。有能力建议读原文。</span></p>
+</section>
+<section id="1-3-3">
+
+    <h4>
+    <a href="#1-3-3"><span>1.3.3. 要做到用户可拓展</span> </a>
+    </h4>
+<p><span>使用标准库的使用者需要添加他们自己的错误源，这种能力可能只是被用来整合进一个第三方库，但是也实现了一个更高层次的抽象关联。当开发一个类似 HTTP 的协议实现的时候，我希望能够添加一系列定义在 RFC 里的错误码</span></p>
+</section>
+<section id="1-3-4">
+
+    <h4>
+    <a href="#1-3-4"><span>1.3.4. 保留原始的错误码</span> </a>
+    </h4>
+<p><span>这本来不是我的本意，我的想法是这个标准应该提供一系列总所周知的错误码，如果系统操作返回一个错误，库有责任把错误转化成一个大家熟悉的错误码（如果这样的映射有意义的话）</span></p>
+<p><span>幸运的是有人指出了我的错误，转换也给错误码会丢失信息：是底层的系统调用的错误（而不是你写的代码出的错）。这可能在程序控制里不是什么大问题，但是却对程序可支持性影响挺大。毫无疑问程序员会使用标准错误码来记录跟踪问题，而丢失的原始错误信息可能在是诊断问题是至关重要的。</span></p>
+<p><span>这个最后一个原则也很好地融入了第二部分的主题：</span><code>error_code</code><span> 和 </span><code>error_condition</code></p>
+</section>
+</section>
+</section>
+<section id="2-part2">
+
+    <h2>
+    <a href="#2-part2"><span>2. part2</span> </a>
+    </h2>
+<p><span>在 C++一千多页的草案中，随性的读者肯定会注意到：</span><code>error_code</code><span> 和 </span><code>error_condition</code><span> 看起来十分相似！难道是个复制粘贴的错误么。</span></p>
+<section id="2-1">
+
+    <h3>
+    <a href="#2-1"><span>2.1. 你用来做什么才是最重要的</span> </a>
+    </h3>
+<p><span>回顾一下我在 part1 给出的描述</span></p>
+<ul>
+<li>
+<code>class error_code</code><span> 代表了一种特定的操作返回的错误值</span>
+</li>
+<li>
+<code>class error_condition</code><span> 你希望在代码中进行测试的一种情况</span>
+</li>
+</ul>
+<p><span>为了不同的使用目的，这两种类是有区别的。比如说，假设有一个函数 </span><code>create_directory()</code></p>
+<p><code>void create_directory(const std::string&amp; pathname,std::error_code&amp; ec);</code></p>
+<p><span>然后这样来调用它：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">std::error_code ec;</span>
+<span class="line"><span class="hl-built_in">create_directory</span>(<span class="hl-string">&quot;/some/path&quot;</span>, ec);</span></code></pre>
+
+</figure>
+<p><span>这种调用时有可能因为各种原因而失败，诸如：</span></p>
+<ol>
+<li>
+<span>权限不足</span>
+</li>
+<li>
+<span>这个目录已经存在</span>
+</li>
+<li>
+<span>这个路径太长了</span>
+</li>
+<li>
+<span>上级目录还不存在</span>
+</li>
+</ol>
+<p><span>不管是什么原因导致的失败，在 </span><code>create_directory()</code><span>返回后，</span><code>error_code</code><span> 里会包含一个(可能因系统不同而不同的)错误码，如果成功调用则是0值，这符合了过去使用 </span><code>errno</code><span> 和 </span><code>GetLastError()</code><span> 的 </span><code>0</code><span> 作为成功时的返回值 &amp;&amp; </span><code>非0</code><span> 作为特定错误的传统。</span></p>
+<p><span>如果只关心这个操作有没有成功，你当然也可以利用 </span><code>error_code</code><span> 可以直接隐式转换为 </span><code>bool</code><span> 类型的特性：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">std::error_code ec;</span>
+<span class="line"><span class="hl-built_in">create_directory</span>(<span class="hl-string">&quot;/some/path&quot;</span>, ec);</span>
+<span class="line"><span class="hl-keyword">if</span>(!ec){</span>
+<span class="line">  <span class="hl-comment">// Success.</span></span>
+<span class="line">} <span class="hl-keyword">else</span> {</span>
+<span class="line">  <span class="hl-comment">// Failure.</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>不过，假定你对想专门检查下是不是因为目录已经存在(directory already exists)。如果是这个原因，那我们的程序还可以继续跑下去，尝试写出了如下代码：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">std::error_code ec;</span>
+<span class="line"><span class="hl-built_in">create_directory</span>(<span class="hl-string">&quot;/some/path&quot;</span>, ec);</span>
+<span class="line"><span class="hl-keyword">if</span>(ec.<span class="hl-built_in">value</span>() == EEXIST) <span class="hl-comment">//NO!</span></span>
+<span class="line">  ...</span></code></pre>
+
+</figure>
+<p><span>这样写代码是错的，你得摆脱原来用在 POSIX 平台上的做法，但是得记住 ec 还是有系统差异性(OS-specific)的，在 Windows 上，这个错误可能是叫做 </span><code>ERROR_ALREADY_EXISTS</code><span>（或者更糟糕的情况代码不检查错误码的种类，我们后面会再提及这）。</span></p>
+</section>
+<section id="2-2">
+
+    <h3>
+    <a href="#2-2"><span>2.2. 最重要的原则</span> </a>
+    </h3>
+<p><span>不要这样调用：</span><code>error_code::value()</code></p>
+<p><span>我们现在根据这种有系统差异性的错误码（</span><code>EEXIST</code><span> or </span><code>ERROR_ALREADY_EXISTS</code><span>）来判断出这种出错的情况（</span>&ldquo;<span>directory already exists</span>&rdquo;<span>），自然而然的你就需要 </span><code>error_condition</code><span>。</span></p>
+</section>
+<section id="2-3-errorcode-errorconditions">
+
+    <h3>
+    <a href="#2-3-errorcode-errorconditions"><span>2.3. error</span><em><span>code 和 error</span></em><span>conditions 的比较</span> </a>
+    </h3>
+<p><span>当你想通过逻辑运算符</span><code>!=</code><span>、</span><code>==</code><span>来比较 </span><code>error_code</code><span> 和 </span><code>error_condition</code><span> 的时候有可能发生的情况：</span></p>
+<ul>
+<li>
+<code>error_code</code><span> 和 </span><code>error_code</code><span> ：检查精确匹配</span>
+</li>
+<li>
+<code>error_condition</code><span> 和 </span><code>error_condition</code><span> ：检查精确匹配</span>
+</li>
+<li>
+<code>error_code</code><span> 和 </span><code>error_condition</code><span> ：检查等价</span>
+</li>
+</ul>
+<p><span>我希望我表达的足够清楚，你需要把这种有系统差异性的错误码和代表</span>&ldquo;<span>directory already exists</span>&rdquo;<span>的错误情况对象进行比较。C++0x 刚好提供了一个标准：</span><code>std::errc::file_exists</code><span>，所以代码应该是这样的：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">std::error ec;</span>
+<span class="line"><span class="hl-built_in">create_directory</span>(<span class="hl-string">&quot;/some/path&quot;</span>, ec);</span>
+<span class="line"><span class="hl-keyword">if</span> (ec == std::errc::file_exists)</span>
+<span class="line">  ...</span></code></pre>
+
+</figure>
+<p><span>能够这样使用是因为库的实现里在定义了错误码(error code)</span><code>EEXIST</code><span> or </span><code>ERROR_ALREADY_EXISTS</code><span> 和错误情况的(error condition)</span><code>std::errc::file_exists</code><span> 的等价性。在后面的一期里，我会展示给你如何自定义自己的错误码&amp;&amp;错误情况以及让它们等价</span></p>
+<p><span>（请注意，准确来说，</span><code>std::errc::file_exists</code><span> 是枚举类 errc 的一个枚举数，目前可以暂时把 </span><code>std::errc::*</code><span>枚举器理解为 </span><code>error_condition</code><span> 常量的占位符，后续再进一步解释这是如何运作的。）</span></p>
+</section>
+<section id="2-4">
+
+    <h3>
+    <a href="#2-4"><span>2.4. 如何确定你能测试哪些情况</span> </a>
+    </h3>
+<p><span>在 C++0x 的一些新的库函数里有</span>&ldquo;<code>Error conditions</code>&rdquo;<span>子句，这些子句列举了 </span><code>error_condition</code><span> 常量和这些常量在不同情况下对应的 </span><code>error_code</code></p>
+</section>
+<section id="2-5">
+
+    <h3>
+    <a href="#2-5"><span>2.5. 一点历史</span> </a>
+    </h3>
+<p><span>最初的 </span><code>error_code</code><span> 类被建议用于 TR2，作为文件系统和网络库的辅助组件。在该设计中，实现了 </span><code>error_code</code><span> 常量，以便在可能的情况下匹配特定于操作系统的错误。如果不可能匹配，或者存在多个匹配，则在执行底层操作之后，库实现将从有系统差异性的错误转换为标准 </span><code>error_code</code><span>。</span></p>
+<p><span>在基于电子邮件的设计讨论中，我认识到了保留原始错误代码的价值。进一步，构造了 </span><code>generic_error</code><span> 类的原型。后将 </span><code>generic_error</code><span> 重命名为 </span><code>error_condition</code><span> 才是一个满意的解决方案。根据我的经验，命名是计算机科学中最困难的问题之一，一个好的名字会让你走更远。</span></p>
+<p><span>接下来，来看看如何让 enum 类 </span><code>errc</code><span> 作为 </span><code>error_condition</code><span> 占位符使用。</span></p>
+</section>
+</section>
+<section id="3-part3">
+
+    <h2>
+    <a href="#3-part3"><span>3. part3</span> </a>
+    </h2>
+<section id="3-1">
+
+    <h3>
+    <a href="#3-1"><span>3.1. 枚举类作为类常量</span> </a>
+    </h3>
+<p><span>前面提到的，</span><code>&lt;system_error&gt;</code><span>里定义的 </span><code>errc</code><span> 枚举类：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum class</span> <span class="hl-title class_">errc</span>{</span>
+<span class="line">  address_family_not_supported,</span>
+<span class="line">  address_in_use,</span>
+<span class="line">  ...</span>
+<span class="line">  value_too_large,</span>
+<span class="line">  wrong_protocol_type,</span>
+<span class="line">};</span></code></pre>
+
+</figure>
+<p><span>这些枚举数等价于不同 </span><code>error_condition</code><span> 常量</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">std::error_code ec;</span>
+<span class="line"><span class="hl-built_in">create_directory</span>(<span class="hl-string">&quot;/some/path&quot;</span>, ec);</span>
+<span class="line"><span class="hl-keyword">if</span> (ec == std::errc::file_exists)</span>
+<span class="line">  ...</span></code></pre>
+
+</figure>
+<p><span>很明显这之中有一个从 </span><code>errc</code><span> 到 </span><code>error_condition</code><span> 的单构造参数隐式转换，很简单吧。</span></p>
+</section>
+<section id="3-2">
+
+    <h3>
+    <a href="#3-2"><span>3.2. 也不是这么简单</span> </a>
+    </h3>
+<p><span>不是这么简单的原因：</span></p>
+<ul>
+<li>
+<span>枚举数提供了一个错误值，但是为了构建这个 </span><code>error_condition</code><span> 我们还需要知道它的种类。</span><code>&lt;system_error&gt;</code><span>使用分类来支持不同的错误源，一个类别就包含了 </span><code>error_code</code><span> 和 </span><code>error_condition</code><span>。</span>
+</li>
+<li>
+<code>&lt;system_error&gt;</code><span>应该是用户可拓展的，也就是说用户（包括以后对标准库的拓展）都应该可以定义他们自己的 errc 占位符</span>
+</li>
+<li>
+<code>&lt;system_error&gt;</code><span>应该同时支持给 </span><code>error_code</code><span> 和 </span><code>error_condition</code><span> 提供占位符，现在 </span><code>errc</code><span> 的枚举类给 </span><code>error_condition</code><span> 常量提供了占位符，有些情况下可能也需要给 </span><code>error_code</code><span> 提供常量(来表示不同的 error_code)</span>
+</li>
+<li>
+<span>最后，</span><code>&lt;system_error&gt;</code><span>应该支持从枚举数到 </span><code>error_code</code><span> 或 </span><code>error_condition</code><span> 的显示转换，可移植程序或许需要创建从 </span><code>std::errc::*</code><span>枚举器继承来的错误码</span>
+</li>
+</ul>
+<p><span>所以这行代码</span></p>
+<p><code>if (ec == std::errc::file_exists)</code></p>
+<p><span>从 errc 隐式转换成了 erroc_condition，中间包含了几个步骤</span></p>
+</section>
+<section id="3-3-Step-1">
+
+    <h3>
+    <a href="#3-3-Step-1"><span>3.3. Step 1 确定枚举数是错误码还是错误条件</span> </a>
+    </h3>
+<p><span>有两种模板元来用来注册一个枚举类型：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">template</span> &lt;<span class="hl-keyword">class</span> <span class="hl-title class_">T</span>&gt;</span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">is_error_code_enum</span></span>
+<span class="line">  : <span class="hl-keyword">public</span> false_type {};</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">template</span> &lt;<span class="hl-keyword">class</span> <span class="hl-title class_">T</span>&gt;</span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">is_error_condition_enum</span></span>
+<span class="line">  : <span class="hl-keyword">public</span> false_type {};</span></code></pre>
+
+</figure>
+<p><span>如果一个种类是用 </span><code>is_error_code_enum&lt;&gt;</code><span>来注册的就会被隐式转换成 error</span><em><span>code，同理用 </span><code>is_error_condition_enum&lt;&gt;</code><span>注册会被隐式转换为 error</span></em><span>condition，而 </span><code>enum class errc</code><span> 是这样被注册的：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">template</span>&lt;&gt;</span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">is_error_condition_enum</span>&lt;errc&gt;</span>
+<span class="line">  : true_type{};</span></code></pre>
+
+</figure>
+<p><span>隐式转换是通过有条件地启用转换构造函数。这可能是使用</span><a href="https://en.wikipedia.org/wiki/Substitution_failure_is_not_an_error"><span>SFINAE</span></a><span>实现，不过我们只需要认为是：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">class</span> <span class="hl-title class_">error_condition</span></span>
+<span class="line">{</span>
+<span class="line">  ...</span>
+<span class="line">  <span class="hl-comment">// Only available if registered</span></span>
+<span class="line">  <span class="hl-comment">// using is_error_condition_enum&lt;&gt;</span></span>
+<span class="line">  <span class="hl-keyword">template</span> &lt;<span class="hl-keyword">class</span> <span class="hl-title class_">ErrorConditionEnum</span>&gt;</span>
+<span class="line">  <span class="hl-built_in">error_condition</span>(ErrorConditionEnum e);</span>
+<span class="line">  ...</span>
+<span class="line">};</span>
+<span class="line"><span class="hl-keyword">class</span> <span class="hl-title class_">error_code</span></span>
+<span class="line">{</span>
+<span class="line">  ...</span>
+<span class="line">  <span class="hl-comment">// Only available if registered</span></span>
+<span class="line">  <span class="hl-comment">// using is_error_code_enum&lt;&gt;.</span></span>
+<span class="line">  <span class="hl-keyword">template</span> &lt;<span class="hl-keyword">class</span> <span class="hl-title class_">ErrorCodeEnum</span>&gt;</span>
+<span class="line">  <span class="hl-built_in">error_code</span>(ErrorCodeEnum e);</span>
+<span class="line">  ...</span>
+<span class="line">};</span></code></pre>
+
+</figure>
+<p><span>所以我们写 </span><code>if(ec==std::errc::file_exists)</code><span>，编译器会在这下面两个重载中选着：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-type">bool</span> <span class="hl-keyword">operator</span>==(</span>
+<span class="line">  <span class="hl-type">const</span> error_code &amp;a,</span>
+<span class="line">  <span class="hl-type">const</span> error_code &amp;b);</span>
+<span class="line"><span class="hl-type">bool</span> <span class="hl-keyword">operator</span>==(</span>
+<span class="line">  <span class="hl-type">const</span> error_code &amp;a,</span>
+<span class="line">  <span class="hl-type">const</span> error_condition &amp;b);</span></code></pre>
+
+</figure>
+<p><span>他会选后者因为 </span><code>error_condition</code><span> 的转换构造函数可用。</span></p>
+</section>
+<section id="3-4-Step-2">
+
+    <h3>
+    <a href="#3-4-Step-2"><span>3.4. Step 2 给一种错误类别关联一个值</span> </a>
+    </h3>
+<p><span>一个 </span><code>error_condition</code><span> 对象包括两个属性：</span><code>value</code><span> 和 </span><code>category</code><span>，现在我们需要让构造函数正确的初始化。</span></p>
+<p><span>通过让构造调用 </span><code>make_error_condition()</code><span>来实现，为了实现用户可拓展，这个方法通过 ADL(</span><a href="https://en.wikipedia.org/wiki/Argument_dependent_name_lookup"><span>argument-dependent lookup</span></a><span>)来定位。默认的，</span><code>make_error_condition()</code><span>和 </span><code>errc</code><span> 一样是定义在 </span><code>namespace std</code><span> 里。</span></p>
+<p><code>make_error_condition()</code><span>的实现很简单：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function">error_condition <span class="hl-title">make_error_condition</span><span class="hl-params">(errc e)</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  <span class="hl-keyword">return</span> <span class="hl-built_in">error_condition</span>(</span>
+<span class="line">    <span class="hl-built_in">static_cast</span>&lt;<span class="hl-type">int</span>&gt;(e),</span>
+<span class="line">    <span class="hl-built_in">generic_category</span>());</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>这个构造方法用两个参数构造 </span><code>error_condition</code><span> 来显式定义错误值和错误类别。</span></p>
+<p><span>如果是在转换构造一个 </span><code>error_code</code><span>，就用 </span><code>make_error_code()</code><span>，在某些方面，</span><code>error_code</code><span> 和 </span><code>error_condition</code><span> 的构造其实是一样的。</span></p>
+</section>
+<section id="3-5-Step-3-errorcode-errorcondition">
+
+    <h3>
+    <a href="#3-5-Step-3-errorcode-errorcondition"><span>3.5. Step 3 显示转换成 error</span><em><span>code 或者 error</span></em><span>condition</span> </a>
+    </h3>
+<p><span>尽管 </span><code>error_code</code><span> 最开始是想用于有操作系统差异性的错误码，可移植性的代码需要用一个 </span><code>errc</code><span> 枚举元来构造一个 </span><code>error_code</code><span> 错误码。因此，</span><code>make_error_code(errc)</code><span>和 </span><code>make_error_condition(errc)</code><span>都被提供了，可移植性的代码可以这样使用它们：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">void</span> <span class="hl-title">do_foo</span><span class="hl-params">(std::error_code &amp; ec)</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">if</span> defined(_WIN32)</span></span>
+<span class="line">  <span class="hl-comment">// Windows implementation...</span></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">elif</span> defined(linux)</span></span>
+<span class="line">  <span class="hl-comment">// Linux implementation...</span></span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">else</span></span></span>
+<span class="line">  <span class="hl-comment">// do_foo not supported on the platform</span></span>
+<span class="line">  ec = <span class="hl-built_in">make_error_code</span>(std::errc::not_supported);</span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">endif</span></span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="3-6">
+
+    <h3>
+    <a href="#3-6"><span>3.6. 一点历史</span> </a>
+    </h3>
+<p><span>最开始</span><code>&lt;system_error&gt;</code><span>提案里把 </span><code>error_code</code><span> 常量定义为对象：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">extern</span> error_code address_family_not_support;</span>
+<span class="line"><span class="hl-keyword">extern</span> error_code address_in_use;</span>
+<span class="line">...</span>
+<span class="line"><span class="hl-keyword">extern</span> error_code value_too_large;</span>
+<span class="line"><span class="hl-keyword">extern</span> error_code wrong_protocol_type;</span></code></pre>
+
+</figure>
+<p><span>LWG(Library Working Group 库开发组)担心定义这么多全局对象需要的大小太过头了，要求提供另外一种可行的方法，我们研究过使用 </span><code>constexpr</code><span> 的可能性，最终发现和</span><code>&lt;system_error&gt;</code><span>这个组件有一些地方不适用，这让使用 </span><code>enum</code><span> 成为了最好的选择。</span></p>
+<p><span>后面，我会继续展示你该如何添加自己的 </span><code>error codes</code><span> 和 </span><code>error conditions</code><span>。</span></p>
+</section>
+<section id="3-7">
+
+    <h3>
+    <a href="#3-7"><span>3.7. 译注：需要补充的坑</span> </a>
+    </h3>
+<ol>
+<li>
+<span>type_traits</span>
+</li>
+<li>
+<span>SFINAE</span>
+</li>
+<li>
+<span>true</span><em><span>type,false</span></em><span>type</span>
+</li>
+<li>
+<span>ADL</span>
+</li>
+</ol>
+<p><span>这部分翻译有点吃力，理解并不透彻！</span></p>
+</section>
+</section>
+<section id="4-part4">
+
+    <h2>
+    <a href="#4-part4"><span>4. part4</span> </a>
+    </h2>
+<section id="4-1">
+
+    <h3>
+    <a href="#4-1"><span>4.1. 创建你自己的错误码</span> </a>
+    </h3>
+<p><span>我在 part one 里就说过，设计</span><code>&lt;system_error&gt;</code><span>的原则之一就是要支持用户自定义拓展，就是用户可以用这个工具来描述定义自己的错误码。</span></p>
+<p><span>这一章里，我将概述一下你应该怎么做。举一个例子，假设你正在写一个 HTTP 库并且需要根据不同的 HTTP 返回的错误码处理的错误。</span></p>
+</section>
+<section id="4-2-Step-1">
+
+    <h3>
+    <a href="#4-2-Step-1"><span>4.2. Step 1: 定义错误值</span> </a>
+    </h3>
+<p><span>你首先需要定义一系列错误值，假设你在使用 C++0x，你可以用 </span><code>enum class</code><span>，就像 </span><code>std::errc</code><span> 一样：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum class</span> <span class="hl-title class_">http_error</span></span>
+<span class="line">{</span>
+<span class="line">  continue_request = <span class="hl-number">100</span>,</span>
+<span class="line">  switching_protocols = <span class="hl-number">101</span>,</span>
+<span class="line">  ok = <span class="hl-number">200</span>,</span>
+<span class="line">  ...</span>
+<span class="line">  gateway_timeout = <span class="hl-number">504</span>,</span>
+<span class="line">  version_not_supported = <span class="hl-number">505</span></span>
+<span class="line">};</span></code></pre>
+
+</figure>
+<p><span>这些错误根据 HTTP 返回值来指定了不同的数值。很明显也很重要的是，当你使用这些错误码的时候，不要选0作为某个错误码的数值，你应该记得</span><code>&lt;system_error&gt;</code><span>有转换：0 = success。</span></p>
+<p><span>顺带提一句：如果为了兼容 C++03，你也可以去掉 </span><code>class</code><span> 关键字。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum</span> <span class="hl-title class_">http_error</span></span>
+<span class="line">{</span>
+<span class="line"> ...</span>
+<span class="line">};</span></code></pre>
+
+</figure>
+<p><span>注：C++0x 的 </span><code>enum class</code><span> 和 </span><code>enum</code><span> 的区别就是前者把枚举元放进了类里，因此你必须要在前面加上类名才能访问它，比如 </span><code>http_error::ok</code><span>，你可以近似的认为就像包进了命名空间一样：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">namespace</span> http_error</span>
+<span class="line">{</span>
+<span class="line">  <span class="hl-keyword">enum</span> <span class="hl-title class_">http_error_t</span></span>
+<span class="line">  {</span>
+<span class="line">    ...</span>
+<span class="line">  };</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>后续我会使用 </span><code>enum class</code><span>，读者可以自行尝试用命名空间包含。</span></p>
+</section>
+<section id="4-3-Step-2-error_category">
+
+    <h3>
+    <a href="#4-3-Step-2-error_category"><span>4.3. Step 2: 定义一个 </span><code>error_category</code><span> 类</span> </a>
+    </h3>
+<p><span>一个 </span><code>error_code</code><span> 对象包含着类别和值，类别决定了这个数值（比如100）是代表着 </span><code>http_error::continue_request</code><span>、</span><code>std::errc::network_down</code><span>(Linux 下是 ENETDOWN)或其他意思。</span>
+<span>为了构造一个新类别，你必须继承 </span><code>error_category</code><span> 类：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">class</span> <span class="hl-title class_">http_category_impl</span> : <span class="hl-keyword">public</span> std::error_category</span>
+<span class="line">{</span>
+<span class="line"><span class="hl-keyword">public</span>:</span>
+<span class="line">  <span class="hl-function"><span class="hl-keyword">virtual</span> <span class="hl-type">const</span> <span class="hl-type">char</span> * <span class="hl-title">name</span><span class="hl-params">()</span> <span class="hl-type">const</span></span>;</span>
+<span class="line">  <span class="hl-function"><span class="hl-keyword">virtual</span> std::string <span class="hl-title">message</span><span class="hl-params">(<span class="hl-type">int</span> ev)</span> <span class="hl-type">const</span></span>;</span>
+<span class="line">};</span></code></pre>
+
+</figure>
+<p><span>目前我们只实现一下继承自 </span><code>error_category</code><span> 的虚函数。</span></p>
+</section>
+<section id="4-4-Step-3">
+
+    <h3>
+    <a href="#4-4-Step-3"><span>4.4. Step 3: 给这个类别一个可读性强的名字</span> </a>
+    </h3>
+<p><code>error_category::name()</code><span>这个虚函数必须返回一个代表类别的字符串：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">const</span> <span class="hl-type">char</span>* <span class="hl-title">http_category_impl::name</span><span class="hl-params">()</span> <span class="hl-type">const</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  <span class="hl-keyword">return</span> <span class="hl-string">&quot;http&quot;</span>;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>这个名字不强制要求全局独一无二，因为它只有在把 error code 写入输出流时才被用到。尽管如此，对一个给定的程序而言，有一个独一无二的命名总是好的。</span></p>
+</section>
+<section id="4-5-Step-4-error-codes">
+
+    <h3>
+    <a href="#4-5-Step-4-error-codes"><span>4.5. Step 4: 把 error codes 转换为字符串</span> </a>
+    </h3>
+<p><code>error_category()::message()</code><span>方法把一个错误值转换成对应这个错误值的字符串：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function">std::string <span class="hl-title">http_category_impl::message</span><span class="hl-params">(<span class="hl-type">int</span> ev)</span> <span class="hl-type">const</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  <span class="hl-keyword">switch</span> (ev)</span>
+<span class="line">  {</span>
+<span class="line">  <span class="hl-keyword">case</span> http_error::continue_request:</span>
+<span class="line">    <span class="hl-keyword">return</span> <span class="hl-string">&quot;Continue&quot;</span>;</span>
+<span class="line">  <span class="hl-keyword">case</span> http_error::switching_protocols:</span>
+<span class="line">    <span class="hl-keyword">return</span> <span class="hl-string">&quot;Switching protocols&quot;</span>;</span>
+<span class="line">  <span class="hl-keyword">case</span> http_error::ok:</span>
+<span class="line">    <span class="hl-keyword">return</span> <span class="hl-string">&quot;OK&quot;</span>;</span>
+<span class="line">  ...</span>
+<span class="line">  <span class="hl-keyword">case</span> http_error::geteway_timeout:</span>
+<span class="line">    <span class="hl-keyword">return</span> <span class="hl-string">&quot;Gateway time-out&quot;</span>;</span>
+<span class="line">  <span class="hl-keyword">case</span> http_error::version_not_supported:</span>
+<span class="line">    <span class="hl-keyword">return</span> <span class="hl-string">&quot;HTTP version not supported&quot;</span>;</span>
+<span class="line">  <span class="hl-keyword">default</span>:</span>
+<span class="line">    <span class="hl-keyword">return</span> <span class="hl-string">&quot;Unknow HTTP error&quot;</span>;</span>
+<span class="line">  }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>当你调用 </span><code>error_code::message()</code><span>时就可以把 error_code 转换成对应的错误信息了。</span></p>
+<p><code>&lt;system_error&gt;</code><span>没有对这些消息的本土化(原文用的是 localisation，译者理解就是指不同系统环境下的不同)提供帮助，如果是库函数里的错误，会基于不同的环境给出不同的结果，如果你的程序也需要支持 localisation，我建议你用同样的方法。（一点历史：LWG 意识到过要支持 locallisation，但是由于无法和用户可拓展性协调好，最终选择了在标准中对这方面只字不提）</span></p>
+</section>
+<section id="4-6-Step-5">
+
+    <h3>
+    <a href="#4-6-Step-5"><span>4.6. Step 5: 类别要唯一</span> </a>
+    </h3>
+<p><span>一个继承自 </span><code>error_category</code><span> 的对象的唯一性是由其地址决定的，也就是当你这样写：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-type">const</span> std::error_category &amp; cat1 = ...;</span>
+<span class="line"><span class="hl-type">const</span> std::error_category &amp; cat2 = ...;</span>
+<span class="line"><span class="hl-keyword">if</span> (cat1 == cat2)</span>
+<span class="line">  ...</span></code></pre>
+
+</figure>
+<p><span>这里的 </span><code>if</code><span> 判断就等价于你这样写：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">if</span> (&amp;cat1 == &amp;cat2)</span>
+<span class="line"> ...</span></code></pre>
+
+</figure>
+<p><span>从这个标准库的例子可以看出，你需要提供一个方法来返回这个类别对象的引用：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">const</span> std::error_category &amp; <span class="hl-title">http_category</span><span class="hl-params">()</span></span>;</span></code></pre>
+
+</figure>
+<p><span>这个方法必须始终返回同一个对象，一种实现方法是定义为全局对象：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">http_category_impl http_category_instance;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-function"><span class="hl-type">const</span> std::error_category &amp; <span class="hl-title">http_category</span><span class="hl-params">()</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  <span class="hl-keyword">return</span> http_category_impl;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>然而用一个全局变量会出现在不同模组中使用初始化顺序的问题，另一个可选方案是用静态变量：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">const</span> std::error_category &amp; <span class="hl-title">http_category</span><span class="hl-params">()</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  <span class="hl-type">static</span> http_category_impl instance;</span>
+<span class="line">  <span class="hl-keyword">return</span> instance;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>这样这个类的对象就会在第一次使用的时候被初始化好。C++0x 也保证了这个初始化是线程安全的（C++03没有保证）</span></p>
+<p><span>一点历史：在早期设计阶段，我们考虑过使用整型或者字符串来标志一类 error_code，最主要的问题就是需要保证在和用户可拓展性结合的时候，还要保证独一无二的特性。如果一个类别是用整形或者字符串来定义的，那如何解决两个相关库的冲突？用类来作为标志符，可以用链接器来保证不同的类别会被不一样的识别。以及，用继承基类的方法，可以让我们保持错误码可复制的同时使用多态的特性。</span></p>
+</section>
+<section id="4-7-Step-6">
+
+    <h3>
+    <a href="#4-7-Step-6"><span>4.7. Step 6: 从枚举里构建一个错误码</span> </a>
+    </h3>
+<p><span>如同我在 part3 中所说，</span><code>&lt;system_error&gt;</code><span>的实现要求 </span><code>make_error_code()</code><span>方法来把一个错误码和类别联系起来。比如说还是 HTTP 错误，你可以像这样写：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function">std::error_code <span class="hl-title">make_error_code</span> <span class="hl-params">(http_error e)</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  <span class="hl-keyword">return</span> std::<span class="hl-built_in">error_code</span>(<span class="hl-built_in">static_cast</span>&lt;<span class="hl-type">int</span>&gt;(e), <span class="hl-built_in">http_category</span>());</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>更完整点，你还可以给错误情况也提供相似的方法:</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function">std::error_condition <span class="hl-title">make_error_condition</span><span class="hl-params">(http_error e)</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  <span class="hl-keyword">return</span> std::<span class="hl-built_in">error_condition</span>(<span class="hl-built_in">static_cast</span>&lt;<span class="hl-type">int</span>&gt;(e), <span class="hl-built_in">http_category</span>());</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>因为</span><code>&lt;system_error&gt;</code><span>实现的时候找这些方法都是通过 ADL，你需要把他们和 </span><code>http_error</code><span> 类放到同一个命名空间</span></p>
+</section>
+<section id="4-8-Step-7-error_code">
+
+    <h3>
+    <a href="#4-8-Step-7-error_code"><span>4.8. Step 7: 注册一个隐式转换到 </span><code>error_code</code> </a>
+    </h3>
+<p><span>因为 </span><code>http_error</code><span> 枚举元被用作 </span><code>error_code</code><span> 常量，用 </span><code>is_error_code_enum</code><span> 模板元来实现一个转换构造：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">namespace</span> std</span>
+<span class="line">{</span>
+<span class="line">  <span class="hl-keyword">template</span> &lt;&gt;</span>
+<span class="line">  <span class="hl-keyword">struct</span> <span class="hl-title class_">is_error_code_enum</span>&lt;http_error&gt; : <span class="hl-keyword">public</span> true_type {};</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="4-9-Step-8">
+
+    <h3>
+    <a href="#4-9-Step-8"><span>4.9. Step 8: (可选)设置一个默认的错误情况</span> </a>
+    </h3>
+<p><span>有些你定义的错误可能和标准库的 </span><code>errc</code><span> 错误情况意思相同。比如说，HTTP 应答码</span><code>403 Forbidden</code><span> 也基本上和 </span><code>std::errc::permission_denied</code><span> 相同</span></p>
+<p><code>error_category::default_error_condition()</code><span>虚函数允许你对给定错误码定义等价(equivalent)的错误情况(见 part2 关于等价的定义)。</span></p>
+<p><span>对于这个 HTTP 错误，你可以这样写：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">class</span> <span class="hl-title class_">http_category_impl</span> : std::error_category</span>
+<span class="line">{</span>
+<span class="line"><span class="hl-keyword">public</span>:</span>
+<span class="line">  ...</span>
+<span class="line">  <span class="hl-function"><span class="hl-keyword">virtual</span> std::error_condition <span class="hl-title">default_error_condition</span><span class="hl-params">(<span class="hl-type">int</span> ev)</span> <span class="hl-type">const</span></span>;</span>
+<span class="line">};</span>
+<span class="line">...</span>
+<span class="line"><span class="hl-function">std::error_condition <span class="hl-title">http_category_impl::default_error_condition</span><span class="hl-params">(<span class="hl-type">int</span> ev)</span> <span class="hl-type">const</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  <span class="hl-keyword">switch</span> (ev)</span>
+<span class="line">  {</span>
+<span class="line">  <span class="hl-keyword">case</span> http_error::forbidden;</span>
+<span class="line">    <span class="hl-keyword">return</span> std::errc::permission_denied;</span>
+<span class="line">  <span class="hl-keyword">default</span>:</span>
+<span class="line">    <span class="hl-keyword">return</span> std::<span class="hl-built_in">error_condition</span>(ev, *<span class="hl-keyword">this</span>);</span>
+<span class="line">  }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>如果你选者不重载这个虚函数，那么错误码默认的错误情况就是有相同错误值和类别的了(default)</span></p>
+</section>
+<section id="4-10">
+
+    <h3>
+    <a href="#4-10"><span>4.10. 使用</span> </a>
+    </h3>
+<p><span>你可以把 </span><code>http_error</code><span> 枚举元用作 </span><code>error_code</code><span> 常量了：</span></p>
+<p><span>比如处理的同时改变错误码</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">void</span> <span class="hl-title">server_side_http_handler</span><span class="hl-params">(..., std::error_code &amp; ec)</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  ...</span>
+<span class="line">  ec = http_error::ok;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>以及来检验它：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">std::error_code ec;</span>
+<span class="line"><span class="hl-built_in">load_resource</span>(<span class="hl-string">&quot;http://some/url&quot;</span>, ec);</span>
+<span class="line"><span class="hl-keyword">if</span>(ec == http_error::ok)</span>
+<span class="line">  ...</span></code></pre>
+
+</figure>
+<p><span>有时候错误值基于 HTTP 应答码，我们可以直接用应答码来设置 </span><code>error_code</code><span>：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function">std::string <span class="hl-title">load_resource</span><span class="hl-params">(<span class="hl-type">const</span> std::string &amp; url, std::error_code &amp; ec)</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  <span class="hl-comment">// send request ...</span></span>
+<span class="line"></span>
+<span class="line">  <span class="hl-comment">// receive response ...</span></span>
+<span class="line"></span>
+<span class="line">  <span class="hl-type">int</span> response_code;</span>
+<span class="line">  <span class="hl-built_in">parse_response</span>(..., &amp;response_code);</span>
+<span class="line">  ec.<span class="hl-built_in">assign</span>(response_code, <span class="hl-built_in">http_category</span>());</span>
+<span class="line"></span>
+<span class="line">  <span class="hl-comment">// ...</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>最后如果你在 Step 8里定义了一个等价关系，那么你可以：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">std::error_code ec;</span>
+<span class="line">data = <span class="hl-built_in">load_resource</span>(<span class="hl-string">&quot;http://some/url&quot;</span>, ec);</span>
+<span class="line"><span class="hl-keyword">if</span> (ec == std::errc::permission_denied)</span>
+<span class="line">  ...</span></code></pre>
+
+</figure>
+<p><span>原始的错误码就保证了错误没有丢失，方便定位到错误发送的根源。</span></p>
+<p><span>下一节，我会展示如何使用用户自定义的错误码。</span></p>
+</section>
+</section>
+<section id="5-part5">
+
+    <h2>
+    <a href="#5-part5"><span>5. part5</span> </a>
+    </h2>
+<section id="5-1-error-condition">
+
+    <h3>
+    <a href="#5-1-error-condition"><span>5.1. 创建你自己的 error condition</span> </a>
+    </h3>
+<p><code>&lt;system_error&gt;</code><span>组件并不只是在 </span><code>error_code</code><span> 上支持用户可拓展，</span><code>error_condition</code><span> 也可以自定义。</span></p>
+</section>
+<section id="5-2-error-condition">
+
+    <h3>
+    <a href="#5-2-error-condition"><span>5.2. 为什么需要自己的 error condition</span> </a>
+    </h3>
+<p><span>为了回答这个问题，需要先回顾一下 </span><code>error_code</code><span> 和 </span><code>error_condition</code><span> 的区别：</span></p>
+<ul>
+<li>
+<code>class error_code</code><span> 代表了一种特定的操作返回的错误值</span>
+</li>
+<li>
+<code>class error_condition</code><span> 你希望在代码中进行测试的一种情况</span>
+</li>
+</ul>
+<p><span>这是一些建议使用 error_condition 的情况</span></p>
+<ol>
+<li>
+<span>有操作系统差异性的错误的抽象</span>
+<ul>
+<li>
+<span>假设你正在写一个可移植性的方法 </span><code>getaddrinfo()</code><span>，暂定两种错误情况：</span><code>当前无法解析，请稍后再试</code><span>和</span><code>无法解析</code><span>，而 </span><code>getaddrinfo()</code><span>返回错误又和平台相关</span>
+<ul>
+<li>
+<span>在 POSIX 上，这俩错误码分别是 </span><code>EAI_AGAIN</code><span> 和 </span><code>EAI_NONAME</code><span>，且是在不同命名空间下的 </span><code>errno</code><span> 值，意味着你需要实现一个新的 </span><code>error_category</code><span> 错误类别来获取这些错误码</span>
+</li>
+<li>
+<span>而在 Windows 上，这两个错误码分别是 </span><code>WSAEAI_AGAIN</code><span> 和 </span><code>WSAEAI_NONAME</code><span>，尽管名称上和 POSIX 的很像，但是共享 </span><code>Getlasterror</code><span> 命名空间，因此你可能想复用 </span><code>std::system_category()</code><span>来代表 </span><code>getaddrinfo()</code><span>在 Windows 下的错误</span>
+</li>
+</ul>
+</li>
+<li>
+<span>为了避免丢掉信息，你可能想在保留原始有平台差异的错误码的的同时提供两种错误情况 </span><code>error_condition</code><span>(比方说叫做 </span><code>name_not_found_try_again</code><span> 和 </span><code>name_not_found</code><span>)，这样这个 API 的使用者就可以针对这种情况测试了</span>
+</li>
+</ul>
+</li>
+<li>
+<span>给通用的错误码一个和上下文相关的意思</span>
+<ul>
+<li>
+<span>大多数 POSIX 系统调用用 </span><code>errno</code><span> 来反馈错误，许多错误被复用在不同的功能里导致你需要查看相应的具体位置来判断到底是什么错误。如果你用这些系统调用来实现自己的代码，那么对用户来说这些错误就更摸不着头脑了。</span>
+</li>
+<li>
+<span>比方说：你实现了一个简单的数据库，每一个条目(entry)都被存储在一个单独的文件里，当你试图读文件的时候，数据库调用 </span><code>open()</code><span>方法来读取文件，这个方法设置了错误码 </span><code>ENOENT(if the file does not exist)</code>
+</li>
+<li>
+<span>因为数据库的存储方法对于用户而言是抽象的，你不可能让用户知道这个意味着 </span><code>no_such_file_or_directory</code><span>，事实上你可以创建你自己的富有语义的错误情况 </span><code>no_such_entry</code><span> 等效表示 </span><code>ENOENT</code>
+</li>
+</ul>
+</li>
+<li>
+<span>测试一系列相关的错误</span>
+<ul>
+<li>
+<span>随着你的代码库的增长，你也许发现有一些错误是类似的，也许你需要一个对系统可用资源低的反馈：</span>
+<ul>
+<li>
+<code>not_enough_memory</code>
+</li>
+<li>
+<code>resource_unavailable_try_again</code>
+</li>
+<li>
+<code>too_many_files_open</code>
+</li>
+<li>
+<code>too_many_files_open_in_system</code>
+</li>
+</ul>
+</li>
+<li>
+<span>在不同的地方可能错误码不一样，但是对这些错误的反应方式都是一样的，所以如果有一个一致的表述：</span><code>low_system_resources</code><span> 就可以方便的写如下代码来测试：</span>
+</li>
+</ul>
+</li>
+</ol>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">if</span> (ec == low_system_resources)</span>
+<span class="line">    <span class="hl-comment">// do something.</span></span></code></pre>
+
+</figure>
+</section>
+<section id="5-3-Step-1">
+
+    <h3>
+    <a href="#5-3-Step-1"><span>5.3. Step 1 : 定义你自己的错误值</span> </a>
+    </h3>
+<p><span>你需要创建一个 </span><code>enum</code><span> 枚举类给这些错误码，类似于 </span><code>std::errc</code><span>：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">enum class</span> <span class="hl-title class_">api_error</span></span>
+<span class="line">{</span>
+<span class="line">  low_system_resources = <span class="hl-number">1</span>,</span>
+<span class="line">  ...</span>
+<span class="line">  name_not_found,</span>
+<span class="line">  ...</span>
+<span class="line">  no_such_entry</span>
+<span class="line">};</span></code></pre>
+
+</figure>
+<p><span>这些值用多少其实不是很重要，只要保证他们各不相同且不为0，默认值0一般表示 success 没有错误。</span></p>
+</section>
+<section id="5-4-Step-2-error_category">
+
+    <h3>
+    <a href="#5-4-Step-2-error_category"><span>5.4. Step 2 : 定义一个 </span><code>error_category</code><span> 类</span> </a>
+    </h3>
+<p><span>一个 </span><code>error_condition</code><span> 对象包含错误值和种类，为了创建一个新类，你必须从 </span><code>error_category</code><span> 继承：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">class</span> <span class="hl-title class_">api_category_impl</span> : <span class="hl-keyword">public</span> std::error_category</span>
+<span class="line">{</span>
+<span class="line"><span class="hl-keyword">public</span>:</span>
+<span class="line">  <span class="hl-function"><span class="hl-keyword">virtual</span> <span class="hl-type">const</span> <span class="hl-type">char</span> * <span class="hl-title">name</span><span class="hl-params">()</span> <span class="hl-type">const</span></span>;</span>
+<span class="line">  <span class="hl-function"><span class="hl-keyword">virtual</span> std::string <span class="hl-title">message</span><span class="hl-params">(<span class="hl-type">int</span> ev)</span> <span class="hl-type">const</span></span>;</span>
+<span class="line">  <span class="hl-function"><span class="hl-keyword">virtual</span> <span class="hl-type">bool</span> <span class="hl-title">equivalent</span><span class="hl-params">(<span class="hl-type">const</span> std::error_code &amp; ec, <span class="hl-type">int</span> condition)</span> <span class="hl-type">const</span></span>;</span>
+<span class="line">};</span></code></pre>
+
+</figure>
+</section>
+<section id="5-5-Step-3">
+
+    <h3>
+    <a href="#5-5-Step-3"><span>5.5. Step 3 : 给这个类别一个可读性强的名字</span> </a>
+    </h3>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">const</span> <span class="hl-type">char</span> * <span class="hl-title">api_category_impl::name</span><span class="hl-params">()</span> <span class="hl-type">const</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  <span class="hl-keyword">return</span> <span class="hl-string">&quot;api&quot;</span>;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="5-6-Step-4">
+
+    <h3>
+    <a href="#5-6-Step-4"><span>5.6. Step 4 : 把错误情况转换为字符串</span> </a>
+    </h3>
+<p><code>error_category::message()</code><span>方法把错误值转换为一个表示这个错误的字符串（因此 enum 里的值并不重要）：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function">std::string <span class="hl-title">api_category_impl::message</span><span class="hl-params">(<span class="hl-type">int</span> ev)</span> <span class="hl-type">const</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  <span class="hl-keyword">switch</span> (ev)</span>
+<span class="line">  {</span>
+<span class="line">  <span class="hl-keyword">case</span> api_error:low_system_resources:</span>
+<span class="line">    <span class="hl-keyword">return</span> <span class="hl-string">&quot;Low system resources&quot;</span>;</span>
+<span class="line">  ...</span>
+<span class="line">  }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>当然你可能根本不打算调用这个方法，那么你可以简单的写写：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function">std::string <span class="hl-title">api_category_impl::message</span><span class="hl-params">(<span class="hl-type">int</span> ev)</span> <span class="hl-type">const</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  <span class="hl-keyword">return</span> <span class="hl-string">&quot;api error&quot;</span>;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="5-7-Step-5">
+
+    <h3>
+    <a href="#5-7-Step-5"><span>5.7. Step 5 : 实现错误的等价判断</span> </a>
+    </h3>
+<p><span>虚函数 </span><code>error_category::equivalent()</code><span>被用来定义 error</span><em><span>code 和 error</span></em><span>condition 的等价关系，有两种重载方法：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-keyword">virtual</span> <span class="hl-type">bool</span> <span class="hl-title">equivalent</span><span class="hl-params">(<span class="hl-type">int</span> code, <span class="hl-type">const</span> error_condition &amp; condition)</span> <span class="hl-type">const</span></span>;</span></code></pre>
+
+</figure>
+<p><span>这种被用来建立当前种类下的 </span><code>error_code</code><span> 和任意 </span><code>error_condition</code><span> 的一致。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-keyword">virtual</span> <span class="hl-type">bool</span> <span class="hl-title">equivalent</span><span class="hl-params">(<span class="hl-type">const</span> error_code &amp; code, <span class="hl-type">int</span> condition)</span> <span class="hl-type">const</span></span>;</span></code></pre>
+
+</figure>
+<p><span>这种建立了当前种类下的 </span><code>error_condition</code><span> 和其他种类的 </span><code>error_code</code><span> 的等价关系。</span></p>
+<p><span>因为你在创建自定义的 </span><code>error_condition</code><span>，这个方法你必须重载。</span></p>
+<p><span>定义等价关系很简单，如果你想要一个 </span><code>error_code</code><span> 等价你写的错误情况，就 </span><code>return true</code><span>，否则 </span><code>return false</code></p>
+<p><span>如果你是想抽象一个有系统差异的错误，你就得这样实现：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">bool</span> <span class="hl-title">api_category_impl::equivalent</span><span class="hl-params">(<span class="hl-type">const</span> std::error_code &amp; code, <span class="hl-type">int</span> condition)</span> <span class="hl-type">const</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  <span class="hl-keyword">switch</span> (condition)</span>
+<span class="line">  {</span>
+<span class="line">  ...</span>
+<span class="line">  <span class="hl-keyword">case</span> api_error::name_not_found:</span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">if</span> defined(_Win32)</span></span>
+<span class="line">    <span class="hl-keyword">return</span> code == std::<span class="hl-built_in">error_code</span>(WSAEAI_NONAME, <span class="hl-built_in">system_category</span>());</span>
+<span class="line"><span class="hl-meta">#<span class="hl-keyword">else</span></span></span>
+<span class="line">    <span class="hl-keyword">return</span> code == std::<span class="hl-built_in">error_code</span>(EAI_NONAME, <span class="hl-built_in">getaddrinfo_category</span>());<span class="hl-comment">//很显然 getaddrinfo_category()需要在其它地方定义</span></span>
+<span class="line">  ...</span>
+<span class="line">  <span class="hl-keyword">default</span>:</span>
+<span class="line">    <span class="hl-keyword">return</span> <span class="hl-literal">false</span>;</span>
+<span class="line">  }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>你想写多复杂都行，甚至能复用其它 </span><code>error_condition</code><span>.</span></p>
+<p><span>如果你像创建一个语义相关的错误情况或者测试一些相关的错误：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">bool</span> <span class="hl-title">api_category_impl::equivalent</span><span class="hl-params">(<span class="hl-type">const</span> std::error_code &amp; code, <span class="hl-type">int</span> condition)</span> <span class="hl-type">const</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  <span class="hl-keyword">switch</span> (condition)</span>
+<span class="line">  {</span>
+<span class="line">  <span class="hl-keyword">case</span> api_error::low_system_resources:</span>
+<span class="line">    <span class="hl-keyword">return</span> code == std::errc::not_enough_memory || code == std::errc::resource_unavailable_try_again ||</span>
+<span class="line">           code == std::errc::too_many_files_open || code == std::errc::too_many_files_open_in_system;</span>
+<span class="line">  <span class="hl-keyword">case</span> api_error::no_such_entry:</span>
+<span class="line">    <span class="hl-keyword">return</span> code == std::errc::no_such_file_or_directory;</span>
+<span class="line">  <span class="hl-keyword">default</span>:</span>
+<span class="line">    <span class="hl-keyword">return</span> <span class="hl-literal">false</span>;</span>
+<span class="line">  }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="5-8-Step-6">
+
+    <h3>
+    <a href="#5-8-Step-6"><span>5.8. Step 6 : 给种类一个独特的标志</span> </a>
+    </h3>
+<p><span>你应该给构造的类一个引用：</span></p>
+<p><code>const std::error_category &amp; api_category();</code></p>
+<p><span>为了总是使用同一个引用，你可以定位为全局变量：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">api_category_impl api_category_instance;</span>
+<span class="line"><span class="hl-function"><span class="hl-type">const</span> std::error_category &amp; <span class="hl-title">api_category</span><span class="hl-params">()</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  <span class="hl-keyword">return</span> api_category_instance;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>或者用 C++0x 线程安全的静态变量</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function"><span class="hl-type">const</span> std::error_category &amp; <span class="hl-title">api_category</span><span class="hl-params">()</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  <span class="hl-type">static</span> api_category_impl instance;</span>
+<span class="line">  <span class="hl-keyword">return</span> instance;</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="5-9-Step-7-error_condition">
+
+    <h3>
+    <a href="#5-9-Step-7-error_condition"><span>5.9. Step 7 : 从枚举里构造一个 </span><code>error_condition</code> </a>
+    </h3>
+<p><code>&lt;system_error&gt;</code><span>的实现要求一个 </span><code>make_error_condition()</code><span>方法来把一个错误值关联到类里：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-function">std::error_condition <span class="hl-title">make_error_condition</span><span class="hl-params">(api_error e)</span></span></span>
+<span class="line"><span class="hl-function"></span>{</span>
+<span class="line">  <span class="hl-keyword">return</span> std::<span class="hl-built_in">error_condition</span>(<span class="hl-keyword">static_cast</span>&lt;<span class="hl-type">int</span>&gt; e, <span class="hl-built_in">api_category</span>());</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>为了完整起见，同样还需要给 </span><code>error_code</code><span> 一个相似的构造函数，留给读者自己试试</span></p>
+</section>
+<section id="5-10-Step-8-error_condition">
+
+    <h3>
+    <a href="#5-10-Step-8-error_condition"><span>5.10. Step 8 : 注册一个到 </span><code>error_condition</code><span> 的隐式转换</span> </a>
+    </h3>
+<p><span>最终，为了 </span><code>api_error</code><span> 枚举器可以被用作 </span><code>error_condition</code><span> 的常量，需要一个 </span><code>is_error_condition_enum</code><span> 模板类的转换构造：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">namespace</span> std</span>
+<span class="line">{</span>
+<span class="line">  <span class="hl-keyword">template</span> &lt;&gt;</span>
+<span class="line">  <span class="hl-keyword">struct</span> <span class="hl-title class_">is_error_condition_enum</span>&lt;api_error&gt; : <span class="hl-keyword">public</span> true_type {};</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="5-11-error_condition">
+
+    <h3>
+    <a href="#5-11-error_condition"><span>5.11. 使用 </span><code>error_condition</code> </a>
+    </h3>
+<p><span>现在 </span><code>api_error</code><span> 枚举器可以被用作 </span><code>error_condition</code><span> 常量了，就好像和 </span><code>std::errc</code><span> 里的一样使用：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">std::error_code ec;</span>
+<span class="line"><span class="hl-built_in">load_resource</span>(<span class="hl-string">&quot;http://some/url&quot;</span>, ec);</span>
+<span class="line"><span class="hl-keyword">if</span> (ec == api_error::low_system_resources)</span>
+<span class="line">  ...</span></code></pre>
+
+</figure>
+<p><span>就像我前面多次提及的，原始的错误码被保留没有丢失任何信息。不管错误码来自操作系统还是 HTTP 库还是自己的错误目录，你自定义的 </span><code>error_conditions</code><span> 都可以很好的匹配</span></p>
+</section>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2020-07-01-t-system-error-in-cpp.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>

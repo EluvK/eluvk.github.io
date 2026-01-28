@@ -1,0 +1,628 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLM Agent Projects</title>
+  <meta name="description" content="汇总一些最近感兴趣的项目信息。">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2025/05/08/llm-agent-projects.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#LLM-Agent-Projects"><span>LLM Agent Projects</span> <time datetime="2025-05-08">May 8, 2025</time></a>
+    </h1>
+<p><span>汇总一些最近感兴趣的项目信息。</span></p>
+<section id="MCP">
+
+    <h2>
+    <a href="#MCP"><a href="https://github.com/modelcontextprotocol"><span>MCP</span></a> </a>
+    </h2>
+<p><span>MCP（Model Context Protocol，即模型上下文协议）是由 Anthropic（Claude 的母公司）提出的一个协议，旨在为 LLM（大型语言模型）通过一套标准化的协议提供拓展功能工具箱。赋予 LLM 访问外部数据，使用特定工具和 API 的能力。</span></p>
+<p><span>Latest MCP 版本为 </span><a href="https://modelcontextprotocol.io/specification/2025-03-26"><span>2025-03-26</span></a><span>，最新这一版本引入了对 </span><code>Streamable HTTP</code><span> 的支持，允许 LLM 通过 HTTP 流式传输数据。</span></p>
+<section id="MCP-Transport">
+
+    <h3>
+    <a href="#MCP-Transport"><span>MCP - Transport</span> </a>
+    </h3>
+<p><span>编码：所有消息均采用 </span><strong><strong><span>JSON-RPC 2.0</span></strong></strong><span> 格式，必须使用 </span><strong><strong><span>UTF-8</span></strong></strong><span> 编码。</span>
+<span>传输： </span><strong><strong><code>stdio</code></strong></strong><span>（优先支持）：通过标准输入/输出流通信。/ </span><strong><strong><code>Streamable HTTP</code></strong></strong><span>（新版推荐）：基于 HTTP 的增强传输，支持流式交互。</span></p>
+<section id="Streamable-HTTP">
+
+    <h4>
+    <a href="#Streamable-HTTP"><span>Streamable HTTP</span> </a>
+    </h4>
+<ul>
+<li>
+<strong><strong><span>统一端点</span></strong></strong><span>：单个 HTTP 路径（如 </span><code>/mcp</code><span>）同时处理 </span><code>POST</code><span>（客户端→服务端）和 </span><code>GET</code><span>（服务端→客户端）。</span>
+</li>
+</ul>
+<table>
+<tr>
+<th><strong><strong><span>方向</span></strong></strong><span></span></th>
+<th><strong><strong><span>HTTP 方法</span></strong></strong><span></span></th>
+<th><strong><strong><span>Content-Type</span></strong></strong><span></span></th>
+<th><strong><strong><span>消息类型</span></strong></strong><span></span></th>
+<th><strong><strong><span>响应逻辑</span></strong></strong><span></span></th>
+</tr>
+<tr>
+<td><span>客户端 → 服务端</span></td>
+<td><span>POST</span></td>
+<td><code>application/json</code><span></span></td>
+<td><span>请求/通知/响应（或批量）</span></td>
+<td><span>- 纯响应/通知：返回 </span><code>202 Accepted</code><span>&lt;br&gt;- 含请求：返回 </span><code>application/json</code><span> 或 SSE 流</span></td>
+</tr>
+<tr>
+<td><span>服务端 → 客户端（推送）</span></td>
+<td><span>GET</span></td>
+<td><code>text/event-stream</code><span> (SSE)</span></td>
+<td><span>服务端主动发起的请求/通知（可批量）</span></td>
+<td><span>客户端需持续监听 SSE 流</span></td>
+</tr>
+</table>
+</section>
+</section>
+<section id="Feature">
+
+    <h3>
+    <a href="#Feature"><span>Feature</span> </a>
+    </h3>
+<p><span>MCP 区分服务端和客户端。客户端包括 Root 和 Sampling 两种功能。服务端包括 Prompts、Resources 和 Tools 三种功能。</span></p>
+<p><strong><strong><span>Root</span></strong></strong><span>: MCP 客户端通过 roots 特性向服务端暴露文件系统的可访问根目录，明确服务端能操作的文件范围边界。</span></p>
+<p><strong><strong><span>Sampling</span></strong></strong><span>: 允许服务端通过客户端请求 LLM 生成内容。服务端无需直接管理 API 密钥，通过客户端代理实现。</span></p>
+<p><strong><strong><span>Prompts</span></strong></strong><span>: 服务端提供结构化提示词模板，客户端可动态获取并填充参数生成最终提示。</span></p>
+<p><strong><strong><span>Resources</span></strong></strong><span>: 服务端暴露结构化数据（如文件、API 结果），供 LLM 获取上下文。</span></p>
+<p><strong><strong><span>Tools</span></strong></strong><span>: 服务端提供可执行工具（如 API 调用），由 LLM 按需触发。</span></p>
+</section>
+</section>
+<section id="PocketFlow">
+
+    <h2>
+    <a href="#PocketFlow"><a href="https://github.com/The-Pocket/PocketFlow"><span>PocketFlow</span></a> </a>
+    </h2>
+<p><span>一个极其精炼的 LLM 框架，100 行 python 代码，概况了一个简单有效的大模型工作流，利用这些最基本的原语，可以构建出复杂的工作流。</span></p>
+<section id="s-1">
+
+    <h3>
+    <a href="#s-1"><span>核心概念</span> </a>
+    </h3>
+<section id="Node">
+
+    <h4>
+    <a href="#Node"><a href="https://the-pocket.github.io/PocketFlow/core_abstraction/node.html"><span>Node</span></a> </a>
+    </h4>
+
+<figure>
+
+<img alt="node" src="https://github.com/the-pocket/.github/raw/main/assets/node.png?raw=true">
+</figure>
+<p><span>node 是一个执行任务的最小单元，整体流程会分为 prep, exec, post 三个阶段。prep 阶段可能从shared store 里获取数据，exec 阶段执行任务，post 阶段将结果存入 shared store。</span></p>
+<p><span>exec 部分支持失败后间隔重试，还可以再使用最终 fallback。</span></p>
+</section>
+<section id="Flow">
+
+    <h4>
+    <a href="#Flow"><a href="https://the-pocket.github.io/PocketFlow/core_abstraction/flow.html"><span>Flow</span></a> </a>
+    </h4>
+<p><span>Flow 定义了 node 之间的执行顺序，每个 node 的执行结果可能影响下一个是哪一个 node。</span></p>
+<p><span>简单来说就是 node 作为顶点，flow 是边，构成一个有向图。</span></p>
+<p><span>定义里 Flow 也是继承自 Node，不过我感觉这部分的设计有点奇怪，还没体会到这种设计的好处</span>&hellip;</p>
+</section>
+<section id="Communication">
+
+    <h4>
+    <a href="#Communication"><a href="https://the-pocket.github.io/PocketFlow/core_abstraction/communication.html"><span>Communication</span></a> </a>
+    </h4>
+<p><span>Nodes 和 Flow 之间的主要通过 shared store 来进行数据传递（通常是一个 dict）。</span></p>
+</section>
+<section id="Batch-Async">
+
+    <h4>
+    <a href="#Batch-Async"><span>Batch &amp;&amp; Async</span> </a>
+    </h4>
+<p><span>还有一些批量的异步的概念，比较好理解。</span></p>
+</section>
+</section>
+<section id="Patterns">
+
+    <h3>
+    <a href="#Patterns"><span>Patterns</span> </a>
+    </h3>
+<p><span>官方给出的示意图，可以基于此设计实现的流行的模式。</span></p>
+
+<figure>
+
+<img alt="pattern" src="https://github.com/The-Pocket/.github/raw/main/assets/design.png">
+</figure>
+</section>
+</section>
+<section id="RAG-Retrieval-Augmented-Generation">
+
+    <h2>
+    <a href="#RAG-Retrieval-Augmented-Generation"><span>[</span><a href="https://github.com/FareedKhan-dev/all-rag-techniques"><span>RAG (Retrieval-Augmented Generation)] 技术介绍</span></a> </a>
+    </h2>
+<p><span>必备特性：长文档预处理、实时索引、嵌入模型质量（特定领域可能需要微调）</span></p>
+<p><span>核心难点：如何调整分块策略、相似度阈值，引入动态权重（根据使用频率）、反馈循环机制（根据是否采纳结果）来增强检索的相关性和准确性。</span></p>
+<p><span>概念汇总：</span></p>
+<ul>
+<li>
+<span>嵌入模型（Embedding Models）：将文本转换为向量表示，可以用向量相似度来检索相关性。</span>
+</li>
+</ul>
+<p><span>实践上以下的这些操作需要根据实际场景自由组合。</span></p>
+<p><span>感受：</span>
+<span>这个项目的文档真的读起来，比它看起来的样子更无趣，各种优化手段和思路都很好理解，但是原文似乎像是AI批量生成的内容一样冗余，为了写而写。</span>
+<span>技术上无论怎么操作最后的落脚点还是向量相似度检索/LLM回答、中间套上用 LLM 处理马上要喂给 LLM 的内容的各种手段实在不好评价。因为感觉这种方式十分不精确，也无法证明其完善性，实践上如果使用的（理论最佳）策略强依赖于原始材料的质量、完整性，也很难落地通用些的项目。</span>
+<span>后面一些引入了意图检测，加上一些合适的步骤来避免没法答硬回答的想法很好。</span></p>
+<section id="01-simple-rag">
+
+    <h3>
+    <a href="#01-simple-rag"><span>01 simple rag</span> </a>
+    </h3>
+<p><span>基础的 RAG 实现：将全文分割成一个个chunk，按照相似度检索出 top k 相关的 chunk，拼接成一个 Context prompt 传入 LLM。</span></p>
+</section>
+<section id="02-semantic-chunking">
+
+    <h3>
+    <a href="#02-semantic-chunking"><span>02 semantic chunking</span> </a>
+    </h3>
+<p><span>提出一种分块策略：将大段落按照其中句子的语义进行分块，相比于固定段落/长度的分块策略，可以更好的精炼每个 chunk 的内容。也能提高检索的相关性准确性。具体有多种方法：</span></p>
+<ul>
+<li>
+<span>百分位数法：计算所有相似性差异的 X 分位数，并在相似性下降超过该值的地方进行分块。</span>
+</li>
+<li>
+<span>标准差法：在相似性下降超过平均值减去 X 个标准差时进行分块。</span>
+</li>
+<li>
+<span>四分位距法（IQR）：使用四分位距（Q3 - Q1）来确定分块点。</span>
+</li>
+</ul>
+<p><span>执行的时候都是：先按照一句句话分开，计算每句的嵌入向量，然后计算每两句之间的相似度，选择一种分块策略来决定分块点，按照分块点重新拼接成 chunk。最后将 chunk 计算嵌入向量。回归到 RAG 的基本流程。</span></p>
+</section>
+<section id="03-chunk-size-selector">
+
+    <h3>
+    <a href="#03-chunk-size-selector"><span>03 chunk size selector</span> </a>
+    </h3>
+<p><span>提出了一种分块策略：按照不同的 length，再叠加一些 overlap 来分块。将不同长度的 chunk 都计算嵌入向量相似度选择最相关的 top k 个 chunk。回归到 RAG 的基本流程。</span></p>
+</section>
+<section id="04-context-enriched-rag">
+
+    <h3>
+    <a href="#04-context-enriched-rag"><span>04 context enriched rag</span> </a>
+    </h3>
+<p><span>Context-Enriched Retrieval: 在分块检索到最相关的 chunk 后，传入附近的上下文（如前后几句话）来丰富 chunk 的内容。可以提高检索的相关性准确性。</span></p>
+</section>
+<section id="05-contextual-chunk-headers-rag">
+
+    <h3>
+    <a href="#05-contextual-chunk-headers-rag"><span>05 contextual chunk headers rag</span> </a>
+    </h3>
+<p><span>标准的文本分块（chunking）可能丢失重要的上下文信息，导致检索效果较差。</span>
+<span>Contextual Chunk Headers (CCH) 方法通过为每个文本块生成高层次的上下文（如标题或章节名称），增强检索的准确性和回答的连贯性。</span></p>
+<p><span>通过为每个文本块生成标题并结合标题和内容进行检索。（个人评论：感觉如果最终的评价标准还是用向量相关性的话，对于原文内容的质量还是有很高的要求，在个人知识库里，一些不够完善的内容还是会影响检索效果。）</span></p>
+</section>
+<section id="06-augmentation-rag">
+
+    <h3>
+    <a href="#06-augmentation-rag"><span>06 augmentation rag</span> </a>
+    </h3>
+<p><span>引入了 问题生成（Question Generation），给定文本段落，让AI生成相关问题，然后将这些问题也作为查询来检索相关的文本段落。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_prompt = <span class="hl-string">&quot;You are an expert at generating relevant questions from text. Create concise questions that can be answered using only the provided text. Focus on key information and concepts.&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Define the user prompt with the text chunk and the number of questions to generate</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-string">Based on the following text, generate <span class="hl-subst">{num_questions}</span> different questions that can be answered using only this text:</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string"><span class="hl-subst">{text_chunk}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Format your response as a numbered list of questions only, with no additional text.</span></span>
+<span class="line"><span class="hl-string">&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="07-query-transform">
+
+    <h3>
+    <a href="#07-query-transform"><span>07 query transform</span> </a>
+    </h3>
+<p><span>引入了查询转换（Query Transformation），在检索之前对查询进行转换或增强，以提高检索的相关性和准确性。</span>
+<span>包括三种方法：</span></p>
+<ol>
+<li>
+<span>Rewrite 重写查询，用AI重写查询，使其更清晰或更具体。</span>
+</li>
+<li>
+<span>Step-back 回退提示，用AI生成更一般化的查询。</span>
+</li>
+<li>
+<span>Sub-query Decomposition 将复杂查询分解为多个子查询。</span>
+</li>
+</ol>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_prompt = <span class="hl-string">&quot;You are an AI assistant specialized in improving search queries. Your task is to rewrite user queries to be more specific, detailed, and likely to retrieve relevant information.&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Define the user prompt with the original query to be rewritten</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-string">Rewrite the following query to make it more specific and detailed. Include relevant terms and concepts that might help in retrieving accurate information.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Original query: <span class="hl-subst">{original_query}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Rewritten query:</span></span>
+<span class="line"><span class="hl-string">&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_prompt = <span class="hl-string">&quot;You are an AI assistant specialized in search strategies. Your task is to generate broader, more general versions of specific queries to retrieve relevant background information.&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Define the user prompt with the original query to be generalized</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-string">Generate a broader, more general version of the following query that could help retrieve useful background information.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Original query: <span class="hl-subst">{original_query}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Step-back query:</span></span>
+<span class="line"><span class="hl-string">&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_prompt = <span class="hl-string">&quot;You are an AI assistant specialized in breaking down complex questions. Your task is to decompose complex queries into simpler sub-questions that, when answered together, address the original query.&quot;</span></span>
+<span class="line">    </span>
+<span class="line"><span class="hl-comment"># Define the user prompt with the original query to be decomposed</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-string">Break down the following complex query into <span class="hl-subst">{num_subqueries}</span> simpler sub-queries. Each sub-query should focus on a different aspect of the original question.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Original query: <span class="hl-subst">{original_query}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Generate <span class="hl-subst">{num_subqueries}</span> sub-queries, one per line, in this format:</span></span>
+<span class="line"><span class="hl-string">1. [First sub-query]</span></span>
+<span class="line"><span class="hl-string">2. [Second sub-query]</span></span>
+<span class="line"><span class="hl-string">And so on...</span></span>
+<span class="line"><span class="hl-string">&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="08-reranker">
+
+    <h3>
+    <a href="#08-reranker"><span>08 reranker</span> </a>
+    </h3>
+<p><span>重排序核心概念：</span></p>
+<p><span>首先使用基本的检索方法（如向量相似度）获取初步的相关文档或段落。</span>
+<span>对初步检索到的文档进行评分，继续用AI模型对每个文档进行分析，计算其相关性分数。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment"># Define the system prompt for the LLM</span></span>
+<span class="line">system_prompt = <span class="hl-string">&quot;&quot;&quot;You are an expert at evaluating document relevance for search queries.</span></span>
+<span class="line"><span class="hl-string">Your task is to rate documents on a scale from 0 to 10 based on how well they answer the given query.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Guidelines:</span></span>
+<span class="line"><span class="hl-string">- Score 0-2: Document is completely irrelevant</span></span>
+<span class="line"><span class="hl-string">- Score 3-5: Document has some relevant information but doesn&#x27;t directly answer the query</span></span>
+<span class="line"><span class="hl-string">- Score 6-8: Document is relevant and partially answers the query</span></span>
+<span class="line"><span class="hl-string">- Score 9-10: Document is highly relevant and directly answers the query</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">You MUST respond with ONLY a single integer score between 0 and 10. Do not include ANY other text.&quot;&quot;&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Define the user prompt for the LLM</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;&quot;&quot;Query: <span class="hl-subst">{query}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Document:</span></span>
+<span class="line"><span class="hl-string"><span class="hl-subst">{result[<span class="hl-string">&#x27;text&#x27;</span>]}</span></span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">Rate this document&#x27;s relevance to the query on a scale from 0 to 10:&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+<p><span>根据评分结果对文档进行重排序，选择最相关的文档作为最终结果。</span></p>
+</section>
+<section id="09-rse">
+
+    <h3>
+    <a href="#09-rse"><span>09 rse</span> </a>
+    </h3>
+<p><span>Relevant Segment Extraction (RSE) 技术，通过识别文档中更连续的相关片段作为相关性排序依据，原理是倾向于认为相关性强的片段一般都是连续的，所以用区间片段的相关性累计值来作为选取片段的依据。</span></p>
+</section>
+<section id="10-contextual-compression">
+
+    <h3>
+    <a href="#10-contextual-compression"><span>10 contextual compression</span> </a>
+    </h3>
+<p><span>在检索到的文本块中，过滤掉和查询无关的内容，仅保留最相关的部分；通过压缩上下文来减少噪声，提高语言模型生成的质量。</span></p>
+<p><span>选择性压缩（Selective）、摘要压缩（Summary）、提取压缩（Extraction）</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment"># Define system prompts for different compression approaches</span></span>
+<span class="line"><span class="hl-keyword">if</span> compression_type == <span class="hl-string">&quot;selective&quot;</span>:</span>
+<span class="line">    system_prompt = <span class="hl-string">&quot;&quot;&quot;You are an expert at information filtering. </span></span>
+<span class="line"><span class="hl-string">    Your task is to analyze a document chunk and extract ONLY the sentences or paragraphs that are directly </span></span>
+<span class="line"><span class="hl-string">    relevant to the user&#x27;s query. Remove all irrelevant content.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Your output should:</span></span>
+<span class="line"><span class="hl-string">    1. ONLY include text that helps answer the query</span></span>
+<span class="line"><span class="hl-string">    2. Preserve the exact wording of relevant sentences (do not paraphrase)</span></span>
+<span class="line"><span class="hl-string">    3. Maintain the original order of the text</span></span>
+<span class="line"><span class="hl-string">    4. Include ALL relevant content, even if it seems redundant</span></span>
+<span class="line"><span class="hl-string">    5. EXCLUDE any text that isn&#x27;t relevant to the query</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Format your response as plain text with no additional comments.&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-keyword">elif</span> compression_type == <span class="hl-string">&quot;summary&quot;</span>:</span>
+<span class="line">    system_prompt = <span class="hl-string">&quot;&quot;&quot;You are an expert at summarization. </span></span>
+<span class="line"><span class="hl-string">    Your task is to create a concise summary of the provided chunk that focuses ONLY on </span></span>
+<span class="line"><span class="hl-string">    information relevant to the user&#x27;s query.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Your output should:</span></span>
+<span class="line"><span class="hl-string">    1. Be brief but comprehensive regarding query-relevant information</span></span>
+<span class="line"><span class="hl-string">    2. Focus exclusively on information related to the query</span></span>
+<span class="line"><span class="hl-string">    3. Omit irrelevant details</span></span>
+<span class="line"><span class="hl-string">    4. Be written in a neutral, factual tone</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Format your response as plain text with no additional comments.&quot;&quot;&quot;</span></span>
+<span class="line"><span class="hl-keyword">else</span>:  <span class="hl-comment"># extraction</span></span>
+<span class="line">    system_prompt = <span class="hl-string">&quot;&quot;&quot;You are an expert at information extraction.</span></span>
+<span class="line"><span class="hl-string">    Your task is to extract ONLY the exact sentences from the document chunk that contain information relevant </span></span>
+<span class="line"><span class="hl-string">    to answering the user&#x27;s query.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Your output should:</span></span>
+<span class="line"><span class="hl-string">    1. Include ONLY direct quotes of relevant sentences from the original text</span></span>
+<span class="line"><span class="hl-string">    2. Preserve the original wording (do not modify the text)</span></span>
+<span class="line"><span class="hl-string">    3. Include ONLY sentences that directly relate to the query</span></span>
+<span class="line"><span class="hl-string">    4. Separate extracted sentences with newlines</span></span>
+<span class="line"><span class="hl-string">    5. Do not add any commentary or additional text</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Format your response as plain text with no additional comments.&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="11-feedback-loop-rag">
+
+    <h3>
+    <a href="#11-feedback-loop-rag"><span>11 feedback loop rag</span> </a>
+    </h3>
+<p><span>动态的根据用户反馈来调整相关性评分。</span><strong><strong><span>将成功的问答纳入知识库</span></strong></strong><span>，增强长期的学习能力。</span></p>
+<p><span>思路很自然，实现比较玩具。这并不是一个仅在 RAG 场景下才需要的能力。</span></p>
+</section>
+<section id="12-adaptive-rag">
+
+    <h3>
+    <a href="#12-adaptive-rag"><span>12 adaptive rag</span> </a>
+    </h3>
+<p><span>用AI将用户查询的分类，再配合不同的检索策略来处理不同类型的查询。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment"># Define the system prompt to guide the AI&#x27;s classification</span></span>
+<span class="line">system_prompt = <span class="hl-string">&quot;&quot;&quot;You are an expert at classifying questions. </span></span>
+<span class="line"><span class="hl-string">    Classify the given query into exactly one of these categories:</span></span>
+<span class="line"><span class="hl-string">    - Factual: Queries seeking specific, verifiable information.</span></span>
+<span class="line"><span class="hl-string">    - Analytical: Queries requiring comprehensive analysis or explanation.</span></span>
+<span class="line"><span class="hl-string">    - Opinion: Queries about subjective matters or seeking diverse viewpoints.</span></span>
+<span class="line"><span class="hl-string">    - Contextual: Queries that depend on user-specific context.</span></span>
+<span class="line"><span class="hl-string"></span></span>
+<span class="line"><span class="hl-string">    Return ONLY the category name, without any explanation or additional text.</span></span>
+<span class="line"><span class="hl-string">&quot;&quot;&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Create the user prompt with the query to be classified</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;Classify this query: <span class="hl-subst">{query}</span>&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="13-self-rag">
+
+    <h3>
+    <a href="#13-self-rag"><span>13 self rag</span> </a>
+    </h3>
+<p><span>自反式 RAG，特点：</span></p>
+<ul>
+<li>
+<span>动态的（用LLM）决定是否要检索（在此前的 RAG 实现中，检索都是固定的步骤）。</span>
+</li>
+<li>
+<span>评估检索结果的相关性和准确性，如果不实用，不如直接使用 LLM 生成答案 / 反馈无法回答。</span>
+</li>
+</ul>
+</section>
+<section id="14-proposition-chunking">
+
+    <h3>
+    <a href="#14-proposition-chunking"><span>14 proposition chunking</span> </a>
+    </h3>
+<p><span>命题分块（Proposition Chunking），将文本分割成更小的命题单元（propositions），对生成的命题进行质量检查，包括准确性、清晰度、完整性和简洁性。</span></p>
+</section>
+<section id="15-multimodel-rag">
+
+    <h3>
+    <a href="#15-multimodel-rag"><span>15 multimodel rag</span> </a>
+    </h3>
+<p><span>使用视觉模型来对图像内容进行描述和提取，覆盖依赖图像数据的问题。</span></p>
+</section>
+<section id="16-fusion-rag">
+
+    <h3>
+    <a href="#16-fusion-rag"><span>16 fusion rag</span> </a>
+    </h3>
+<p><span>融合检索，结合语义检索和关键词检索两种方式，补全可能遗漏的关键词精确匹配的场景，来提高检索质量。</span></p>
+<p><span>把向量检索和 BM25 关键词检索的结果融合加权计算综合分数。</span></p>
+</section>
+<section id="17-graph-rag">
+
+    <h3>
+    <a href="#17-graph-rag"><span>17 graph rag</span> </a>
+    </h3>
+<p><span>基于图的 RAG，将知识组织成连接图而非平面文档集合。根据相似度和概念重合度来定义边权，查询时图遍历来找到相关上下文内容。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_message = <span class="hl-string">&quot;&quot;&quot;Extract key concepts and entities from the provided text.</span></span>
+<span class="line"><span class="hl-string">Return ONLY a list of 5-10 key terms, entities, or concepts that are most important in this text.</span></span>
+<span class="line"><span class="hl-string">Format your response as a JSON array of strings.&quot;&quot;&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="18-hierarchy-rag">
+
+    <h3>
+    <a href="#18-hierarchy-rag"><span>18 hierarchy rag</span> </a>
+    </h3>
+<p><span>解决传统 RAG 在处理大规模知识库时，如果对所有文本块一视同仁，可能上下文丢失或者检索效率低的问题。</span></p>
+<p><span>层次化索引的 RAG，先通过摘要识别相关文档主要内容，再对内容进行分开嵌入，分为两个向量存储。</span></p>
+</section>
+<section id="19-HyDE-rag">
+
+    <h3>
+    <a href="#19-HyDE-rag"><span>19 HyDE rag</span> </a>
+    </h3>
+<p><span>Hypothetical Document Embedding，假设文档嵌入，通过生成能回答用户问题的假设文档来作为嵌入搜索的参照对象。(看到这里真的笑出声了</span>&hellip;<span>)</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">system_prompt = <span class="hl-string">f&quot;&quot;&quot;You are an expert document creator. </span></span>
+<span class="line"><span class="hl-string">Given a question, generate a detailed document that would directly answer this question.</span></span>
+<span class="line"><span class="hl-string">The document should be approximately <span class="hl-subst">{desired_length}</span> characters long and provide an in-depth, </span></span>
+<span class="line"><span class="hl-string">informative answer to the question. Write as if this document is from an authoritative source</span></span>
+<span class="line"><span class="hl-string">on the subject. Include specific details, facts, and explanations.</span></span>
+<span class="line"><span class="hl-string">Do not mention that this is a hypothetical document - just write the content directly.&quot;&quot;&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Define the user prompt with the query</span></span>
+<span class="line">user_prompt = <span class="hl-string">f&quot;Question: <span class="hl-subst">{query}</span>\n\nGenerate a document that fully answers this question:&quot;</span></span></code></pre>
+
+</figure>
+</section>
+<section id="20-crag">
+
+    <h3>
+    <a href="#20-crag"><span>20 crag</span> </a>
+    </h3>
+<p><span>Corrective RAG，评估检索结果的相关性，当本地检索结果不足时，通过网络搜索来补充，结合多个来源的结果生成答案。</span></p>
+</section>
+<section id="21-rag-with-rl">
+
+    <h3>
+    <a href="#21-rag-with-rl"><span>21 rag with rl</span> </a>
+    </h3>
+<p><span>使用 Reinforcement Learning (强化学习) 来优化。</span></p>
+<p><span>定义学习的核心组件：状态、动作空间和奖励：</span>
+<span>动作逻辑包括：重写查询、扩展上下文、过滤上下文、生成答案。</span>
+<span>使用奖励函数基于余弦相似度评估生成答案的质量。</span></p>
+</section>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2025-05-08-llm-agent-projects.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>

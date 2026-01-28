@@ -1,0 +1,567 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rust Dispatch</title>
+  <meta name="description" content="学习的过程总是 无数个一知半解 + 一个恍然大悟的循环，两者的重要性难分伯仲。">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2023/08/18/rust-dispatch.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#Rust-Dispatch"><span>Rust Dispatch</span> <time datetime="2023-08-18">Aug 18, 2023</time></a>
+    </h1>
+
+<figure class="blockquote">
+<blockquote><p><span>学习的过程总是 无数个一知半解 + 一个恍然大悟的循环，两者的重要性难分伯仲。</span></p>
+</blockquote>
+
+</figure>
+<section id="Dispatch">
+
+    <h2>
+    <a href="#Dispatch"><span>分发（Dispatch）</span> </a>
+    </h2>
+<p><span>当代码涉及到多态(polymorphism)时，需要机制判断最终执行的代码到底是哪一个具体的实现版本。这个过程就叫分发。</span></p>
+<p><span>首先定义一点基础代码，作为后续内容的代码示例的默认前提：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">Show</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">print</span>(&amp;<span class="hl-keyword">self</span>);</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Show</span> <span class="hl-keyword">for</span> <span class="hl-title class_">usize</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">print</span>(&amp;<span class="hl-keyword">self</span>) {</span>
+<span class="line">        <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;usize show: {:?}&quot;</span>, &amp;<span class="hl-keyword">self</span>);</span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Show</span> <span class="hl-keyword">for</span> <span class="hl-title class_">String</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">print</span>(&amp;<span class="hl-keyword">self</span>) {</span>
+<span class="line">        <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;string show: {:?}&quot;</span>, &amp;<span class="hl-keyword">self</span>);</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+<section id="Static-Dispatch">
+
+    <h2>
+    <a href="#Static-Dispatch"><span>静态分发（Static Dispatch）</span> </a>
+    </h2>
+<section id="s-1">
+
+    <h3>
+    <a href="#s-1"><span>泛型</span> </a>
+    </h3>
+<p><span>类似于 C++ 里的模板，Rust 里的泛型(generic)包括加上 traits bounds 的泛型都是静态分发。具体实现是单态化(</span><a href="https://en.wikipedia.org/wiki/Monomorphization"><span>monomorphization</span></a><span>)：</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>In programming languages, monomorphization is a compile-time process where polymorphic functions are replaced by many monomorphic functions for each unique instantiation.</span></p>
+</blockquote>
+
+</figure>
+<p><span>即代码在编译期间 多态方法 被多个单独的 单态方法 替换。</span></p>
+<p><span>比如以下实现：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">do_print</span>&lt;T&gt;(x: T)</span>
+<span class="line"><span class="hl-keyword">where</span></span>
+<span class="line">    T: Show,</span>
+<span class="line">{</span>
+<span class="line">    x.<span class="hl-title function_ invoke__">print</span>();</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">number</span> = <span class="hl-number">42usize</span>;</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">string</span> = <span class="hl-string">&quot;Dispatch&quot;</span>.<span class="hl-title function_ invoke__">to_string</span>();</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-title function_ invoke__">do_print</span>(number); <span class="hl-comment">// usize show: 42</span></span>
+<span class="line">    <span class="hl-title function_ invoke__">do_print</span>(string); <span class="hl-comment">// string show: &quot;Dispatch&quot;</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>实际会被展开成类似：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">do_print_for_usize</span>(x: <span class="hl-type">usize</span>) {</span>
+<span class="line">    x.<span class="hl-title function_ invoke__">print</span>();</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">do_print_for_string</span>(x: <span class="hl-type">String</span>) {</span>
+<span class="line">    x.<span class="hl-title function_ invoke__">print</span>();</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">number</span> = <span class="hl-number">42usize</span>;</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">string</span> = <span class="hl-string">&quot;Dispatch&quot;</span>.<span class="hl-title function_ invoke__">to_string</span>();</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-title function_ invoke__">do_print_for_usize</span>(number); <span class="hl-comment">// usize show: 42</span></span>
+<span class="line">    <span class="hl-title function_ invoke__">do_print_for_string</span>(string); <span class="hl-comment">// string show: &quot;Dispatch&quot;</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>通过编译期间的单态化，编译器去除了泛型的概念，优点是在运行期间无性能损耗，缺点是滥用泛型会导致生成的单态化代码变多，编译时间增加，生成的二进制文件体积变大。这和 C++ 模板是一致的。</span></p>
+</section>
+<section id="impl-Trait">
+
+    <h3>
+    <a href="#impl-Trait"><span>impl Trait</span> </a>
+    </h3>
+<p><span>除了泛型之外，</span><code>impl Trait</code><span> 也用作静态分发，</span><code>impl Trait</code><span> 可以用在参数类型和返回值类型里。比如上述的 </span><code>fn do_print&lt;T: Show&gt;(x: T);</code><span> 也可以用 </span><code>impl Trait</code><span> 的形式写成：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">do_print</span>(x: <span class="hl-keyword">impl</span> <span class="hl-title class_">Show</span>) {</span>
+<span class="line">    x.<span class="hl-title function_ invoke__">print</span>()</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>当 </span><code>impl Trait</code><span> 作为返回值类型时，需要注意编译器需要推导出返回值的具体类型来实现单态化，因此无法写出 </span><code>if - else</code><span> 等不同分支下返回不同类型（虽然它们都实现了这个 Trait ）的代码。编译器无法推导出单态化的目标类型，一般会在后一种类型的返回处报错：</span><code>expect A but get B...</code></p>
+<p><span>实际编码中作为返回值写 </span><code>impl Trait</code><span> 的形式有两种用途：</span></p>
+<ol>
+<li>
+<span>让编译器推导类型，避免写特别长的类型</span>
+</li>
+<li>
+<span>用在返回闭包的场景</span>
+</li>
+</ol>
+<p><span>第一个场景：看下面这个例子，实现了一个连接两个 Vector 的函数</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">combine_vec</span>&lt;T&gt;(v: <span class="hl-type">Vec</span>&lt;T&gt;, u: <span class="hl-type">Vec</span>&lt;T&gt;) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">impl</span> <span class="hl-title class_">Iterator</span>&lt;Item = T&gt;</span>
+<span class="line"><span class="hl-keyword">where</span></span>
+<span class="line">    T: <span class="hl-built_in">Clone</span>,</span>
+<span class="line">{</span>
+<span class="line">    v.<span class="hl-title function_ invoke__">into_iter</span>().<span class="hl-title function_ invoke__">chain</span>(u.<span class="hl-title function_ invoke__">into_iter</span>()).<span class="hl-title function_ invoke__">cycle</span>()</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main___</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">v1</span> = <span class="hl-built_in">vec!</span>[<span class="hl-number">1</span>, <span class="hl-number">2</span>, <span class="hl-number">3</span>];</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">v2</span> = <span class="hl-built_in">vec!</span>[<span class="hl-number">5</span>, <span class="hl-number">6</span>, <span class="hl-number">7</span>];</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-keyword">mut </span><span class="hl-variable">v3</span> = <span class="hl-title function_ invoke__">combine_vec</span>(v1, v2);</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">1</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">2</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">3</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">5</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">6</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">7</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-title function_ invoke__">Some</span>(<span class="hl-number">1</span>), v3.<span class="hl-title function_ invoke__">next</span>());</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>泛型函数 </span><code>combine_vec</code><span> 的真实返回值是 </span><code>std::iter::Cycle&lt;std::iter::Chain&lt;std::vec::IntoIter&lt;T&gt;, std::vec::IntoIter&lt;T&gt;&gt;&gt;</code><span>，这里编译的时候会推导出返回值的类型和泛型 </span><code>T</code><span> 的类型，实际上会生成类似如下代码：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">combine_vec_for_i32_with_explicit_return_type</span>(</span>
+<span class="line">    v: <span class="hl-type">Vec</span>&lt;<span class="hl-type">i32</span>&gt;,</span>
+<span class="line">    u: <span class="hl-type">Vec</span>&lt;<span class="hl-type">i32</span>&gt;,</span>
+<span class="line">) <span class="hl-punctuation">-&gt;</span> std::iter::Cycle&lt;std::iter::Chain&lt;std::vec::IntoIter&lt;<span class="hl-type">i32</span>&gt;, std::vec::IntoIter&lt;<span class="hl-type">i32</span>&gt;&gt;&gt; {</span>
+<span class="line">    v.<span class="hl-title function_ invoke__">into_iter</span>().<span class="hl-title function_ invoke__">chain</span>(u.<span class="hl-title function_ invoke__">into_iter</span>()).<span class="hl-title function_ invoke__">cycle</span>()</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>很明显我们的这个函数的意图是利用迭代器的 </span><code>chain</code><span> 方法连接两个 </span><code>Vec</code><span>，因此返回的类型一定还是原先泛型 </span><code>T</code><span> 的迭代器，因此简单的写上 </span><code>impl Iterator&lt;...&gt;</code><span>，剩下的工作让编译器去做就好了。</span></p>
+<p><span>因为即使我们写成确切的类型，也不会给对读代码的人提供更多有帮助的信息，徒增阅读负担而已。</span></p>
+<p><span>第二个场景：Rust 里闭包类型是匿名的，无法显示的写出来，这种情况下我们只能只用 </span><code>impl Trait</code><span> 的形式来写：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">adder_function</span>(y: <span class="hl-type">i32</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">impl</span> <span class="hl-title class_">Fn</span>(<span class="hl-type">i32</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">i32</span> {</span>
+<span class="line">    <span class="hl-keyword">move</span> |x: <span class="hl-type">i32</span>| x + y</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">double_positive</span>&lt;<span class="hl-symbol">&#x27;a</span>&gt;(numbers: &amp;<span class="hl-symbol">&#x27;a</span> <span class="hl-type">Vec</span>&lt;<span class="hl-type">i32</span>&gt;) <span class="hl-punctuation">-&gt;</span> <span class="hl-keyword">impl</span> <span class="hl-title class_">Iterator</span>&lt;Item = <span class="hl-type">i32</span>&gt; + <span class="hl-symbol">&#x27;a</span> {</span>
+<span class="line">    numbers.<span class="hl-title function_ invoke__">iter</span>().<span class="hl-title function_ invoke__">filter</span>(|x| x &gt; &amp;&amp;<span class="hl-number">0</span>).<span class="hl-title function_ invoke__">map</span>(|x| x * <span class="hl-number">2</span>)</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">add_one</span> = <span class="hl-title function_ invoke__">adder_function</span>(<span class="hl-number">1</span>);</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(<span class="hl-number">3</span>, <span class="hl-title function_ invoke__">add_one</span>(<span class="hl-number">2</span>));</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">v</span> = <span class="hl-built_in">vec!</span>[-<span class="hl-number">3</span>, <span class="hl-number">2</span>, -<span class="hl-number">4</span>, <span class="hl-number">1</span>];</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">v2</span> = <span class="hl-title function_ invoke__">double_positive</span>(&amp;v).collect::&lt;<span class="hl-type">Vec</span>&lt;<span class="hl-type">i32</span>&gt;&gt;();</span>
+<span class="line">    <span class="hl-built_in">assert_eq!</span>(v2, <span class="hl-built_in">vec!</span>[<span class="hl-number">4</span>, <span class="hl-number">2</span>]);</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="Dynamic-Dispatch">
+
+    <h2>
+    <a href="#Dynamic-Dispatch"><span>动态分发（Dynamic Dispatch）</span> </a>
+    </h2>
+<p><span>静态分发的缺点：无法返回多种类型 正是动态分发要解决的问题。使用 Trait Object 表达 </span><strong><strong><span>实现了某种 Trait 的类型(的集合)</span></strong></strong><span> 这种类型，这种类型有点像 OOP 语言里的基类/抽象类，本身无法实例化出对象。</span></p>
+<section id="Trait-Object">
+
+    <h3>
+    <a href="#Trait-Object"><span>Trait Object</span> </a>
+    </h3>
+<p><span>Trait Object 本身可以理解为有固定大小的类型，其包含两个指针，一个指向其实际的类型，一个指向实现了 TraitObject 的这个 Trait 的虚表，可以理解为如下表达：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">pub</span> <span class="hl-keyword">struct</span> <span class="hl-title class_">TraitObject</span> {</span>
+<span class="line">    <span class="hl-keyword">pub</span> data: *<span class="hl-title function_ invoke__">mut</span> (),</span>
+<span class="line">    <span class="hl-keyword">pub</span> vtable: *<span class="hl-title function_ invoke__">mut</span> (),</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>虽然 Trait Object 大小是确定，但是并不能写出形如 </span><code>fn x() -&gt; Trait Object</code><span> 的代码，你会得到编译器的警告：</span></p>
+
+<figure class="blockquote">
+<blockquote><p><code>return type cannot have an unboxed trait object, doesn't have a size known at compile-time</code></p>
+</blockquote>
+
+</figure>
+<p><span>嗯？这是因为 Trait Object 所表达的实现了该 Trait 的类型的集合，其中的元素的大小是不确定的。Trait Object 本身是无法实例化的，作为返回值自然是没有意义的，真正要作为返回值的是某个实现了该 Trait 的类型的实例。因此要明确并不是因为 Trait Object 本身大小不固定，大小就是宽指针是固定的。</span></p>
+</section>
+<section id="dyn-Trait">
+
+    <h3>
+    <a href="#dyn-Trait"><span>dyn Trait</span> </a>
+    </h3>
+<p><span>明白了 Trait Object 的概念，代码中要表示一个 Trait Object，需要使用 </span><code>dyn</code><span> 关键字：</span><code>dyn SomeTrait</code><span> 表示 </span><code>SomeTrait</code><span> 的 Trait Object</span></p>
+<p><span>这里有些历史，在 2016 年之前还没有 </span><code>dyn</code><span> 这个关键字，</span><a href="https://github.com/rust-lang/rfcs/blob/master/text/2113-dyn-trait-syntax.md"><span>RFC-2113</span></a><span> 中引入了这个关键字语法，并在 rust 1.26/2021 edition 后必须使用 </span><code>dyn</code><span> 才能表示 Trait Object</span></p>
+<p><span>要求使用 </span><code>dyn</code><span> 就是为了清晰表达含义，区分 Trait 和 TraitObject。提案里给出了几个实例：比如下面代码：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">SomeTrait</span> <span class="hl-keyword">for</span> <span class="hl-title class_">AnotherTrait</span> {...}</span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">SomeTrait</span> {...}</span></code></pre>
+
+</figure>
+<p><span>这在引入 dyn 关键字之前都是合法的代码（现在会提示了），能分清楚这里的几个 xxxTrait，哪个是 Trait ，哪个是 Trait Object 么 :）</span></p>
+<p><span>第一条按照 </span><code>impl trait for type</code><span> 的语法，</span><code>SomeTrait</code><span> 是 Trait, </span><code>AnotherTrait</code><span> 应该是 Trait Object；</span></p>
+<p><span>第二条很容易理解为给 </span><code>SomeTrait</code><span> 实现一些默认方法，但是应该在定义处 </span><code>trait SomeTrait {...}</code><span> 里实现默认方法，这里其实是表达给 </span><code>SomeTrait</code><span> 的 Trait Object 实现方法。</span></p>
+<p><span>当然如今这样写已经会被编译器警告了，正确的写法是：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">SomeTrait</span> <span class="hl-keyword">for</span> <span class="hl-title class_">dyn</span> AnotherTrait {...}</span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">dyn</span> SomeTrait {...}</span></code></pre>
+
+</figure>
+
+<figure class="blockquote">
+<blockquote><p><span>拓展知识: Trait Object 都是 unsized ，所以 Trait 在设计的时候都是默认 </span><code>?Sized</code><span> 来支持 Trait Object：</span><a href="https://blog.eluvk.cn/?p=836#toc-head-16"><span>Trait Object Sizeness</span></a></p>
+<p><span>因此如果定义 </span><code>trait SomeTrait : Sized</code><span> ，那么这个 Trait 就不能使用 Trait Object 了。换句话说，Trait Object 要求不能包含 </span><code>Sized</code><span> Bounds。</span></p>
+<p><a href="https://doc.rust-lang.org/reference/items/traits.html#object-safety"><span>traits#object-safety</span></a></p>
+<ul>
+<li>
+<span>All supertraits must also be object safe.</span>
+</li>
+<li>
+<code>Sized</code><span> must not be a supertrait. In other words, it must not require </span><code>Self: Sized</code><span>.</span>
+</li>
+</ul>
+</blockquote>
+
+</figure>
+</section>
+<section id="vtable-in-Rust">
+
+    <h3>
+    <a href="#vtable-in-Rust"><span>vtable in Rust</span> </a>
+    </h3>
+<p><span>首先先看一下 C++ 里的虚表实现，对于一个子类对象，其内存布局包括：(注：这里只考虑继承包含虚函数父类的子类的情况，仅为和 Rust 虚表对比，不能完全代表真实内存布局实现)</span></p>
+<table>
+<tr>
+<th><span>子类内存布局</span></th>
+<th></th>
+<th><span>vtable</span></th>
+</tr>
+<tr>
+<td><span>虚表指针</span></td>
+<td>&mdash;<span>&gt;</span></td>
+<td><span>析构方法指针</span></td>
+</tr>
+<tr>
+<td><span>子类成员/数据</span></td>
+<td></td>
+<td><span>成员方法指针</span></td>
+</tr>
+</table>
+<p><span>指向虚表的指针和自身成员数据。</span></p>
+<p><span>对于多继承的情况，会有多个虚表指针：</span></p>
+<table>
+<tr>
+<th><span>vtable</span></th>
+<th></th>
+<th><span>子类内存布局</span></th>
+<th></th>
+<th><span>vtable</span></th>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td><span>虚表指针</span></td>
+<td>&mdash;<span>&gt;</span></td>
+<td><span>析构方法指针</span></td>
+</tr>
+<tr>
+<td><span>析构方法指针</span></td>
+<td><span>&lt;</span>&mdash;<span></span></td>
+<td><span>虚表指针</span></td>
+<td></td>
+<td><span>成员方法指针</span></td>
+</tr>
+<tr>
+<td><span>成员方法指针</span></td>
+<td></td>
+<td><span>子类成员/数据</span></td>
+<td></td>
+<td></td>
+</tr>
+</table>
+<p><span>而 Rust 里，如上 TraitObject 的 raw code：很容易得出单 Trait 下的 TraitObject 布局：</span></p>
+<table>
+<tr>
+<th><span>子类布局</span></th>
+<th></th>
+<th><span>Trait Object</span></th>
+<th></th>
+<th><span>vtable</span></th>
+</tr>
+<tr>
+<td><span>成员数据</span></td>
+<td><span>&lt;</span>&mdash;<span></span></td>
+<td><span>数据指针</span></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td><span>虚表指针</span></td>
+<td>&mdash;<span>&gt;</span></td>
+<td><span>析构方法指针</span></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td><span>成员方法指针</span></td>
+</tr>
+</table>
+<p><span>那么如果我想写出多个 Trait Bounds 的 Trait Object 呢？如下代码：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">FirstTrait</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">first</span>(&amp;<span class="hl-keyword">self</span>);</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">SecondTrait</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">second</span>(&amp;<span class="hl-keyword">self</span>);</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Subject</span> {</span>
+<span class="line">    subjects: <span class="hl-keyword">dyn</span> FirstTrait + SecondTrait, <span class="hl-comment">// error: only auto traits can be used</span></span>
+<span class="line">                                            <span class="hl-comment">// as additional traits in a trait object</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>会在 </span><code>+ SecondTrait</code><span> 处得到如上提示，以及如下建议：</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>consider creating a new trait with all of these as supertraits and using that trait here instead: </span><code>trait NewTrait: FirstTrait + SecondTrait {}</code></p>
+</blockquote>
+
+</figure>
+<p><span>（rustc 真贴心地教你写代码）按照提示需要这样写：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">AllTrait</span>: FirstTrait + SecondTrait {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Subject</span> {</span>
+<span class="line">    subjects: <span class="hl-keyword">dyn</span> AllTrait,</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>很容易猜测到这是因为 TraitObject 的实现方式：仅包含两个指针，无法增加更多的 vtable 指针来达成类似 C++ </span><code>: public A, public B</code><span> 多继承的效果。</span></p>
+<p><span>拓展知识：目前 supertrait 下还不支持 upcasting coercion: </span><a href="https://github.com/rust-lang/rust/issues/65991"><span>issues</span></a></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">need_first_trait</span>(o: &amp;<span class="hl-keyword">dyn</span> FirstTrait) {}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Subject</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">call_as_first_trait</span>(&amp;<span class="hl-keyword">self</span>) {</span>
+<span class="line">        <span class="hl-title function_ invoke__">need_first_trait</span>(&amp;<span class="hl-keyword">self</span>.subjects) <span class="hl-comment">// error: cannot cast `dyn AllTrait` to `dyn FirstTrait`,</span></span>
+<span class="line">                                         <span class="hl-comment">// trait upcasting coercion is experimental</span></span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>目前编译器还无法识别出应该放入哪个 </span><code>FirstTrait</code><span> 的 Trait Object 的虚表，可以用下面的方式手动补充实现：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">trait</span> <span class="hl-title class_">AllTrait</span>: FirstTrait + SecondTrait {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">as_first_trait</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> &amp;<span class="hl-keyword">dyn</span> FirstTrait;</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span>&lt;T: FirstTrait + SecondTrait&gt; AllTrait <span class="hl-keyword">for</span> <span class="hl-title class_">T</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">as_first_trait</span>(&amp;<span class="hl-keyword">self</span>) <span class="hl-punctuation">-&gt;</span> &amp;<span class="hl-keyword">dyn</span> FirstTrait {</span>
+<span class="line">        <span class="hl-keyword">self</span></span>
+<span class="line">    }</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">Subject</span> {</span>
+<span class="line">    <span class="hl-keyword">fn</span> <span class="hl-title function_">call_as_first_trait</span>(&amp;<span class="hl-keyword">self</span>) {</span>
+<span class="line">        <span class="hl-title function_ invoke__">need_first_trait</span>(<span class="hl-keyword">self</span>.subjects.<span class="hl-title function_ invoke__">as_first_trait</span>())</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+</section>
+<section id="s-2">
+
+    <h2>
+    <a href="#s-2"><span>参考资料</span> </a>
+    </h2>
+<p><a href="https://doc.rust-lang.org/rust-by-example/trait/impl_trait.html"><span>rust example - impl Trait</span></a></p>
+</section>
+<section id="s-3">
+
+    <h2>
+    <a href="#s-3"><span>拓展阅读</span> </a>
+    </h2>
+<ul>
+<li>
+<a href="https://doc.rust-lang.org/reference/items/traits.html#object-safety"><span>Trait Object Safety</span></a>
+</li>
+<li>
+<a href="https://smallcultfollowing.com/babysteps/blog/2022/03/29/dyn-can-we-make-dyn-sized/"><span>dyn * can we make dyn sized?</span></a>
+</li>
+</ul>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2023-08-18-rust-dispatch.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>

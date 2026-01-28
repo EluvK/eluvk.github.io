@@ -1,0 +1,457 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>use rust in c project with ffi</title>
+  <meta name="description" content="最近把 EVM 虚拟机引入到公司项目里，EVM 虚拟机本身的实现依赖的是第三方 Rust 写的rust-blockchain/evm，公司的项目是 C++开发的，所以需要把整个 EVM 作为静态库引入进来，之间的 FFI 交互本身需要（只能）按照 C 的格式传递，两端再封装一下，让使用起来舒适一些。">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2022/06/01/use-rust-in-c-project-with-ffi.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#use-rust-in-c-project-with-ffi"><span>use rust in c project with ffi</span> <time datetime="2022-06-01">Jun 1, 2022</time></a>
+    </h1>
+<section id="s-1">
+
+    <h2>
+    <a href="#s-1"><span>背景</span> </a>
+    </h2>
+<p><span>最近把 EVM 虚拟机引入到公司项目里，EVM 虚拟机本身的实现依赖的是第三方 Rust 写的</span><a href="https://github.com/rust-blockchain/evm"><span>rust-blockchain/evm</span></a><span>，公司的项目是 C++开发的，所以需要把整个 EVM 作为静态库引入进来，之间的 FFI 交互本身需要（只能）按照 C 的格式传递，两端再封装一下，让使用起来舒适一些。</span></p>
+<p><span>这个过程中搜到的资料都非常零散，在不断试错、优化的过程中也积累一些经验，如果读者也有需求要把第三方的</span><strong><strong><span>rust 库引入到 C/C++项目</span></strong></strong><span>里，可以参考一下。</span></p>
+<p><span>不过注意该教程的时效性，这绝不是 FFI 的最佳实践。</span></p>
+<p><span>如果你也是接触 rust 的跨语言 FFI 不久，可以先阅读</span><a href="https://doc.rust-lang.org/nomicon/ffi.html"><span>官方 book 的 FFI 介绍</span></a></p>
+</section>
+<section id="s-2">
+
+    <h2>
+    <a href="#s-2"><span>解决跨语言的调用和编译依赖问题</span> </a>
+    </h2>
+<p><span>这一节举例说明解决跨语言的编译问题，用统一的 CMake 工具来管理编译跨语言的不同模块</span></p>
+<section id="C-call-Rust-Rust-call-C">
+
+    <h3>
+    <a href="#C-call-Rust-Rust-call-C"><code>C call Rust</code><span> &amp;&amp; </span><code>Rust call C</code><span> 说明</span> </a>
+    </h3>
+<p><span>如果第三方的 lib 功能比较简单纯粹，一般只需要单向的使用。然而我实际上需要先提供给 EVM 一些 C 这边的功能，再把 EVM 封装起来提供给 C，所以两种都涉及到了。</span></p>
+<p><span>这里需要先提一下工具链，主项目是通过 </span><code>CMake</code><span> 来管理模块关系的，我需要把一个 capi 的模块提供给 rustlib 使用，再把 rustlib 作为一个模块提供给其它模块使用：</span></p>
+<p><strong><strong><span>依赖关系</span></strong></strong><span>：capi.a(C/C++) -&gt; rust_evm.a(Rust) -&gt; xxx.a(C/C++)</span></p>
+<p><span>后面的以这三个模块名举例说明</span></p>
+<p><span>每个模块下都有各自的 </span><code>CMakeLists.txt</code><span>，包括 rustlib 模块：此时的目录结构大致是这样的：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">$ tree .</span>
+<span class="line">.</span>
+<span class="line">├── capi</span>
+<span class="line">│   ├── capi.cpp</span>
+<span class="line">│   └── CMakeLists.txt</span>
+<span class="line">├── rust_evm</span>
+<span class="line">│   ├── Cargo.toml</span>
+<span class="line">│   ├── CMakeLists.txt</span>
+<span class="line">│   └── src</span>
+<span class="line">│       └── main.rs</span>
+<span class="line">└── xxx</span>
+<span class="line">    ├── CMakeLists.txt</span>
+<span class="line">    └── xxx.cpp</span></code></pre>
+
+</figure>
+</section>
+<section id="rust_evm-capi-Rust-call-C">
+
+    <h3>
+    <a href="#rust_evm-capi-Rust-call-C"><code>rust_evm</code><span> 依赖 </span><code>capi</code><span> : </span><code>Rust call C</code> </a>
+    </h3>
+<section id="Rust-Call-C">
+
+    <h4>
+    <a href="#Rust-Call-C"><code>Rust Call C</code> </a>
+    </h4>
+<p><span>使用 </span><code>extern "C" {}</code><span> 来把需要 c 提供的接口包起来，另外还可以用 </span><code>mod</code><span> 来增强代码可读性，比如：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-title function_ invoke__">pub</span>(<span class="hl-keyword">crate</span>) <span class="hl-keyword">mod</span> exports {</span>
+<span class="line">    <span class="hl-meta">#[link(name = <span class="hl-string">&quot;capi&quot;</span>)]</span></span>
+<span class="line">    <span class="hl-keyword">extern</span> <span class="hl-string">&quot;C&quot;</span> {</span>
+<span class="line">        <span class="hl-title function_ invoke__">pub</span>(<span class="hl-keyword">crate</span>) <span class="hl-keyword">fn</span> <span class="hl-title function_">evm_read_register</span>(register_id: <span class="hl-type">u64</span>, ptr: <span class="hl-type">u64</span>);</span>
+<span class="line">        <span class="hl-title function_ invoke__">pub</span>(<span class="hl-keyword">crate</span>) <span class="hl-keyword">fn</span> <span class="hl-title function_">evm_register_len</span>(register_id: <span class="hl-type">u64</span>) <span class="hl-punctuation">-&gt;</span> <span class="hl-type">u64</span>;</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>在其他地方就可以通过：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">unsafe</span> {</span>
+<span class="line">    <span class="hl-comment">//...</span></span>
+<span class="line">    exports::<span class="hl-title function_ invoke__">evm_read_register</span>(...);</span>
+<span class="line">    <span class="hl-comment">//...</span></span>
+<span class="line">}</span></code></pre>
+
+</figure>
+<p><span>的方式来使用 </span><code>capi.a</code><span> 里提供的方法了。</span></p>
+<p><span>上面第二行的 </span><code>#[link(name = "capi")]</code><span> 用于告诉链接器链接指定的库，但是我在实操的时候发现，在后面 </span><code>build.rs</code><span> 里写上链接 lib 后，不写这个 link 宏其实也没问题(写于2022-05，rust 1.60版本)，读者可以自行尝试。</span></p>
+</section>
+<section id="CMake-rust_evm">
+
+    <h4>
+    <a href="#CMake-rust_evm"><span>让 </span><code>CMake</code><span> 来管理编译 </span><code>rust_evm</code> </a>
+    </h4>
+<p><span>上面的方式，手动编译出 </span><code>capi.a</code><span> 后执行 </span><code>cargo build</code><span> 可以使用，通过 </span><code>CMake</code><span> 来管理的话，需要完成：</span></p>
+<ol>
+<li>
+<span>在 </span><code>build.rs</code><span> 里完成复制 </span><code>capi.a</code><span> 的操作，不然后面编译 </span><code>rust_evm</code><span> 时找不到链接的依赖。</span>
+</li>
+<li>
+<span>让 </span><code>CMake</code><span> 执行 </span><code>cargo build</code><span> 的编译命令</span>
+</li>
+</ol>
+<section id="build-rs">
+
+    <h5>
+    <a href="#build-rs"><span>写一下 </span><code>build.rs</code> </a>
+    </h5>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-meta">#![allow(unused)]</span></span>
+<span class="line"><span class="hl-keyword">use</span> std::env;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">use</span> std::process::Command;</span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#[cfg(feature = <span class="hl-string">&quot;build_with_cmake&quot;</span>)]</span></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {</span>
+<span class="line">    <span class="hl-keyword">let</span> <span class="hl-variable">out_dir</span> = env::<span class="hl-title function_ invoke__">var</span>(<span class="hl-string">&quot;OUT_DIR&quot;</span>).<span class="hl-title function_ invoke__">unwrap</span>();</span>
+<span class="line"></span>
+<span class="line">    Command::<span class="hl-title function_ invoke__">new</span>(<span class="hl-string">&quot;cp&quot;</span>)</span>
+<span class="line">        .<span class="hl-title function_ invoke__">arg</span>(<span class="hl-string">&quot;-f&quot;</span>)</span>
+<span class="line">        .<span class="hl-title function_ invoke__">arg</span>(&amp;<span class="hl-built_in">format!</span>(</span>
+<span class="line">            <span class="hl-string">&quot;{}/../../../../../../../lib/Linux/libcapi.a&quot;</span>,</span>
+<span class="line">            out_dir</span>
+<span class="line">        ))</span>
+<span class="line">        .<span class="hl-title function_ invoke__">arg</span>(&amp;<span class="hl-built_in">format!</span>(<span class="hl-string">&quot;{}&quot;</span>, out_dir))</span>
+<span class="line">        .<span class="hl-title function_ invoke__">status</span>()</span>
+<span class="line">        .<span class="hl-title function_ invoke__">unwrap</span>();</span>
+<span class="line"></span>
+<span class="line">    <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;cargo:rustc-link-search=native={}&quot;</span>, out_dir);</span>
+<span class="line">    <span class="hl-built_in">println!</span>(<span class="hl-string">&quot;cargo:rustc-link-lib=static=capi&quot;</span>);</span>
+<span class="line">}</span>
+<span class="line"></span>
+<span class="line"><span class="hl-meta">#[cfg(not(feature = <span class="hl-string">&quot;build_with_cmake&quot;</span>))]</span></span>
+<span class="line"><span class="hl-keyword">fn</span> <span class="hl-title function_">main</span>() {}</span></code></pre>
+
+</figure>
+<p><span>注意几点：</span></p>
+<ol>
+<li>
+<span>使用 </span><code>cp</code><span> 命令复制 </span><code>libcapi.a</code><span>，需要找到当前 CMake 项目，保管目标 lib 的目录，一般会通过根 CMake 文件设置到 </span><code>LIBRARY_OUTPUT_PATH</code><span>（高版本的 </span><code>cmake</code><span> 版本里也可能用 </span><code>LIBRARY_OUTPUT_DIRECTORY</code><span> ?）。需要从当前的目录相对路径到此处复制（到 </span><code>cargo</code><span> 的 </span><code>out_dir</code><span> ）。</span>
+</li>
+<li>
+<span>可以使用 </span><code>feature</code><span> 来控制不同场景的编译，后面会提到，用 </span><code>cmake</code><span> 编译的时候可以附带 </span><code>feature</code><span> 参数，所以可以默认情况下没有编译前参数，用于单独更新这个 rust 子项目的情况；在 </span><code>cmake</code><span> 编译时自动带上 </span><code>feature</code><span> 参数，启用这个复制命令。</span>
+</li>
+</ol>
+</section>
+<section id="rust_evm-CMakeLists-txt">
+
+    <h5>
+    <a href="#rust_evm-CMakeLists-txt"><code>rust_evm</code><span> 的 </span><code>CMakeLists.txt</code> </a>
+    </h5>
+<p><span>放一下参考配置： </span><code>rust_evm/CMakeLists.txt</code></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment"># find cargo</span></span>
+<span class="line">execute_process (</span>
+<span class="line">    COMMAND bash -c <span class="hl-string">&quot;which cargo | grep &#x27;cargo&#x27; | tr -d &#x27;\n&#x27;&quot;</span></span>
+<span class="line">    OUTPUT_VARIABLE CARGO_DIR</span>
+<span class="line">)</span>
+<span class="line"></span>
+<span class="line">execute_process (</span>
+<span class="line">    COMMAND <span class="hl-variable">${CARGO_DIR}</span> --version</span>
+<span class="line">)</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># set build command:</span></span>
+<span class="line">message(STATUS <span class="hl-string">&quot;Cargo dir: &quot;</span> <span class="hl-variable">${CARGO_DIR}</span>)</span>
+<span class="line"><span class="hl-keyword">if</span> (CMAKE_BUILD_TYPE STREQUAL <span class="hl-string">&quot;Debug&quot;</span>)</span>
+<span class="line"><span class="hl-built_in">set</span>(CARGO_CMD <span class="hl-variable">${CARGO_DIR}</span> build --features=build_with_cmake)</span>
+<span class="line"><span class="hl-built_in">set</span>(TARGET_DIR <span class="hl-string">&quot;debug&quot;</span>)</span>
+<span class="line"><span class="hl-keyword">else</span> ()</span>
+<span class="line"><span class="hl-built_in">set</span>(CARGO_CMD <span class="hl-variable">${CARGO_DIR}</span> build --features=build_with_cmake --release)</span>
+<span class="line"><span class="hl-built_in">set</span>(TARGET_DIR <span class="hl-string">&quot;release&quot;</span>)</span>
+<span class="line">endif ()</span>
+<span class="line"></span>
+<span class="line">message(STATUS <span class="hl-string">&quot;Cargo cmd: &quot;</span> <span class="hl-variable">${CARGO_CMD}</span>)</span>
+<span class="line"><span class="hl-built_in">set</span>(EVM_A <span class="hl-string">&quot;<span class="hl-variable">${CMAKE_CURRENT_BINARY_DIR}</span>/<span class="hl-variable">${TARGET_DIR}</span>/librust_evm.a&quot;</span>)</span>
+<span class="line">message(STATUS <span class="hl-string">&quot;EVM_A: &quot;</span> <span class="hl-variable">${EVM_A}</span> )</span>
+<span class="line">message(STATUS <span class="hl-string">&quot;CMAKE_CURRENT_BINARY_DIR: &quot;</span> <span class="hl-variable">${CMAKE_CURRENT_BINARY_DIR}</span>)</span>
+<span class="line">message(STATUS <span class="hl-string">&quot;CMAKE_CURRENT_SOURCE_DIR: &quot;</span> <span class="hl-variable">${CMAKE_CURRENT_SOURCE_DIR}</span>)</span>
+<span class="line">message(STATUS <span class="hl-string">&quot;LIBRARY_OUTPUT_PATH: &quot;</span> <span class="hl-variable">${LIBRARY_OUTPUT_PATH}</span>)</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># custom_compile &amp;&amp; cp</span></span>
+<span class="line">add_custom_target(rust_evm ALL</span>
+<span class="line">    COMMAND CARGO_TARGET_DIR=<span class="hl-variable">${CMAKE_CURRENT_BINARY_DIR}</span> <span class="hl-variable">${CARGO_CMD}</span> </span>
+<span class="line">    WORKING_DIRECTORY <span class="hl-variable">${CMAKE_CURRENT_SOURCE_DIR}</span></span>
+<span class="line">    COMMAND <span class="hl-built_in">cp</span> -f <span class="hl-variable">${EVM_A}</span> <span class="hl-variable">${LIBRARY_OUTPUT_PATH}</span>)</span>
+<span class="line"></span>
+<span class="line">set_target_properties(rust_evm PROPERTIES LOCATION <span class="hl-variable">${LIBRARY_OUTPUT_PATH}</span>)</span>
+<span class="line"></span>
+<span class="line">add_dependencies(rust_evm capi)</span></code></pre>
+
+</figure>
+<p><span>这个配置需要根据项目实际情况做调整，需要理解其含义。忽略中间的编译调试信息，核心步骤就是三步：</span></p>
+<ol>
+<li>
+<span>find cargo:</span>
+</li>
+<li>
+<span>set build command:</span>
+</li>
+<li>
+<span>custom_compile &amp;&amp; cp to library output path:</span>
+</li>
+</ol>
+<p><span>补充说明：</span></p>
+<ul>
+<li>
+<code>EVM_A</code><span> 表示使用 </span><code>cargo</code><span> 工具链编译出来的 </span><code>rust_evm</code><span> 静态库的位置</span>
+</li>
+<li>
+<code>LIBRARY_OUTPUT_PATH</code><span> 就是整个项目的位置，需要复制过去供后面其他模块链接使用。</span>
+</li>
+<li>
+<code>add_custom_target</code><span> 来调用 </span><code>cargo</code><span> 编译这个模块</span>
+</li>
+<li>
+<span>最后的 </span><code>add_dependencies</code><span> 来确定编译的拓扑关系，确保编译到这一步时，前面的 </span><code>build.rs</code><span> 一定能找到编译好的 </span><code>libcapi.a</code>
+</li>
+</ul>
+<p><span>至此我们已经完成了 </span><code>Rust call C</code><span> 的依赖关系，并且把 </span><code>rust_evm</code><span> 也编译成了 </span><code>librust_evm.a</code><span> 放到了目标 lib 目录下。</span></p>
+</section>
+</section>
+</section>
+<section id="xxx-rust_evm-C-call-Rust">
+
+    <h3>
+    <a href="#xxx-rust_evm-C-call-Rust"><code>xxx</code><span> 依赖 </span><code>rust_evm</code><span> : </span><code>C call Rust</code> </a>
+    </h3>
+<section id="xxx-cmake">
+
+    <h4>
+    <a href="#xxx-cmake"><code>xxx</code><span> 模块的 cmake</span> </a>
+    </h4>
+<p><span>在 </span><code>xxx/CMakeLists.txt</code><span> 下加上依赖关系：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line">add_dependencies(xxx rust_evm)</span>
+<span class="line">get_target_property(RUST_EVM_DIR rust_evm LOCATION)</span>
+<span class="line">target_link_libraries(xxx PRIVATE <span class="hl-variable">${RUST_EVM_DIR}</span>/librust_evm.a)</span></code></pre>
+
+</figure>
+<p><span>其中第二行： </span><code>get_target_property</code><span> 获取的就是 </span><code>librust_evm.a</code><span> ，是在编译 </span><code>rust_evm</code><span> 时通过 </span><code>set_target_properties</code><span> 设置进去的。</span></p>
+</section>
+<section id="C-call-Rust">
+
+    <h4>
+    <a href="#C-call-Rust"><code>C call Rust</code> </a>
+    </h4>
+<p><span>模块 </span><code>xxx</code><span> 这边找个地方声明一下外部实现：就可以直接调用了。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">extern</span> <span class="hl-string">&quot;C&quot;</span> <span class="hl-function"><span class="hl-type">bool</span> <span class="hl-title">call_contract</span><span class="hl-params">()</span></span>;</span></code></pre>
+
+</figure>
+<p><span>噢，在 </span><code>rust_evm</code><span> 提供的接口这样写：</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-keyword">mod</span> interface{</span>
+<span class="line">    <span class="hl-meta">#[no_mangle]</span></span>
+<span class="line">    <span class="hl-keyword">pub</span> <span class="hl-keyword">extern</span> <span class="hl-string">&quot;C&quot;</span> <span class="hl-keyword">fn</span> <span class="hl-title function_">call_contract</span>() <span class="hl-punctuation">-&gt;</span> <span class="hl-type">bool</span> {</span>
+<span class="line">        todo!()</span>
+<span class="line">    }</span>
+<span class="line">}</span></code></pre>
+
+</figure>
+</section>
+</section>
+</section>
+<section id="FFI-with-params">
+
+    <h2>
+    <a href="#FFI-with-params"><span>FFI with params</span> </a>
+    </h2>
+<p><span>调通了依赖关系后，开始增加实现细节，第一个会面临的问题就是，怎么传参？</span></p>
+<p><code>extern "C"</code><span> 的方式，可以直接传递基础数据类型：小于等于64位宽的整型(包括 bool\char)、指针地址(本质上也是个 u64)。但是其它类型就会复杂得多，即使 FFI 两边的语言都有同样作用的容器，也不能直接传递过去，本质上实现可能不一样、内存分布可能不一样。自定义的数据结果，如果都控制到内存布局完全一致，传递指针的方式可以实现，但是对编码的要求和难度增加，可读性不强，维护性更是差。</span></p>
+<p><span>解决方案是：使用一套两边语言都有的序列化方案，对于同一个数据结构对象，在两头分别定义好，在传递的时候、序列化成 bytes、传递过去后再反序列化出来，封装得当可以简化编码难度、大大提高可读性。</span></p>
+<p><span>两种语言都有的序列化方案可能有很多，但是还要确认它在不同语言里支持的类型问题是否都能 cover 你需要使用的。</span></p>
+<p><span>我这里使用了 protobuffer 作为序列化传递参数的方案，因为除了符合上面的要求外，还有一个额外优点：两边的数据结构可以统一由一个</span><code>.proto</code><span> 文件定义后生成，不会存在两边定义不对齐的情况。</span></p>
+<p><span>protobuffer 具体如何使用，官网文档学习，这里简单提一些注意点：</span></p>
+<ul>
+<li>
+<code>.proto</code><span> 里的 package 名字按 </span><code>C/C++</code><span> 这边的命名空间定位来，</span><code>Rust</code><span> 这边比较好说</span>
+</li>
+<li>
+<span>反正 </span><code>.proto</code><span> 可以 </span><code>import</code><span> 其它 </span><code>.proto</code><span> 文件，所以可以照顾 Rust 文件所属模块位置拆分掉，不要写成一个巨大的 </span><code>.proto</code>
+</li>
+<li>
+<code>Rust</code><span> 这边，最好实现一个本地 struct，只在 </span><code>Rust</code><span> 这端的代码里引用，再和对应的 proto 版对象相互实现 </span><code>Into/From/NewFrom</code><span> 等 </span><code>trait</code><span> ，这样在模块内部可以实现其它需要的功能，仅在传递前后转换成 proto 的对象。</span>
+</li>
+<li>
+<code>C/C++</code><span> 这边也是一样，视使用情况决定要不要抽象，一般 </span><code>C call Rust</code><span> 为目的，调用端转换一次，结果回来再转换一次，也没有抽象出单独方法的必要。</span>
+</li>
+</ul>
+<p><span>相互转换这一点在后来调研 </span><a href="https://github.com/informalsystems/tendermint-rs"><code>tendermint-rs</code><span> 项目</span></a><span>时，发现他们做的更好，他们 </span><code>tendermint/src</code><span> 目录下的所有数据结构，在 </span><code>proto</code><span> 目录下都有对应的转换，推荐去学习他们的代码结构（如下面示例）。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment">// tendermint/src/block.rs</span></span>
+<span class="line"><span class="hl-keyword">use</span> tendermint_proto::{types::Block <span class="hl-keyword">as</span> RawBlock};</span>
+<span class="line"></span>
+<span class="line"><span class="hl-keyword">struct</span> <span class="hl-title class_">Block</span> {</span>
+<span class="line">    <span class="hl-comment">// ...</span></span>
+<span class="line">}</span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">TryFrom</span>&lt;RawBlock&gt; <span class="hl-keyword">for</span> <span class="hl-title class_">Block</span> {...}</span>
+<span class="line"><span class="hl-keyword">impl</span> <span class="hl-title class_">From</span>&lt;Block&gt; <span class="hl-keyword">for</span> <span class="hl-title class_">RawBlock</span> {...}</span></code></pre>
+
+</figure>
+</section>
+<section id="Lifecircle">
+
+    <h2>
+    <a href="#Lifecircle"><span>Lifecircle</span> </a>
+    </h2>
+<p><span>一句话：多注意变量的生命周期，特别是跨语言交互的地方，由谁创建、管理、释放每个对象。</span></p>
+</section>
+<section id="Exception-handle">
+
+    <h2>
+    <a href="#Exception-handle"><span>Exception handle</span> </a>
+    </h2>
+<p><span>跨语言不支持调用栈 unwind </span><a href="https://internals.rust-lang.org/t/unwinding-through-ffi-after-rust-1-33/9521"><span>官方讨论</span></a></p>
+<p><span>即使 </span><code>C-&gt;Rust-&gt;C</code><span> 这种情况，在后面的 C 里 </span><code>throw_exception</code><span> ，虽然现状是经过的 </span><code>rust</code><span> 能 </span><code>unwind</code><span> 调用栈，最后被前面的 C 捕获注异常，但是这还是 </span><code>UB</code><span>，不推荐使用。</span></p>
+<p><span>所以这种现状下，只能各扫门前雪，跨语言接口只能用返回值来表示成功与否，可以通过在接口的最后用形如 </span><code>unwrap_or_return_false</code><span> 的方式来保证一定要返回。</span></p>
+<section id="TODO">
+
+    <h3>
+    <a href="#TODO"><span>TODO</span> </a>
+    </h3>
+<ul class="task-list">
+<li class="unchecked">
+<span>统一 channel/register 管理传参</span>
+</li>
+</ul>
+</section>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2022-06-01-use-rust-in-c-project-with-ffi.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>
