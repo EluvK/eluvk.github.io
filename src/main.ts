@@ -48,7 +48,7 @@ async function main() {
   }
 }
 
-function fatal(message: string) {
+function fatal(message: string): never {
   console.error(message);
   Deno.exit(1);
 }
@@ -109,17 +109,17 @@ async function build(params: {
     await fs.emptyDir("./out/res");
   }
 
-  const posts = await collect_posts(ctx, params.filter);
-  await update_file("out/res/index.html", templates.post_list(posts).value);
-  await update_file("out/res/feed.xml", templates.feed(posts).value);
-  for (const post of posts) {
+  const { blogs, others } = await collect_posts(ctx, params.filter);
+  await update_file("out/res/index.html", templates.post_list(blogs).value);
+  await update_file("out/res/feed.xml", templates.feed(blogs).value);
+  for (const post of [...blogs, ...others]) {
     await update_file(
       `out/res${post.path}`,
       templates.post(post, params.spell).value,
     );
   }
 
-  const pages = ["about", "shortcuts"];
+  const pages = ["about", "shortcuts", "readings"];
   // const pages = ["about", "resume", "links", "style"];
   for (const page of pages) {
     const text = await Deno.readTextFile(`content/${page}.dj`);
@@ -177,11 +177,9 @@ async function update_path(path: string) {
 }
 
 export type Post = {
-  year: number;
-  month: number;
-  day: number;
+  kind: PostKind;
+  category?: string;
   slug: string;
-  date: Date;
   title: string;
   path: string;
   src: string;
@@ -189,9 +187,31 @@ export type Post = {
   summary: string;
 };
 
-async function collect_posts(ctx: Ctx, filter: string): Promise<Post[]> {
+export enum PostKind {
+  Blog = "blog",
+  Custom = "custom",
+}
+
+export type BlogPost = Post & {
+  kind: PostKind.Blog;
+  year: number;
+  month: number;
+  day: number;
+  date: Date;
+};
+
+type CollectedPosts = {
+  blogs: BlogPost[];
+  others: Post[];
+};
+
+async function collect_posts(
+  ctx: Ctx,
+  filter: string,
+): Promise<CollectedPosts> {
   const start = performance.now();
-  const posts = [];
+  const blogs: BlogPost[] = [];
+  const others: Post[] = [];
   for await (
     const entry of fs.walk("./content/posts", { includeDirs: false })
   ) {
@@ -199,11 +219,29 @@ async function collect_posts(ctx: Ctx, filter: string): Promise<Post[]> {
     if (filter !== "") {
       if (entry.name.indexOf(filter) === -1) continue;
     }
-    const [, y, m, d, slug] = entry.name.match(
-      /^(\d\d\d\d)-(\d\d)-(\d\d)-(.*)\.dj$/,
-    )!;
-    const [year, month, day] = [y, m, d].map((it) => parseInt(it, 10));
-    const date = new Date(Date.UTC(year, month - 1, day));
+    const normalized_path = normalize_path(entry.path);
+    const rel = normalized_path
+      .replace(/^\.\//, "")
+      .replace(/^content\/posts\//, "");
+    const src = `/${normalized_path.replace(/^\.\//, "")}`;
+
+    const blog = parse_blog_info(rel);
+    const category = blog ? undefined : parse_other_category(rel);
+    const kind = blog
+      ? PostKind.Blog
+      : category
+      ? PostKind.Custom
+      : undefined;
+
+    if (!kind) {
+      fatal(`unsupported post path: ${entry.path}`);
+    }
+
+    const route_kind = route_segment(kind, category);
+    const category_path = category ?? "";
+    const path = blog
+      ? `/${blog.y}/${blog.m}/${blog.d}/${blog.slug}.html`
+      : `/${route_kind}/${without_ext(rel.replace(`${category_path}/`, ""))}.html`;
 
     let t = performance.now();
     const text = await Deno.readTextFile(entry.path);
@@ -214,26 +252,72 @@ async function collect_posts(ctx: Ctx, filter: string): Promise<Post[]> {
     ctx.parse_ms += performance.now() - t;
 
     t = performance.now();
-    const render_ctx = { date, summary: undefined, title: undefined };
+    const render_ctx = {
+      date: blog
+        ? new Date(Date.UTC(blog.year, blog.month - 1, blog.day))
+        : undefined,
+      summary: undefined,
+      title: undefined,
+    };
     const html = djot.render(ast, render_ctx);
     ctx.render_ms += performance.now() - t;
 
-    posts.push({
-      year,
-      month,
-      day,
-      slug,
-      date,
+    const post: Post = {
+      kind,
+      category,
+      slug: blog ? blog.slug : without_ext(entry.name),
       title: render_ctx.title!,
       content: html,
       summary: render_ctx.summary!,
-      path: `/${y}/${m}/${d}/${slug}.html`,
-      src: `/content/posts/${y}-${m}-${d}-${slug}.dj`,
-    });
+      path,
+      src,
+    };
+
+    if (kind === PostKind.Blog) {
+      blogs.push({
+        ...post,
+        kind: PostKind.Blog,
+        year: blog!.year,
+        month: blog!.month,
+        day: blog!.day,
+        date: render_ctx.date!,
+      });
+    } else {
+      others.push(post);
+    }
   }
-  posts.sort((l, r) => l.path < r.path ? 1 : -1);
+  blogs.sort((l, r) => l.path < r.path ? 1 : -1);
+  others.sort((l, r) => l.path > r.path ? 1 : -1);
   ctx.collect_ms = performance.now() - start;
-  return posts;
+  return { blogs, others };
+}
+
+function normalize_path(path: string): string {
+  return path.replaceAll("\\", "/");
+}
+
+function without_ext(name: string): string {
+  return name.endsWith(".dj") ? name.slice(0, -3) : name;
+}
+
+function parse_blog_info(rel: string):
+  | { year: number; month: number; day: number; y: string; m: string; d: string; slug: string }
+  | undefined {
+  const match = rel.match(/^(\d\d\d\d)-(\d\d)-(\d\d)-(.*)\.dj$/);
+  if (!match) return undefined;
+  const [, y, m, d, slug] = match;
+  const [year, month, day] = [y, m, d].map((it) => parseInt(it, 10));
+  return { year, month, day, y, m, d, slug };
+}
+
+function parse_other_category(rel: string): string | undefined {
+  const m = rel.match(/^([a-zA-Z0-9_-]+)\/.+\.dj$/);
+  return m?.[1];
+}
+
+function route_segment(kind: PostKind, category?: string): string {
+  if (kind === PostKind.Custom && category) return category;
+  return PostKind.Blog;
 }
 
 if (import.meta.main) await main();

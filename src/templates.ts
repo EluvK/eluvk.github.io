@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
-import { Post } from "./main.ts";
+import { BlogPost, Post } from "./main.ts";
 
 const site_url = "https://eluvk.github.io";
 
@@ -86,6 +86,7 @@ export const base = (
   <header>
     <nav>
       <a class="title" href="/">EluvK</a>
+      <a href="/readings.html">Readings</a>
       <a href="/shortcuts.html">ShortCuts</a>
       <a href="/about.html">About</a>
       <!-- 
@@ -137,7 +138,7 @@ export function page(name: string, content: HtmlString) {
   });
 }
 
-export const post_list = (posts: Post[]): HtmlString => {
+export const post_list = (posts: BlogPost[]): HtmlString => {
   const list_items = posts.map((post) =>
     html`
 <li>
@@ -181,7 +182,7 @@ function yyyy_mm_dd(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-export const feed = (posts: Post[]): HtmlString => {
+export const feed = (posts: BlogPost[]): HtmlString => {
   const entries = posts.slice(0, 10).map(feed_entry);
 
   return html`<?xml version="1.0" encoding="utf-8"?>
@@ -198,7 +199,7 @@ ${entries}
 `;
 };
 
-export const feed_entry = (post: Post): HtmlString => {
+export const feed_entry = (post: BlogPost): HtmlString => {
   return html`
 <entry>
 <title type="text">${post.title}</title>
