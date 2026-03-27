@@ -15,6 +15,7 @@ import {
   Section,
   Span,
   Str,
+  Subscript,
   Url,
   Visitor,
 } from "djot/ast.ts";
@@ -205,6 +206,13 @@ ${pre}
     str: (node: Str, r: djot.HTMLRenderer) => {
       if (has_class(node, "dfn")) {
         return `<dfn>${node.text}</dfn>`;
+      }
+      return r.renderAstNodeDefault(node);
+    },
+    subscript: (node: Subscript, r: djot.HTMLRenderer) => {
+      // djot parses markdown-style ~~text~~ as nested subscript; render it as <del>.
+      if (node.children.length == 1 && node.children[0].tag == "subscript") {
+        return `<del>${r.renderChildren(node.children[0])}</del>`;
       }
       return r.renderAstNodeDefault(node);
     },
