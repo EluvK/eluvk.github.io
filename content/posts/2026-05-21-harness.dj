@@ -1,0 +1,46 @@
+# Harness
+
+AI 应用工程经历了很多术语流行，应该是逐层递进的关系，都是在实践中不断探索吸纳进更多优秀方法后，对一套工程实践方法体系的简称。
+
+```mermaid
+graph TD
+    %% 最外层：工具链工程
+    subgraph 外层 ["Harness Engineering"]
+        style 外层 fill:#f5f5f5,stroke:#616161,stroke-width:2px,rx:60px,ry:60px;
+        
+        %% 中层：上下文工程
+        subgraph 中层 ["Context Engineering"]
+            style 中层 fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,rx:50px,ry:50px;
+            
+            %% 内层：提示词工程
+            subgraph 内层 ["Prompt Engineering"]
+                style 内层 fill:#ede7f6,stroke:#5e35b1,stroke-width:2px,rx:40px,ry:40px;
+            end
+            
+        end
+    end
+```
+
+## 逐步在解决什么问题
+
+### Prompt Engineering: 表达
+
+Prompt engineering 解决在单次session中，模型能否专注于你想要的问题，优秀的提示词通过限制 and 压缩模型的底层概率空间，塑造出局部概率空间，从而在单次对话中锚定模型的注意力，确保推理输出的高确定性与专注度。
+
+Role-Playing、Chain-of-Thought，还有结构化约束等技术都是在这个层面运作。
+
+### Context Engineering: 信息
+
+Context engineering 则是在此基础上，通过各种方式让模型持续获取充足且完备的信息流。其本质是通过检索、记忆、工具调用等手段，在多轮交互中持续维持模型的注意力在正确的数据特征上，来保证复杂对话中的思维连贯性与推理正确性。
+
+Retrieval-Augmented Generation（RAG）、MCP（Model Context Protocol）、Tool 乃至 Skill 都是在这个层面运作。
+
+在方法论上，渐进式披露（Progressive Disclosure）是一个核心原则——通过在会话演进中逐步释放信息，避免由于单次输入过载而导致底层概率空间再度耗散，确保模型在每一步都能获得最纯净的上下文来做出高精度推理。
+
+### Harness Engineering: 控制
+
+Harness engineering 则是更进一步的宏观层面，关注在整个系统生命周期中，模型行为的可控性与持续正确性。它不再局限于信息流的输入，而是围绕模型构建起一套自动化的“控制脚手架”，通过对模型行为的持续监控、确定性拦截与动态策略调整，强制将长链条交互中的概率漂移约束在工程安全线以内。目的是确保在整个场景的多次实践下，模型的输出始终收敛于预期的业务目标，而不是在复杂变体中逐渐偏离。
+
+Guardrails（安全护栏）、LLM-as-a-Judge（模型即裁判）、静态与动态的评测体系，乃至于自动化的纠偏机制，都是在这个层面运作。
+
+在方法论上，闭环反馈控制（Closed-Loop Feedback Control）是其核心原则——通过尽可能早的捕获模型的异常输出并触发纠偏机制，确保模型在复杂变体的全流程交互中，始终收敛于预期的业务终态。
