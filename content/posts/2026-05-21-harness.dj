@@ -1,31 +1,34 @@
 # Harness
 
-AI 应用工程经历了很多术语流行，应该是逐层递进的关系，都是在实践中不断探索吸纳进更多优秀方法后，对一套工程实践方法体系的简称。
+AI 应用工程经历了很多术语的流行与演化。它们更像是逐层递进的关系，都是在实践中不断吸纳更成熟方法后，对一套工程方法体系的阶段性概括。
 
 ```mermaid
-graph TD
-    %% 最外层：工具链工程
-    subgraph 外层 ["Harness Engineering"]
-        style 外层 fill:#f5f5f5,stroke:#616161,stroke-width:2px,rx:60px,ry:60px;
-        
-        %% 中层：上下文工程
-        subgraph 中层 ["Context Engineering"]
-            style 中层 fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,rx:50px,ry:50px;
-            
-            %% 内层：提示词工程
-            subgraph 内层 ["Prompt Engineering"]
-                style 内层 fill:#ede7f6,stroke:#5e35b1,stroke-width:2px,rx:40px,ry:40px;
+graph LR
+    subgraph harness ["<b>Harness Engineering</b>"]
+        harness-method["系统性约束和治理 <br> 监控 | 纠偏 | 收敛"]
+        subgraph context ["<b>Context Engineering</b>"]
+            context-method["RAG 提升信息相关性与可验证性 <br>记忆｜工具｜检索｜历史"]
+            subgraph prompt ["<b>Prompt Engineering</b>"]
+                prompt-method["优化单次调用指令 <br>精准表达意图"]
             end
-            
         end
     end
+
+    prompt-method ~~~ context-method
+
+    classDef no-box fill:none,stroke:none;
+    class harness-method,context-method,prompt-method no-box;
+
+    style harness fill:#f5f5f5,stroke:#616161,stroke-width:2px,rx:60px,ry:60px;
+    style context fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,rx:50px,ry:50px;
+    style prompt fill:#ede7f6,stroke:#5e35b1,stroke-width:2px,rx:40px,ry:40px;
 ```
 
 ## 逐步在解决什么问题
 
 ### Prompt Engineering: 表达
 
-Prompt engineering 解决在单次session中，模型能否专注于你想要的问题，优秀的提示词通过限制 and 压缩模型的底层概率空间，塑造出局部概率空间，从而在单次对话中锚定模型的注意力，确保推理输出的高确定性与专注度。
+Prompt engineering 关注的是在单次会话中，模型能否专注于你真正要解决的问题。优秀的提示词通过约束输出分布与注意力焦点，在单次对话中提升推理输出的稳定性与专注度。
 
 Role-Playing、Chain-of-Thought，还有结构化约束等技术都是在这个层面运作。
 
@@ -33,14 +36,73 @@ Role-Playing、Chain-of-Thought，还有结构化约束等技术都是在这个�
 
 Context engineering 则是在此基础上，通过各种方式让模型持续获取充足且完备的信息流。其本质是通过检索、记忆、工具调用等手段，在多轮交互中持续维持模型的注意力在正确的数据特征上，来保证复杂对话中的思维连贯性与推理正确性。
 
-Retrieval-Augmented Generation（RAG）、MCP（Model Context Protocol）、Tool 乃至 Skill 都是在这个层面运作。
+Retrieval-Augmented Generation（RAG）、MCP（Model Context Protocol）、Tools 乃至 Skills 都是在这个层面运作。
 
 在方法论上，渐进式披露（Progressive Disclosure）是一个核心原则——通过在会话演进中逐步释放信息，避免由于单次输入过载而导致底层概率空间再度耗散，确保模型在每一步都能获得最纯净的上下文来做出高精度推理。
 
 ### Harness Engineering: 控制
 
-Harness engineering 则是更进一步的宏观层面，关注在整个系统生命周期中，模型行为的可控性与持续正确性。它不再局限于信息流的输入，而是围绕模型构建起一套自动化的“控制脚手架”，通过对模型行为的持续监控、确定性拦截与动态策略调整，强制将长链条交互中的概率漂移约束在工程安全线以内。目的是确保在整个场景的多次实践下，模型的输出始终收敛于预期的业务目标，而不是在复杂变体中逐渐偏离。
+Harness engineering 则是更进一步的宏观层面，关注在整个系统生命周期中，模型行为的可控性与持续正确性。它不再局限于信息流的输入，而是围绕模型构建起一套自动化的“控制脚手架”，通过对模型行为的持续监控、确定性拦截与动态策略调整，尽量将长链条交互中的概率漂移控制在工程安全线以内。目的是确保在整个场景的多次实践下，模型的输出持续收敛于预期的业务目标，而不是在复杂变体中逐渐偏离。
 
 Guardrails（安全护栏）、LLM-as-a-Judge（模型即裁判）、静态与动态的评测体系，乃至于自动化的纠偏机制，都是在这个层面运作。
 
-在方法论上，闭环反馈控制（Closed-Loop Feedback Control）是其核心原则——通过尽可能早的捕获模型的异常输出并触发纠偏机制，确保模型在复杂变体的全流程交互中，始终收敛于预期的业务终态。
+在方法论上，闭环反馈控制（Closed-Loop Feedback Control）是其核心原则——通过尽可能早地捕获模型的异常输出并触发纠偏机制，确保模型在复杂变体的全流程交互中，始终收敛于预期的业务终态。
+
+## Harness 的核心组成
+
+如果说 Agent = Harness + LLM，可以得到 Harness = Agent - LLM。这个公式更偏工程抽象而非严格定义，用来帮助拆解系统边界会更合适。除开大模型外的 Agent 组件，都可以算是 Harness 的范畴。
+
+展开来说，Harness 包含以下几个方面，具体需要更侧重哪些方面，取决于实际的应用场景和需求：
+
+* 上下文管理
+* 工具系统
+* 编排系统
+* 状态和记忆
+* 评估和观测
+* 约束和恢复
+
+**1. 上下文管理**包含
+
+* 角色和目标定义：prompt 模版管理
+* 信息流管理：中间结果、工具调用结果、检索结果等的管理和组织
+* 结构化组织：固定规则、任务列表、运行状态等的组织和管理
+* 上下文的维护和更新：上下文压缩（Compaction）、清理上下文，何时重启上下文等。
+
+**2. 工具系统**即 MCP、Tool、Skill 等工具系统的管理，不同步骤中需要提供哪些工具，工具调用的结果如何处理并反馈给模型。
+
+**3. 编排系统**负责不同步骤的编排和流程控制，确保模型在正确的时间点获取正确的信息和工具调用结果，并且能够根据实际情况调整流程。
+
+一次完整任务至少包括以下几个步骤：
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    
+    %% 用普通状态节点代替 choice，可以自由写字
+    state "判断信息" as is_context_ok
+    state "评估结果" as is_result_ok
+    
+    [*] --> [1.理解目标]
+    [1.理解目标] --> is_context_ok
+    
+    state context {
+        is_context_ok --> [2.补全信息]: 需要补全
+        [2.补全信息] --> is_context_ok
+    }
+    is_context_ok --> [3.生成结果] : 上下文完整
+    
+    state result {
+        [3.生成结果] --> [4.评估结果]
+        is_result_ok --> [5.纠偏调整] : 验证不通过
+        [5.纠偏调整] --> [3.生成结果]
+    }
+    
+    [4.评估结果] --> is_result_ok
+    is_result_ok --> [6.任务结果] : 验证通过
+```
+
+**4. 状态和记忆**包含当前任务的状态(plan/step)，会话中间结果和历史信息的管理与存储。
+
+**5. 评估和观测**即对大模型输出结果的验证机制，比如静态检查、自动化测试运行结果等机制。
+
+**6. 约束和恢复**是针对整个系统可靠性的保障机制，约束模型行为，以及如何恢复异常状态、重试、回滚等。
