@@ -156,6 +156,19 @@ ${r.renderChildren(node)}
         cap = "";
       }
 
+      if (node.lang?.toLowerCase() === "mermaid") {
+        const text = node.text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+        return `
+<figure class="code-block mermaid-block">
+${cap}
+<pre class="mermaid">${text}</pre>
+</figure>
+`;
+      }
+
       const pre = highlight(
         node.text,
         node.lang,

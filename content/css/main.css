@@ -77,6 +77,16 @@ figure.code-block > pre > code {
     overflow-x: auto; overflow-y: clip;
     counter-reset: line;
 }
+figure.mermaid-block > pre.mermaid {
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+}
+figure.mermaid-block > pre.mermaid > svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
 figure.code-block > pre > code > .line { counter-increment: line; }
 figure.code-block > pre > code > .line:before {
     content: counter(line);

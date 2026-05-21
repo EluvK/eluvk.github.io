@@ -80,6 +80,14 @@ export const base = (
   <link rel="stylesheet" href="/css/main.css">
   ${extra_css ? html`<link rel="stylesheet" href="/css/${extra_css}">` : ""}
   <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "default",
+      securityLevel: "loose",
+    });
+  </script>
 </head>
 
 <body>
