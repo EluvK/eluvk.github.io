@@ -1,0 +1,258 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Harness</title>
+  <meta name="description" content="AI 应用工程经历了很多术语的流行与演化。它们更像是逐层递进的关系，都是在实践中不断吸纳更成熟方法后，对一套工程方法体系的阶段性概括。">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2026/05/21/harness.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "default",
+      securityLevel: "loose",
+    });
+  </script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/readings.html">Readings</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#Harness"><span>Harness</span> <time datetime="2026-05-21">May 21, 2026</time></a>
+    </h1>
+<p><span>AI 应用工程经历了很多术语的流行与演化。它们更像是逐层递进的关系，都是在实践中不断吸纳更成熟方法后，对一套工程方法体系的阶段性概括。</span></p>
+
+<figure class="code-block mermaid-block">
+
+<pre class="mermaid">graph LR
+    subgraph harness ["&lt;b&gt;Harness Engineering&lt;/b&gt;"]
+        harness-method["系统性约束和治理 &lt;br&gt; 监控 | 纠偏 | 收敛"]
+        subgraph context ["&lt;b&gt;Context Engineering&lt;/b&gt;"]
+            context-method["RAG 提升信息相关性与可验证性 &lt;br&gt;记忆｜工具｜检索｜历史"]
+            subgraph prompt ["&lt;b&gt;Prompt Engineering&lt;/b&gt;"]
+                prompt-method["优化单次调用指令 &lt;br&gt;精准表达意图"]
+            end
+        end
+    end
+
+    prompt-method ~~~ context-method
+
+    classDef no-box fill:none,stroke:none;
+    class harness-method,context-method,prompt-method no-box;
+
+    style harness fill:#f5f5f5,stroke:#616161,stroke-width:2px,rx:60px,ry:60px;
+    style context fill:#e3f2fd,stroke:#1e88e5,stroke-width:2px,rx:50px,ry:50px;
+    style prompt fill:#ede7f6,stroke:#5e35b1,stroke-width:2px,rx:40px,ry:40px;
+</pre>
+</figure>
+<section id="s-1">
+
+    <h2>
+    <a href="#s-1"><span>逐步在解决什么问题</span> </a>
+    </h2>
+<section id="Prompt-Engineering">
+
+    <h3>
+    <a href="#Prompt-Engineering"><span>Prompt Engineering: 表达</span> </a>
+    </h3>
+<p><span>Prompt engineering 关注的是在单次会话中，模型能否专注于你真正要解决的问题。优秀的提示词通过约束输出分布与注意力焦点，在单次对话中提升推理输出的稳定性与专注度。</span></p>
+<p><span>Role-Playing、Chain-of-Thought，还有结构化约束等技术都是在这个层面运作。</span></p>
+</section>
+<section id="Context-Engineering">
+
+    <h3>
+    <a href="#Context-Engineering"><span>Context Engineering: 信息</span> </a>
+    </h3>
+<p><span>Context engineering 则是在此基础上，通过各种方式让模型持续获取充足且完备的信息流。其本质是通过检索、记忆、工具调用等手段，在多轮交互中持续维持模型的注意力在正确的数据特征上，来保证复杂对话中的思维连贯性与推理正确性。</span></p>
+<p><span>Retrieval-Augmented Generation（RAG）、MCP（Model Context Protocol）、Tools 乃至 Skills 都是在这个层面运作。</span></p>
+<p><span>在方法论上，渐进式披露（Progressive Disclosure）是一个核心原则——通过在会话演进中逐步释放信息，避免由于单次输入过载而导致底层概率空间再度耗散，确保模型在每一步都能获得最纯净的上下文来做出高精度推理。</span></p>
+</section>
+<section id="Harness-Engineering">
+
+    <h3>
+    <a href="#Harness-Engineering"><span>Harness Engineering: 控制</span> </a>
+    </h3>
+<p><span>Harness engineering 则是更进一步的宏观层面，关注在整个系统生命周期中，模型行为的可控性与持续正确性。它不再局限于信息流的输入，而是围绕模型构建起一套自动化的“控制脚手架”，通过对模型行为的持续监控、确定性拦截与动态策略调整，尽量将长链条交互中的概率漂移控制在工程安全线以内。目的是确保在整个场景的多次实践下，模型的输出持续收敛于预期的业务目标，而不是在复杂变体中逐渐偏离。</span></p>
+<p><span>Guardrails（安全护栏）、LLM-as-a-Judge（模型即裁判）、静态与动态的评测体系，乃至于自动化的纠偏机制，都是在这个层面运作。</span></p>
+<p><span>在方法论上，闭环反馈控制（Closed-Loop Feedback Control）是其核心原则——通过尽可能早地捕获模型的异常输出并触发纠偏机制，确保模型在复杂变体的全流程交互中，始终收敛于预期的业务终态。</span></p>
+</section>
+</section>
+<section id="Harness-1">
+
+    <h2>
+    <a href="#Harness-1"><span>Harness 的核心组成</span> </a>
+    </h2>
+<p><span>如果说 Agent = Harness + LLM，可以得到 Harness = Agent - LLM。这个公式更偏工程抽象而非严格定义，用来帮助拆解系统边界会更合适。除开大模型外的 Agent 组件，都可以算是 Harness 的范畴。</span></p>
+<p><span>展开来说，Harness 包含以下几个方面，具体需要更侧重哪些方面，取决于实际的应用场景和需求：</span></p>
+<ul>
+<li>
+<span>上下文管理</span>
+</li>
+<li>
+<span>工具系统</span>
+</li>
+<li>
+<span>编排系统</span>
+</li>
+<li>
+<span>状态和记忆</span>
+</li>
+<li>
+<span>评估和观测</span>
+</li>
+<li>
+<span>约束和恢复</span>
+</li>
+</ul>
+<p><strong><strong><span>1. 上下文管理</span></strong></strong><span>包含</span></p>
+<ul>
+<li>
+<span>角色和目标定义：prompt 模版管理</span>
+</li>
+<li>
+<span>信息流管理：中间结果、工具调用结果、检索结果等的管理和组织</span>
+</li>
+<li>
+<span>结构化组织：固定规则、任务列表、运行状态等的组织和管理</span>
+</li>
+<li>
+<span>上下文的维护和更新：上下文压缩（Compaction）、清理上下文，何时重启上下文等。</span>
+</li>
+</ul>
+<p><strong><strong><span>2. 工具系统</span></strong></strong><span>即 MCP、Tool、Skill 等工具系统的管理，不同步骤中需要提供哪些工具，工具调用的结果如何处理并反馈给模型。</span></p>
+<p><strong><strong><span>3. 编排系统</span></strong></strong><span>负责不同步骤的编排和流程控制，确保模型在正确的时间点获取正确的信息和工具调用结果，并且能够根据实际情况调整流程。</span></p>
+<p><span>一次完整任务至少包括以下几个步骤：</span></p>
+
+<figure class="code-block mermaid-block">
+
+<pre class="mermaid">stateDiagram-v2
+    direction LR
+    
+    %% 用普通状态节点代替 choice，可以自由写字
+    state "判断信息" as is_context_ok
+    state "评估结果" as is_result_ok
+    
+    [*] --&gt; [1.理解目标]
+    [1.理解目标] --&gt; is_context_ok
+    
+    state context {
+        is_context_ok --&gt; [2.补全信息]: 需要补全
+        [2.补全信息] --&gt; is_context_ok
+    }
+    is_context_ok --&gt; [3.生成结果] : 上下文完整
+    
+    state result {
+        [3.生成结果] --&gt; [4.评估结果]
+        is_result_ok --&gt; [5.纠偏调整] : 验证不通过
+        [5.纠偏调整] --&gt; [3.生成结果]
+    }
+    
+    [4.评估结果] --&gt; is_result_ok
+    is_result_ok --&gt; [6.任务结果] : 验证通过
+</pre>
+</figure>
+<p><strong><strong><span>4. 状态和记忆</span></strong></strong><span>包含当前任务的状态(plan/step)，会话中间结果和历史信息的管理与存储。</span></p>
+<p><strong><strong><span>5. 评估和观测</span></strong></strong><span>即对大模型输出结果的验证机制，比如静态检查、自动化测试运行结果等机制。</span></p>
+<p><strong><strong><span>6. 约束和恢复</span></strong></strong><span>是针对整个系统可靠性的保障机制，约束模型行为，以及如何恢复异常状态、重试、回滚等。</span></p>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2026-05-21-harness.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>

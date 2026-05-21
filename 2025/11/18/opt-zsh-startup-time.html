@@ -1,0 +1,160 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Optimize zsh startup time</title>
+  <meta name="description" content="最近发现zsh启动越来越慢，最终定位到一个很奇妙的原因。">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2025/11/18/opt-zsh-startup-time.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "default",
+      securityLevel: "loose",
+    });
+  </script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/readings.html">Readings</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#Optimize-zsh-startup-time"><span>Optimize zsh startup time</span> <time datetime="2025-11-18">Nov 18, 2025</time></a>
+    </h1>
+<p><span>最近发现zsh启动越来越慢，最终定位到一个很奇妙的原因。</span></p>
+<p><span>TLDR: fpath 更新导致 zsh 会重做 compinit 的缓存，从而拖慢启动速度。</span></p>
+<p><span>因为一些原因，最近在频繁修改一些环境变量，每次在文件里修改完我习惯是在当前终端执行 </span><code>source ~/.zshrc</code><span> 来加载最新的配置而不是重新打开一个终端。然鹅这个过程会再次加载 zsh 的所有插件到 fpath 变量中，导致 fpath 里出现了重复的路径。而每次 fpath 变化，zsh 都会认为需要重新生成 compinit 的缓存文件，而你下一次打开一个新的终端时，fpath又恢复正常（也变化了），zsh 就又会重新执行 compinit 的过程。</span></p>
+<p><span>quote from Mr.GPT</span></p>
+
+<figure class="blockquote">
+<blockquote><p><span>🚨 你的 fpath 被重复注入了同样的目录 4 次以上 </span>&hellip;</p>
+</blockquote>
+
+</figure>
+<p><span>解决方法也很简单，就是在加载插件前，先用 </span><code>typeset -U fpath</code><span> 来去重 fpath 变量即可。</span></p>
+<p><span>最终的 ~/.zshrc 相关部分内容如下，展示启动时间耗时的命令 </span><code>zmodload zsh/zprof</code><span> / </span><code>zprof</code><span> 取消注释就可以看到启动时每个步骤的耗时。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-comment"># --- file start</span></span>
+<span class="line"><span class="hl-comment"># perf start</span></span>
+<span class="line"><span class="hl-comment"># zmodload zsh/zprof</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># Disable compinit security check &amp;&amp; disable auto update</span></span>
+<span class="line">ZSH_DISABLE_COMPFIX=<span class="hl-string">&quot;true&quot;</span></span>
+<span class="line">DISABLE_AUTO_UPDATE=<span class="hl-string">&quot;true&quot;</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># ....everything else...</span></span>
+<span class="line"></span>
+<span class="line"><span class="hl-built_in">typeset</span> -U fpath</span>
+<span class="line"></span>
+<span class="line">plugins=(git virtualenv zsh-autosuggestions zsh-syntax-highlighting)</span>
+<span class="line"></span>
+<span class="line"><span class="hl-built_in">source</span> <span class="hl-variable">$ZSH</span>/oh-my-zsh.sh</span>
+<span class="line"></span>
+<span class="line"><span class="hl-comment"># perf end</span></span>
+<span class="line"><span class="hl-comment"># zprof</span></span></code></pre>
+
+</figure>
+<p><span>注：compinit 缓存文件在 </span><code>~/.zcompdump*</code><span>，可以手动删除它来强制 zsh 重新生成缓存文件。</span></p>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2025-11-18-opt-zsh-startup-time.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>

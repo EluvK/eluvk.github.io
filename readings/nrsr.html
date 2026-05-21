@@ -1,0 +1,143 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Not Rocket Science Rule</title>
+  <meta name="description" content="technicalities: not rocket science (the story of monotone and bors)
+Feb. 2nd, 2014 10:25 pm
+graydon2: (Default)
+[personal profile] graydon2
+A technical note about a program I wrote last year called bors and some of its ancestry. This is excruciatingly boring unless you happen to build software for a living, in which case I recommend taking a minute to read it.">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/readings/nrsr.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "default",
+      securityLevel: "loose",
+    });
+  </script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/readings.html">Readings</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#Not-Rocket-Science-Rule"><span>Not Rocket Science Rule</span> </a>
+    </h1>
+<p><span>technicalities: </span>&ldquo;<span>not rocket science</span>&rdquo;<span> (the story of monotone and bors)</span>
+<span>Feb. 2nd, 2014 10:25 pm</span>
+<span>graydon2: (Default)</span>
+<span>[personal profile] graydon2</span>
+<span>A technical note about a program I wrote last year called bors and some of its ancestry. This is excruciatingly boring unless you happen to build software for a living, in which case I recommend taking a minute to read it.</span></p>
+<p><span>Thirteen years ago I worked at Cygnus/RedHat on a project with a delightful no-nonsense Australian hacker named Ben Elliston. We were faced with a somewhat nightmarish multi-timezone integration-testing scenario that carried a strong penalty for admitting transient bugs to the revision control repository (then CVS). To try to keep the project under control, Ben, Frank, and possibly a few other folks on the team cooked up a system of cron jobs, rsync, multiple CVS repositories and a small postgres database tracking test results.</span></p>
+<p><span>The system had a simple job: automatically maintain a repository of code that always passes all the tests. It gave us peace of mind (customers only pulled from that repository, so never saw breakage) and had the important secondary benefit that engineers could do their day</span>&rsquo;<span>s work from known-good revisions, without hunting someone else</span>&rsquo;<span>s bug that accidentally slipped in. Because the system was automated, we knew there was no chance anyone would rush to commit something sloppy. You could commit all the sloppy stuff you wanted to the non-automated repository; it would just be declined by the automated process if it broke any tests. Unforgiving, but fair. At the time I felt I</span>&rsquo;<span>d learned an important engineering lesson that any reasonable shop I went to in the future would probably also adopt. It turns out that if you set out to engineer a system with this as an explicit goal, it</span>&rsquo;<span>s not actually that hard to do. Ben described the idea as </span>&ldquo;<span>not rocket science</span>&rdquo;<span>. Little did I know how elusive it would be! For reference sake, let me re-state the principle here:</span></p>
+<p><span>The Not Rocket Science Rule Of Software Engineering:</span></p>
+<p><span>automatically maintain a repository of code that always passes all the tests</span></p>
+<p><span>Time passed, that system aged and (as far as I know) went out of service. I became interested in revision control, especially systems that enforced this Not Rocket Science Rule. Surprisingly, only one seemed to do so automatically (Aegis, written by Peter Miller, another charming no-nonsense Australian who is now, sadly, approaching death). At the time Aegis was not a distributed system, and while I was using Aegis on my own time I knew there were interesting possibilities if one went into the area of distributed revision control, as I saw my friends using bitkeeper. I wanted to blend the two ideas, so I got to work on a system of my own called monotone.</span></p>
+<p><span>Monotone was named as it was because I wanted to really pursue this concept of </span>&ldquo;<span>monotonically increasing test coverage</span>&rdquo;<span>. Revision branch-inclusion was based on certificates that could easily be published out-of-order by testing robots. Etc. Etc. I figured this was the future. Of course, numerous adventures followed eventually resulting in mercurial and git, monotone was swept aside, the world of revision control changed, and so forth. Hurrah.</span></p>
+<p><span>Along the way something weird happened. </span>&ldquo;<span>Continuous integration</span>&rdquo;<span> became a standard practice, and eventually </span>&ldquo;<span>continuous deployment</span>&rdquo;<span>, but very few sites seemed to be following the Not Rocket Science Rule in their own codebase. That is, everywhere I saw </span>&ldquo;<span>continuous integration</span>&rdquo;<span> in practice, it was being done in the wrong order: code being accepted before testing (leaving a potentially broken tree), or tested in isolation and then integrated on the basis of that test (with no guarantee that the integrated combination works). Continuous integration seemed everywhere to be used only to learn (rapidly) when the tree was broken, not prevent it breaking in the first place. I was dumbfounded, annoyed, saddened.</span></p>
+<p><span>So when it came time, a few years later, to scale up contribution beyond a few of us on Rust, I decided I needed to enforce the Not Rocket Science Rule in order to keep the code under control. I repeatedly explained it but nobody else was biting at the idea, so as </span>&ldquo;<span>technical lead</span>&rdquo;<span> I wound up implementing it myself. The result was a small script called bors.</span></p>
+<p><span>Bors implements the Not Rocket Science Rule against a combination of a buildbot test farm and a github repository: it monitors pull requests, waits for reviewers to approve them, then for each approved revision, makes a temporary integration revision which extends your integration branch by the proposed changes. It tests that temporary revision and advances your integration branch to point to the integration revision if and only if the tests pass. If the tests fail, the integration revision is discarded and a comment in the pull request is left showing the failures.</span></p>
+<p><span>You can see the Rust instance of its work queue here and the Servo instance here. An example successful integration is here and an example rejected integration (at least at the time of writing) is here. This rule is, I reiterate, not rocket science. I</span>&rsquo;<span>m banging on about this because it</span>&rsquo;<span>s so amazing to me how little tool support seems to exist for it. I had to write it myself! Its effect on a fast-moving, delicate project is extremely beneficial. Trunk is never broken. It does mean that your integration cycle time is bounded by your test cycle time, and it means that some changes take a number of attempts to integrate (bors supports priority markers to help you manually tune the integration order).</span></p>
+<p><span>On some projects, test time is too long for this strategy to work on each revision, at least without defining an integration-test subset. This is certainly everyone</span>&rsquo;<span>s chief initial concern, and it</span>&rsquo;<span>s legitimate, but in my experience it</span>&rsquo;<span>s a bit like people objecting to testing (or typechecking) in the first place because writing the tests and types will take too long: you</span>&rsquo;<span>ll spend much more time fighting the bugs if you wait and discover them later. I strongly recommend anyone who works in software try this arrangement to see what a difference it makes.</span></p>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/readings/nrsr.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>

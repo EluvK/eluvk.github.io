@@ -1,0 +1,163 @@
+
+<!DOCTYPE html>
+<html lang='en-US'>
+<head>
+  <meta charset='utf-8'>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Coding</title>
+  <meta name="description" content="又遇到了一个好的时机，时隔大半年再次尝试体验了下现在的 vibe coding. 在前后跨度近两周但累计也就十来个小时的开发后，烧掉了半个月的 premium requests 额度，做出来了一个桌游平台 C/S 架构的 demo，虽然功能还十分粗糙，有无数细节待打磨，但是怎么说也是把 《并购》 Acquire 这个游戏的流程走通了，项目开源并部署在了网站 上，欢迎体验。">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://eluvk.github.io/2026/03/27/ai-coding.html">
+  <link rel="alternate" type="application/rss+xml" title="EluvK" href="https://eluvk.github.io/feed.xml">
+  <style>
+  @font-face {
+    font-family: 'Open Sans'; src: url('/css/OpenSans-300-Normal.woff2') format('woff2');
+    font-weight: 300; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono'; src: url('/css/JetBrainsMono-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Normal.woff2') format('woff2');
+    font-weight: 400; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-400-Italic.woff2') format('woff2');
+    font-weight: 400; font-style: italic;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Normal.woff2') format('woff2');
+    font-weight: 700; font-style: normal;
+  }
+  @font-face {
+    font-family: 'EB Garamond'; src: url('/css/EBGaramond-700-Italic.woff2') format('woff2');
+    font-weight: 700; font-style: italic;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; margin-block-start: 0; margin-block-end: 0; }
+
+  body {
+    max-width: 100ch;
+    padding: 4ch;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  header { margin-bottom: 2rem; }
+  header > nav { display: flex; column-gap: 2ch; align-items: baseline; flex-wrap: wrap; }
+  header a { font-style: normal; color: rgba(0, 0, 0, .8); text-decoration: none; }
+  header a:hover { color: rgba(0, 0, 0, .8); text-decoration: underline; }
+  header .title { font-size: 1.25em; flex-grow: 2; }
+
+  footer { margin-top: 2rem; }
+  footer > p { display: flex; column-gap: 2ch; justify-content: center; flex-wrap: wrap; }
+  footer a { color: rgba(0, 0, 0, .8); text-decoration: none; white-space: nowrap; }
+  footer i { vertical-align: middle; color: rgba(0, 0, 0, .8) }
+
+  </style>
+
+  <link rel="stylesheet" href="/css/main.css">
+  
+  <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "default",
+      securityLevel: "loose",
+    });
+  </script>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a class="title" href="/">EluvK</a>
+      <a href="/readings.html">Readings</a>
+      <a href="/shortcuts.html">ShortCuts</a>
+      <a href="/about.html">About</a>
+      <!-- 
+      <a href="/resume.html">Resume</a>
+      <a href="/links.html">Links</a> 
+      -->
+    </nav>
+  </header>
+
+  <main>
+  <article >
+
+    <h1>
+    <a href="#AI-Coding"><span>AI Coding</span> <time datetime="2026-03-27">Mar 27, 2026</time></a>
+    </h1>
+<p><span>又遇到了一个好的时机，时隔大半年再次尝试体验了下现在的 </span>&lsquo;<span>vibe coding</span>&rsquo;<span>. 在前后跨度近两周但累计也就十来个小时的开发后，烧掉了半个月的 premium requests 额度，做出来了一个桌游平台 C/S 架构的 demo，虽然功能还十分粗糙，有无数细节待打磨，但是怎么说也是把 </span><a href="https://boardgamegeek.com/boardgame/5/acquire"><span>《并购》 Acquire</span></a><span> 这个游戏的流程走通了，</span><a href="https://github.com/EluvK/boardgame"><span>项目开源</span></a><span>并部署在了</span><a href="https://boardgame.508071.xyz"><span>网站</span></a><span> 上，欢迎体验。</span></p>
+
+<figure class="code-block">
+
+
+<pre><code><span class="line"><span class="hl-meta prompt_">$ </span><span class="language-bash"><span class="hl-built_in">cat</span> **/*.{rs,dart} | <span class="hl-built_in">wc</span> -l</span></span>
+<span class="line">    8979</span></code></pre>
+
+</figure>
+<p><span>目前项目的代码量大概是 9000。从结果来看，AI 提效显著；从质量上看，嗯大部分代码细节我没有看过所以无法给出评价；从效率上看，只投入了一些前期规划、大量的 Prompting 和数个小时的调试时间，期间因为等 AI 我甚至同时在开另一个项目的迭代工作流。</span></p>
+<p><span>想着感慨一下总结一点经验作为分享，本来想命名为 Coding with AI, 但是这段经历里我作为主体，并没有做 Coding 这个动作，只做了 Prompting 和调试，以及非常粗略的 Review ，一行代码没“写”，感觉不太贴切，还是称之为 AI Coding 吧，尊重一下劳动者。</span></p>
+<section id="Write-code-that-is-easy-to-be-deleted">
+
+    <h2>
+    <a href="#Write-code-that-is-easy-to-be-deleted"><span>Write code that is easy to be deleted</span> </a>
+    </h2>
+<p><span>一些过往的经验价值里，比如每行代码是很昂贵的，修改要最小化，能不动就不动；每个函数的长度要控制在 x 行，每个文件要控制在 y 行等等。在如今力大砖飞的大模型面前，单文件区区 2000 行的代码根本不是个事，相反，过于细致的拆分会降低同一个 session 里的上下文正确性，又或者要触发多次文件加载，反而降低效率。</span></p>
+<p><span>大模型吐出代码的速度已经远远超过人类的理解和消化速度了，每行代码的价值接近于零，尽可能的写一些独立的、不被其他代码依赖的、容易被删除的代码，能让迭代的效率最大化。而不是过于担心代码的复用性和可维护性，毕竟现在存在的代码很可能下个 session 就被替换掉了。</span></p>
+<p><span>比如在前端的代码里，我注意到大模型给不同但类似的 UI 组件里写了一些重复性极高的子结构，诚然这在理想世界里很不合理，因为按照此前的经验，抽象出一个可复用更公用的组件是更好的做法，但是如果要做这件事，就需要能够确保后续大模型也会正确的去复用这个组件，否则这次抽象很有可能是白费力气的增加未来冗余代码的风险，因为同样的做抽取合并的事情如果还发生多次，就会出现多份看似相似但又不完全相同的组件，反而在指数增加实际维护成本。而保持在组件内部，它永远不会被其他组件依赖，随时可以被重写或者删除，反而是更好的选择了。</span></p>
+<p><span>在探索出能让大模型稳定输出去复用了已有功能的工程方式之前，保持代码的独立性和可删除性是更好的选择了。</span></p>
+</section>
+<section id="Read-the-summary-not-the-code">
+
+    <h2>
+    <a href="#Read-the-summary-not-the-code"><span>Read the summary, not the code</span> </a>
+    </h2>
+<p><span>我在尝试让大模型在每次写完代码以后，再输出/维护一份文档，来总结当前的进度和坑，因为它们真的很容易事情只做一半然后问你是否还要xxx，（omg，经常感觉自己就像个被 AI 牵着鼻子走的傀儡一样，甚至这句也是 AI 补全出来的）。所以一个多轮对话的 session 快结束的时候，输出一份总结性文档，作为起点交接给下一个 session ，也是方便人类在第二天打开这个窗口还能回忆起你打算干什么。</span></p>
+<p><span>又或者先去和 Gemini 讨论一下设计思路，多轮交互之后对好方案细节后再让它写一份初稿作为 prompt 的输入，比直接写几行其实过于粗糙的提示词的效果好很多。</span></p>
+</section>
+<section id="Know-what-you-want-and-know-how-to-achieve-it">
+
+    <h2>
+    <a href="#Know-what-you-want-and-know-how-to-achieve-it"><span>Know what you want, and know how to achieve it</span> </a>
+    </h2>
+<p><span>确实，在真的动手做这件事之前，我就知道自己可以做到，去年已经写过了一个类似的</span><a href="../../../2025/08/13/try-mobile-development.html#planetx"><span>桌游</span></a><span>。以至于被吐槽，怎么总是做这种“无聊”的项目，感觉不太有挑战性。</span></p>
+<p><span>但是很明显目前的通用 AI 的智能程度也没有强大到你只需要说一句“帮我做个xxx桌游的在线版本”，就能得到一个完整的、可玩的、</span><del><span>没有任何 bug</span></del><span> 的桌游了。虽然我确实很想见识下不计成本的让 🦞 去尽情的烧token来试试结果，看个乐子。</span></p>
+<p><span>所以我初始就给自己定了一个额外的目标，让这个项目吃掉原来的项目且未来能够快速横向拓展其他桌游，继续把这件事追加一个项目重构的安排强行增加意义感，roadmap 直接写进了第一个 plan.md 里，基础框架 -&gt; 迁移之前的桌游 -&gt; 新增这个桌游。（虽然这个这个目标在执行的时候被我先跳过了第二步，结果来看不然这个月 token 不够用了）</span></p>
+<p><span>基础框架反而是最费人力时间的部分，因为这里没有想清楚就开始做的话，大概率会出现一堆无用的文件和函数，功能和设计都不合理，而这个第一块地基就烂了的话，后面只能是 Garbage in, Garbage out 了。</span></p>
+<p><span>大模型输出太快了真的很容易让人放弃思考，想清楚自己想要什么，去引导这个高效率的工具帮你实现，愿不在数据洪流中迷失，共勉。</span></p>
+</section>
+</article>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      <a href="https://github.com/EluvK/eluvk.github.io/edit/master/content/posts/2026-03-27-ai-coding.dj">
+        <svg class="icon"><use href="/assets/icons.svg#edit"/></svg>
+        Fix typo
+      </a>
+      <a href="/feed.xml">
+        <svg class="icon"><use href="/assets/icons.svg#rss"/></svg>
+        Subscribe
+      </a>
+      <a href="mailto:eluvk.dev+blog@gmail.com">
+        <svg class="icon"><use href="/assets/icons.svg#email"/></svg>
+        Get in touch
+      </a>
+      <a href="https://github.com/EluvK">
+        <svg class="icon"><use href="/assets/icons.svg#github"/></svg>
+        EluvK
+      </a>
+    </p>
+  </footer>
+</body>
+
+</html>
